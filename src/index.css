@@ -1,92 +1,41 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 7%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 196 100% 50%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 100% 50%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 142 68% 52%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 196 100% 50%;
 
     --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 
@@ -94,8 +43,74 @@
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground;
+    @apply bg-lolcow-black text-foreground font-nunito;
+    @apply min-h-screen;
   }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-fredoka;
+  }
+}
+
+@layer components {
+  .lolcow-card {
+    @apply bg-lolcow-darkgray rounded-xl border border-lolcow-lightgray p-4 transition-all duration-300 hover:shadow-lg hover:shadow-lolcow-blue/20;
+  }
+  
+  .btn-primary {
+    @apply bg-lolcow-blue text-white font-bold py-2 px-4 rounded-lg transition-all hover:bg-blue-600 disabled:opacity-50;
+  }
+  
+  .btn-secondary {
+    @apply bg-lolcow-red text-white font-bold py-2 px-4 rounded-lg transition-all hover:bg-red-600 disabled:opacity-50;
+  }
+  
+  .btn-accent {
+    @apply bg-lolcow-green text-white font-bold py-2 px-4 rounded-lg transition-all hover:bg-green-600 disabled:opacity-50;
+  }
+  
+  .btn-outline {
+    @apply border-2 border-lolcow-blue bg-transparent text-lolcow-blue font-bold py-2 px-4 rounded-lg transition-all 
+    hover:bg-lolcow-blue hover:text-white disabled:opacity-50;
+  }
+  
+  .nav-link {
+    @apply relative font-bold px-3 py-2 text-lg transition-all hover:text-lolcow-blue;
+  }
+  
+  .product-card {
+    @apply lolcow-card flex flex-col h-full overflow-hidden;
+  }
+  
+  .product-card-image-container {
+    @apply relative overflow-hidden rounded-lg mb-4 w-full;
+    height: 200px;
+  }
+  
+  .product-card-image {
+    @apply w-full h-full object-cover transition-transform duration-500 hover:scale-110;
+  }
+  
+  .product-card-title {
+    @apply text-xl font-fredoka text-white mb-2;
+  }
+  
+  .product-card-price {
+    @apply text-lg font-bold text-lolcow-blue;
+  }
+  
+  .product-card-description {
+    @apply text-sm text-gray-300 mb-4;
+  }
+}
+
+.glass-card {
+  @apply bg-white/5 backdrop-blur-sm border border-white/10 shadow-lg;
+}
+
+.farm-background {
+  background-image: url('/lovable-uploads/8226a11c-5c9c-4d29-a0fb-82e9b0f5f137.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
