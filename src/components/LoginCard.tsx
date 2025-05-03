@@ -1,9 +1,16 @@
 
 import React from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const LoginCard: React.FC = () => {
+  const { toast } = useToast();
+  
   const handleLoginWithDiscord = () => {
     // This would typically redirect to Supabase Auth with Discord provider
+    toast({
+      title: "Discord Login",
+      description: "Redirecting to Discord authentication...",
+    });
     console.log("Redirecting to Discord login...");
   };
 
@@ -23,7 +30,8 @@ const LoginCard: React.FC = () => {
         </h2>
         
         <p className="text-gray-300 text-center mb-8">
-          Sign in with your Discord account to access our community server and exclusive content.
+          Sign in with your Discord account to access our community server, check your memberships, 
+          and get exclusive updates.
         </p>
         
         <button 
@@ -33,6 +41,13 @@ const LoginCard: React.FC = () => {
           <i className="fa-brands fa-discord text-xl"></i>
           <span>Login with Discord</span>
         </button>
+        
+        <div className="mt-6 text-center">
+          <p className="text-gray-400 text-sm mb-2">Having trouble logging in?</p>
+          <a href="/support" className="text-lolcow-blue hover:underline text-sm">
+            Contact Support
+          </a>
+        </div>
         
         <p className="text-gray-400 text-center mt-6 text-sm">
           By logging in, you agree to our Terms of Service and Privacy Policy.

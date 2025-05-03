@@ -2,6 +2,8 @@
 import React from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import YouTubeConnections from "../components/YouTubeConnections";
+import Announcements from "../components/Announcements";
 import { Link } from "react-router-dom";
 
 // Mock user data - would come from Supabase in a real implementation
@@ -14,12 +16,70 @@ const mockUser = {
     { platform: "Twitter", username: "@cowfan123" },
     { platform: "Instagram", username: "cowfan123" }
   ],
-  guilds: [
-    { id: "1", name: "LolCow Official", icon: "https://via.placeholder.com/50" },
-    { id: "2", name: "Cow Collectors", icon: "https://via.placeholder.com/50" }
+  joined: "Jan 15, 2023",
+  youtubeAccounts: [
+    { 
+      id: "yt1", 
+      channelName: "CowFan Gaming", 
+      avatar: "https://via.placeholder.com/50", 
+      isConnected: true 
+    }
   ],
-  joined: "Jan 15, 2023"
+  memberships: [
+    {
+      channelId: "ch1",
+      channelName: "LolCow Main Channel",
+      role: "crown",
+      icon: "fa-solid fa-crown text-yellow-400"
+    },
+    {
+      channelId: "ch2",
+      channelName: "LolCow Side Channel",
+      role: "pay pig",
+      icon: "fa-solid fa-piggy-bank text-purple-400"
+    },
+    {
+      channelId: "ch3",
+      channelName: "LolCow Archives",
+      role: "ban world",
+      icon: "fa-solid fa-ban text-red-500"
+    }
+  ]
 };
+
+// Mock announcements and featured products
+const mockAnnouncements = [
+  {
+    id: "a1",
+    title: "New Discord Server Rules",
+    content: "We've updated our Discord server rules. Please review them before participating in discussions.",
+    date: "May 1, 2025",
+    isImportant: true
+  },
+  {
+    id: "a2",
+    title: "Upcoming Live Stream",
+    content: "Join us this Friday at 8PM EST for a special live stream event!",
+    date: "Apr 30, 2025"
+  }
+];
+
+const mockProducts = [
+  {
+    id: "p1",
+    name: "LolCow T-Shirt",
+    description: "Limited edition LolCow mascot t-shirt. Available in multiple sizes.",
+    imageUrl: "https://via.placeholder.com/300x200",
+    url: "#"
+  },
+  {
+    id: "p2",
+    name: "LolCow Mug",
+    description: "Start your day with the official LolCow coffee mug.",
+    imageUrl: "https://via.placeholder.com/300x200",
+    url: "#"
+  }
+];
 
 const Profile: React.FC = () => {
   // In a real app, we'd check auth state and redirect to login if needed
@@ -79,93 +139,65 @@ const Profile: React.FC = () => {
                 </p>
               </div>
 
-              {/* Action button */}
-              <div>
-                <button className="btn-outline">
-                  Edit Profile
-                </button>
+              {/* Action buttons */}
+              <div className="flex flex-col gap-2">
+                <Link to="/support" className="btn-primary">
+                  <i className="fa-solid fa-ticket mr-2"></i>
+                  Support
+                </Link>
               </div>
             </div>
           </div>
 
           {/* Profile content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Connections */}
+            {/* Discord Connections */}
             <div className="lolcow-card p-6">
               <h2 className="text-xl font-fredoka text-white mb-4 flex items-center">
-                <i className="fa-solid fa-link mr-2 text-lolcow-blue"></i> Connections
+                <i className="fa-brands fa-discord mr-2 text-lolcow-blue"></i> Discord
               </h2>
               <div className="space-y-4">
-                {mockUser.connections.map((connection, index) => (
-                  <div key={index} className="flex items-center justify-between py-2 border-b border-lolcow-lightgray last:border-0">
-                    <div className="flex items-center">
-                      <i className={`fa-brands fa-${connection.platform.toLowerCase()} text-lg mr-3 text-gray-400`}></i>
-                      <span className="text-gray-300">{connection.platform}</span>
-                    </div>
-                    <span className="text-lolcow-blue">{connection.username}</span>
+                <div className="flex items-center justify-between py-2 border-b border-lolcow-lightgray last:border-0">
+                  <div className="flex items-center">
+                    <i className="fa-brands fa-discord text-lg mr-3 text-gray-400"></i>
+                    <span className="text-gray-300">Connected</span>
                   </div>
-                ))}
-              </div>
-              <button className="mt-4 w-full btn-primary">
-                Add Connection
-              </button>
-            </div>
-
-            {/* Discord Guilds */}
-            <div className="lolcow-card p-6 col-span-1 lg:col-span-2">
-              <h2 className="text-xl font-fredoka text-white mb-4 flex items-center">
-                <i className="fa-brands fa-discord mr-2 text-lolcow-red"></i> Discord Guilds
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {mockUser.guilds.map((guild) => (
-                  <div 
-                    key={guild.id} 
-                    className="flex items-center p-4 rounded-lg bg-lolcow-lightgray hover:bg-lolcow-lightgray/70 transition-colors"
+                  <span className="text-green-500">
+                    <i className="fa-solid fa-check-circle mr-1"></i>
+                    Active
+                  </span>
+                </div>
+                <div className="bg-lolcow-lightgray p-4 rounded-lg">
+                  <h3 className="text-white text-lg mb-2">Server Access</h3>
+                  <p className="text-gray-300">
+                    Based on your membership roles, you have access to the LolCow Discord server.
+                  </p>
+                  <a 
+                    href="#" 
+                    className="mt-3 inline-flex items-center text-lolcow-blue hover:underline"
                   >
-                    <img 
-                      src={guild.icon} 
-                      alt={guild.name} 
-                      className="w-10 h-10 rounded-full mr-3" 
-                    />
-                    <span className="text-white">{guild.name}</span>
-                  </div>
-                ))}
+                    <i className="fa-brands fa-discord mr-1"></i>
+                    Join Server
+                    <i className="fa-solid fa-external-link text-xs ml-1"></i>
+                  </a>
+                </div>
               </div>
             </div>
 
-            {/* Collection stats */}
-            <div className="lolcow-card p-6 col-span-1 lg:col-span-3">
-              <h2 className="text-xl font-fredoka text-white mb-6 flex items-center">
-                <i className="fa-solid fa-trophy mr-2 text-lolcow-green"></i> Your Collection
-              </h2>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-lolcow-lightgray p-4 rounded-lg text-center">
-                  <div className="text-3xl font-fredoka text-lolcow-blue mb-2">12</div>
-                  <div className="text-gray-300">Items Owned</div>
-                </div>
-                
-                <div className="bg-lolcow-lightgray p-4 rounded-lg text-center">
-                  <div className="text-3xl font-fredoka text-lolcow-red mb-2">4</div>
-                  <div className="text-gray-300">Rare Cows</div>
-                </div>
-                
-                <div className="bg-lolcow-lightgray p-4 rounded-lg text-center">
-                  <div className="text-3xl font-fredoka text-lolcow-green mb-2">2</div>
-                  <div className="text-gray-300">Limited Edition</div>
-                </div>
-                
-                <div className="bg-lolcow-lightgray p-4 rounded-lg text-center">
-                  <div className="text-3xl font-fredoka text-purple-500 mb-2">5</div>
-                  <div className="text-gray-300">Sets Completed</div>
-                </div>
-              </div>
-              
-              <div className="mt-6 text-center">
-                <Link to="/collection" className="btn-outline">
-                  View Full Collection
-                </Link>
-              </div>
+            {/* YouTube Connections - uses our new component */}
+            <div className="col-span-1 lg:col-span-2">
+              <YouTubeConnections 
+                accounts={mockUser.youtubeAccounts}
+                memberships={mockUser.memberships}
+              />
+            </div>
+
+            {/* Announcements & Featured - uses our new component */}
+            <div className="col-span-1 lg:col-span-3">
+              <Announcements 
+                announcements={mockAnnouncements}
+                featuredProducts={mockProducts}
+              />
             </div>
           </div>
         </div>
