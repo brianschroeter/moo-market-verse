@@ -3,28 +3,69 @@ import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileUp } from "lucide-react";
+
+interface FileInfo {
+  name: string;
+  size: number;
+  type: string;
+  data?: File;
+}
 
 const SupportTicketForm: React.FC = () => {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [files, setFiles] = useState<FileInfo[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // This would be replaced with actual API call to submit ticket
+    // This would be replaced with actual API call to submit ticket with file uploads
     setTimeout(() => {
       toast({
         title: "Ticket Submitted",
-        description: "We'll get back to you as soon as possible.",
+        description: `We'll get back to you as soon as possible. ${files.length ? `${files.length} file(s) attached.` : ''}`,
       });
       setSubject("");
       setMessage("");
+      setFiles([]);
       setIsSubmitting(false);
     }, 1000);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles: FileInfo[] = Array.from(e.target.files).map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        data: file
+      }));
+      setFiles([...files, ...newFiles]);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    const newFiles = [...files];
+    newFiles.splice(index, 1);
+    setFiles(newFiles);
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' bytes';
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    else return (bytes / 1048576).toFixed(1) + ' MB';
   };
 
   return (
@@ -59,11 +100,60 @@ const SupportTicketForm: React.FC = () => {
                 required
               />
             </div>
+            
+            {/* File Upload Section */}
+            <div>
+              <label className="block text-gray-300 mb-1">Attachments</label>
+              <div className="flex items-center">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  multiple
+                />
+                <Button 
+                  type="button"
+                  variant="outline"
+                  className="border border-lolcow-blue text-lolcow-blue hover:bg-lolcow-blue hover:text-white"
+                  onClick={triggerFileInput}
+                >
+                  <FileUp className="w-4 h-4 mr-2" />
+                  Upload Files
+                </Button>
+                <span className="ml-3 text-gray-400 text-sm">
+                  {files.length > 0 ? `${files.length} file(s) selected` : 'No files selected'}
+                </span>
+              </div>
+              
+              {/* File List */}
+              {files.length > 0 && (
+                <div className="mt-3">
+                  <ul className="space-y-2">
+                    {files.map((file, index) => (
+                      <li key={index} className="flex items-center justify-between bg-lolcow-darkgray p-2 rounded-md">
+                        <div className="flex items-center space-x-2 truncate">
+                          <span className="text-gray-300 truncate">{file.name}</span>
+                          <span className="text-gray-400 text-xs">({formatFileSize(file.size)})</span>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => removeFile(index)}
+                          className="text-gray-400 hover:text-red-500"
+                        >
+                          <i className="fa-solid fa-times"></i>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
           
           <Button 
             type="submit" 
-            className="mt-4 bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-medium w-full"
+            className="mt-6 bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-medium w-full"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Submitting..." : "Submit Ticket"}

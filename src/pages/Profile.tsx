@@ -145,6 +145,10 @@ const Profile: React.FC = () => {
                   <i className="fa-solid fa-ticket mr-2"></i>
                   Support
                 </Link>
+                <Link to="/tickets" className="btn-outline">
+                  <i className="fa-solid fa-list mr-2"></i>
+                  My Tickets
+                </Link>
               </div>
             </div>
           </div>
