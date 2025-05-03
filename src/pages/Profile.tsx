@@ -29,19 +29,19 @@ const mockUser = {
     {
       channelId: "ch1",
       channelName: "LolCow Main Channel",
-      role: "crown",
+      role: "crown" as const,
       icon: "fa-solid fa-crown text-yellow-400"
     },
     {
       channelId: "ch2",
       channelName: "LolCow Side Channel",
-      role: "pay pig",
+      role: "pay pig" as const,
       icon: "fa-solid fa-piggy-bank text-purple-400"
     },
     {
       channelId: "ch3",
       channelName: "LolCow Archives",
-      role: "ban world",
+      role: "ban world" as const,
       icon: "fa-solid fa-ban text-red-500"
     }
   ]
