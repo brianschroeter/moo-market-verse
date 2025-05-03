@@ -9,22 +9,20 @@ const Hero: React.FC = () => {
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="text-center md:text-left">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-fredoka mb-6">
-              <span className="text-white">HOME OF THE </span>
+              <span className="text-white">JOIN THE </span>
               <span className="text-lolcow-blue">LOL</span>
-              <span className="text-lolcow-red">COWS</span>
+              <span className="text-lolcow-red">COW</span>
+              <span className="text-white"> COMMUNITY</span>
             </h1>
             
             <p className="text-gray-300 text-lg md:text-xl mb-8">
-              Join the herd and discover the fun world of cartoon cow collectibles, 
-              merchandise, and more. Authenticated through Discord!
+              Connect with our Discord community and join the herd of cartoon cow enthusiasts.
+              Login now to access exclusive content!
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
               <Link to="/login" className="btn-primary text-center">
                 Login with Discord
-              </Link>
-              <Link to="/shop" className="btn-outline text-center">
-                Browse Shop
               </Link>
             </div>
           </div>

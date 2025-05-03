@@ -19,11 +19,11 @@ const LoginCard: React.FC = () => {
         </div>
         
         <h2 className="text-2xl font-fredoka text-white text-center mb-6">
-          Log in to LolCow
+          Join the LolCow Community
         </h2>
         
         <p className="text-gray-300 text-center mb-8">
-          Sign in with your Discord account to access your profile, collections, and more.
+          Sign in with your Discord account to access our community server and exclusive content.
         </p>
         
         <button 

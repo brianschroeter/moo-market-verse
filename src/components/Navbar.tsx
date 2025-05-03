@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ShoppingCart, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -36,11 +36,8 @@ const Navbar: React.FC = () => {
               <Link to="/" className="nav-link">
                 Home
               </Link>
-              <Link to="/shop" className="nav-link">
-                Shop
-              </Link>
-              <Link to="/cows" className="nav-link">
-                Cows
+              <Link to="/login" className="nav-link">
+                Login
               </Link>
               <Link to="/profile" className="nav-link">
                 Profile
@@ -48,18 +45,8 @@ const Navbar: React.FC = () => {
             </div>
           </div>
 
-          {/* Right side - Cart and Auth button */}
+          {/* Right side - Auth button */}
           <div className="flex items-center space-x-4">
-            <Link
-              to="/cart"
-              className="p-2 rounded-full hover:bg-lolcow-lightgray relative"
-            >
-              <ShoppingCart className="h-6 w-6 text-white" />
-              <span className="absolute -top-1 -right-1 bg-lolcow-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
-                0
-              </span>
-            </Link>
-
             <Link to="/login" className="btn-primary">
               Login
             </Link>
@@ -93,18 +80,11 @@ const Navbar: React.FC = () => {
               Home
             </Link>
             <Link
-              to="/shop"
+              to="/login"
               className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
               onClick={toggleMenu}
             >
-              Shop
-            </Link>
-            <Link
-              to="/cows"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
-              onClick={toggleMenu}
-            >
-              Cows
+              Login
             </Link>
             <Link
               to="/profile"
