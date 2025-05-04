@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
@@ -6,14 +7,6 @@ import { getTickets } from "@/services/ticketAdminService";
 import TicketsTable from "@/components/admin/tickets/TicketsTable";
 import TicketFilters from "@/components/admin/tickets/TicketFilters";
 import TicketPagination from "@/components/admin/tickets/TicketPagination";
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
 
 // Define the Ticket type
 export type Ticket = {
@@ -22,81 +15,50 @@ export type Ticket = {
   updated_at: string;
   user_id: string;
   subject: string;
-  description: string;
-  status: "open" | "pending" | "closed";
-  priority: "low" | "medium" | "high";
+  description?: string;
+  status: "open" | "awaiting_support" | "awaiting_user" | "closed";
+  priority?: "low" | "medium" | "high";
+  profiles?: {
+    discord_username: string;
+  };
 };
 
 const AdminTickets: React.FC = () => {
-  const [sorting, setSorting] = useState([]);
-  const [filtering, setFiltering] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
-  const [columnVisibility, setColumnVisibility] = useState({});
-  const [rowSelection, setRowSelection] = useState({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalTickets, setTotalTickets] = useState(0);
+  const itemsPerPage = 10;
 
-  const { data: tickets, isLoading, error } = useQuery<Ticket[]>("tickets", () =>
-    getTickets({ status: statusFilter, priority: priorityFilter })
-  );
-
-  const columns: ColumnDef<Ticket>[] = [
-    {
-      accessorKey: "id",
-      header: "ID",
-    },
-    {
-      accessorKey: "created_at",
-      header: "Created At",
-    },
-    {
-      accessorKey: "updated_at",
-      header: "Updated At",
-    },
-    {
-      accessorKey: "user_id",
-      header: "User ID",
-    },
-    {
-      accessorKey: "subject",
-      header: "Subject",
-    },
-    {
-      accessorKey: "description",
-      header: "Description",
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-    },
-    {
-      accessorKey: "priority",
-      header: "Priority",
-    },
-  ];
-
-  const table = useReactTable({
-    data: tickets || [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onSortingChange: setSorting,
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnVisibility,
-      rowSelection,
-    },
+  // Fetch tickets with updated query structure
+  const { data: tickets, isLoading, error } = useQuery({
+    queryKey: ["tickets", statusFilter, currentPage, searchTerm],
+    queryFn: () => getTickets({ status: statusFilter !== "all" ? statusFilter : null })
   });
 
-  const handleStatusFilterChange = (status: string | null) => {
+  const handleStatusFilterChange = (status: string) => {
     setStatusFilter(status);
+    setCurrentPage(1); // Reset to first page when filter changes
   };
 
-  const handlePriorityFilterChange = (priority: string | null) => {
-    setPriorityFilter(priority);
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page when search changes
   };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Calculate total pages
+  const totalPages = Math.ceil(totalTickets / itemsPerPage);
+
+  // Update total tickets count when tickets data changes
+  useEffect(() => {
+    if (tickets) {
+      setTotalTickets(tickets.length);
+    }
+  }, [tickets]);
 
   return (
     <AdminLayout>
@@ -112,11 +74,26 @@ const AdminTickets: React.FC = () => {
           </CardHeader>
           <CardContent>
             <TicketFilters
-              onStatusChange={handleStatusFilterChange}
-              onPriorityChange={handlePriorityFilterChange}
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              statusFilter={statusFilter}
+              onStatusFilterChange={handleStatusFilterChange}
+              totalTickets={totalTickets}
             />
-            <TicketsTable table={table} />
-            <TicketPagination table={table} />
+            
+            {tickets && <TicketsTable 
+              tickets={tickets} 
+              loading={isLoading} 
+              searchTerm={searchTerm}
+              statusFilter={statusFilter}
+              onStatusChange={async () => {}} // Implement this if needed
+            />}
+            
+            <TicketPagination 
+              currentPage={currentPage} 
+              totalPages={totalPages} 
+              onPageChange={handlePageChange} 
+            />
           </CardContent>
         </Card>
       </div>

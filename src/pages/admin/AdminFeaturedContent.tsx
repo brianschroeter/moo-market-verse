@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Delete } from "lucide-react";
+import { Trash } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { v4 as uuidv4 } from 'uuid';
 import { uploadImage } from "@/services/imageUploadService";
@@ -37,14 +38,15 @@ const AdminFeaturedContent: React.FC = () => {
   const queryClient = useQueryClient();
   const { session } = useAuth();
 
-  const { data: products, isLoading } = useQuery({
+  const { data: products = [], isLoading } = useQuery({
     queryKey: ["featuredContent"],
-    queryFn: getFeaturedContent,
+    queryFn: getFeaturedContent
   });
 
-  const createProductMutation = useMutation(createFeaturedContent, {
+  const createProductMutation = useMutation({
+    mutationFn: createFeaturedContent,
     onSuccess: () => {
-      queryClient.invalidateQueries(["featuredContent"]);
+      queryClient.invalidateQueries({queryKey: ["featuredContent"]});
       setName("");
       setDescription("");
       setImageUrl("");
@@ -64,9 +66,10 @@ const AdminFeaturedContent: React.FC = () => {
     },
   });
 
-  const deleteProductMutation = useMutation(deleteFeaturedContent, {
+  const deleteProductMutation = useMutation({
+    mutationFn: deleteFeaturedContent,
     onSuccess: () => {
-      queryClient.invalidateQueries(["featuredContent"]);
+      queryClient.invalidateQueries({queryKey: ["featuredContent"]});
       toast({
         title: "Success",
         description: "Product deleted successfully",
@@ -206,7 +209,7 @@ const AdminFeaturedContent: React.FC = () => {
                           size="icon"
                           onClick={() => handleDelete(product.id)}
                         >
-                          <Delete className="h-4 w-4" />
+                          <Trash className="h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -271,8 +274,11 @@ const AdminFeaturedContent: React.FC = () => {
                   placeholder="Product Link"
                 />
               </div>
-              <Button type="submit" disabled={createProductMutation.isLoading}>
-                {createProductMutation.isLoading ? "Adding..." : "Add Product"}
+              <Button 
+                type="submit" 
+                disabled={createProductMutation.isPending}
+              >
+                {createProductMutation.isPending ? "Adding..." : "Add Product"}
               </Button>
             </form>
           </CardContent>

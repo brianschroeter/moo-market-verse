@@ -3,10 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Ticket } from "@/pages/admin/AdminTickets";
 
 export interface FetchTicketsOptions {
-  page: number;
-  itemsPerPage: number;
+  page?: number;
+  itemsPerPage?: number;
   searchTerm?: string;
-  statusFilter?: string;
+  status?: string | null;
+  priority?: string | null;
 }
 
 export interface TicketsResponse {
@@ -14,8 +15,38 @@ export interface TicketsResponse {
   count: number;
 }
 
+export const getTickets = async (options: FetchTicketsOptions = {}): Promise<Ticket[]> => {
+  const { status, priority } = options;
+  
+  let query = supabase
+    .from('support_tickets')
+    .select(`
+      *,
+      profiles:profiles(discord_username)
+    `);
+  
+  if (status) {
+    query = query.eq('status', status);
+  }
+  
+  // Add priority filter if implemented in your schema
+  if (priority) {
+    query = query.eq('priority', priority);
+  }
+  
+  const { data, error } = await query
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    console.error("Error fetching tickets:", error);
+    throw error;
+  }
+
+  return data || [];
+};
+
 export const fetchAdminTickets = async (options: FetchTicketsOptions): Promise<TicketsResponse> => {
-  const { page, itemsPerPage, searchTerm, statusFilter } = options;
+  const { page = 1, itemsPerPage = 10, searchTerm, status } = options;
   
   // Calculate pagination range
   const from = (page - 1) * itemsPerPage;
@@ -26,7 +57,7 @@ export const fetchAdminTickets = async (options: FetchTicketsOptions): Promise<T
     .from('support_tickets')
     .select(`
       *,
-      profile:profiles(discord_username)
+      profiles:profiles(discord_username)
     `, { count: 'exact' });
   
   // Add search filter if provided
@@ -35,8 +66,8 @@ export const fetchAdminTickets = async (options: FetchTicketsOptions): Promise<T
   }
 
   // Add status filter if not "all"
-  if (statusFilter !== "all") {
-    query = query.eq('status', statusFilter);
+  if (status && status !== "all") {
+    query = query.eq('status', status);
   }
   
   // Complete the query with ordering and pagination
