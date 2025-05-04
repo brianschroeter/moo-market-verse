@@ -108,7 +108,7 @@ export const fetchAndSyncDiscordConnections = async () => {
     const storedConnections: YouTubeConnection[] = [];
     
     for (const conn of youtubeConnections) {
-      // Store in database
+      // Store in database - Fix: Remove 'returning' option which doesn't exist
       const { data, error } = await supabase
         .from('youtube_connections')
         .upsert({
@@ -117,14 +117,15 @@ export const fetchAndSyncDiscordConnections = async () => {
           youtube_channel_name: conn.name,
           is_verified: conn.verified
         }, {
-          onConflict: 'user_id, youtube_channel_id',
-          returning: 'representation'
+          onConflict: 'user_id, youtube_channel_id'
         });
         
       if (error) {
         console.error("Error storing YouTube connection:", error);
       } else if (data) {
-        storedConnections.push(data as unknown as YouTubeConnection);
+        // Check if data is an array and has at least one element
+        const connection = Array.isArray(data) && data.length > 0 ? data[0] : data;
+        storedConnections.push(connection as YouTubeConnection);
       }
     }
     
@@ -211,10 +212,23 @@ export const getYouTubeMemberships = async (): Promise<YouTubeMembership[]> => {
     return [];
   }
   
+  // Fix: Fix the RPC call by using it correctly
+  const { data: userConnections } = await supabase
+    .from('youtube_connections')
+    .select('id')
+    .eq('user_id', session.user.id);
+  
+  if (!userConnections || userConnections.length === 0) {
+    return [];
+  }
+  
+  // Get all memberships for all of the user's YouTube connections
+  const connectionIds = userConnections.map(conn => conn.id);
+  
   const { data, error } = await supabase
     .from("youtube_memberships")
     .select("*")
-    .eq("youtube_connection_id", supabase.rpc("get_user_youtube_connections"));
+    .in("youtube_connection_id", connectionIds);
   
   if (error) {
     console.error("Error fetching YouTube memberships:", error);
