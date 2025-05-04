@@ -76,7 +76,14 @@ const FeaturedProducts: React.FC = () => {
           <p className="text-gray-400 mt-2">Showing placeholder products instead</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
             {fallbackProducts.map((product) => (
-              <ProductCard key={product.id} {...product} />
+              <ProductCard 
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                price={product.price}
+                description={product.description}
+                imageUrl={product.imageUrl}
+              />
             ))}
           </div>
         </div>
@@ -87,7 +94,14 @@ const FeaturedProducts: React.FC = () => {
       return (
         <div className="col-span-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {fallbackProducts.map((product) => (
-            <ProductCard key={product.id} {...product} />
+            <ProductCard 
+              key={product.id}
+              id={product.id}
+              name={product.name}
+              price={19.99} // Default price if not in the data model
+              description={product.description}
+              imageUrl={product.imageUrl}
+            />
           ))}
         </div>
       );
