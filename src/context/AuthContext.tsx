@@ -5,12 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Profile, getProfile, fetchAndSyncDiscordConnections, signOut as authSignOut } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getUserRoles } from "@/services/roleService";
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  isAdmin: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -21,6 +23,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -61,6 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (currentSession?.user) {
           setTimeout(async () => {
             await fetchProfile(currentSession.user.id);
+            await checkAdminRole();
             
             // If just signed in, try to sync Discord connections and profile
             if (event === 'SIGNED_IN' && currentSession.provider_token) {
@@ -72,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }, 0);
         } else {
           setProfile(null);
+          setIsAdmin(false);
         }
         
         if (event === 'SIGNED_IN') {
@@ -97,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (currentSession?.user) {
           await fetchProfile(currentSession.user.id);
+          await checkAdminRole();
           
           // If we have a provider token, sync Discord connections
           if (currentSession.provider_token) {
@@ -119,6 +125,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe();
     };
   }, []);
+
+  const checkAdminRole = async () => {
+    try {
+      const roles = await getUserRoles();
+      setIsAdmin(roles.some(role => role.role === 'admin'));
+    } catch (error) {
+      console.error("Error checking admin role:", error);
+      setIsAdmin(false);
+    }
+  };
 
   const syncDiscordConnections = async () => {
     try {
@@ -159,6 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     profile,
     loading,
+    isAdmin,
     signOut,
   };
 

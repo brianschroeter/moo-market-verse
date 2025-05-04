@@ -8,9 +8,10 @@ import ProfileHeader from "../components/profile/ProfileHeader";
 import DiscordConnections from "../components/profile/DiscordConnections";
 import { useAuth } from "@/context/AuthContext";
 import { mockAnnouncements, mockProducts } from "../data/mockProfileData";
+import MakeAdminButton from "../components/admin/MakeAdminButton";
 
 const Profile: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -19,6 +20,17 @@ const Profile: React.FC = () => {
         <div className="max-w-5xl mx-auto">
           {/* Profile header */}
           <ProfileHeader />
+
+          {/* Admin tools - temporary */}
+          {user && !isAdmin && (
+            <div className="mb-8 p-4 bg-yellow-900/30 border border-yellow-700 rounded-md">
+              <h3 className="text-lg font-medium text-white mb-2">Admin Access</h3>
+              <p className="text-gray-300 mb-4">
+                If you need admin access to manage the site, use the button below:
+              </p>
+              <MakeAdminButton />
+            </div>
+          )}
 
           {/* Profile content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

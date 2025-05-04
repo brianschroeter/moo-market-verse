@@ -1,13 +1,13 @@
 
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, LogIn } from "lucide-react";
+import { Menu, X, LogOut, LogIn, Shield } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -75,6 +75,12 @@ const Navbar: React.FC = () => {
               <Link to="/support" className="nav-link">
                 Support
               </Link>
+              {isAdmin && (
+                <Link to="/admin/users" className="nav-link flex items-center">
+                  <Shield className="h-4 w-4 mr-1" />
+                  Admin
+                </Link>
+              )}
             </div>
           </div>
 
@@ -150,6 +156,15 @@ const Navbar: React.FC = () => {
             >
               Support
             </Link>
+            {isAdmin && (
+              <Link
+                to="/admin/users"
+                className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
+                onClick={toggleMenu}
+              >
+                Admin
+              </Link>
+            )}
             <button
               onClick={() => {
                 handleAuthAction();
