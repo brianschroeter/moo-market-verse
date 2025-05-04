@@ -1,16 +1,25 @@
-import React from "react";
+import React, { useState } from 'react';
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import YouTubeConnections from "../components/YouTubeConnections";
+import YouTubeConnections from "@/components/YouTubeConnections";
 import Announcements from "../components/Announcements";
 import ProfileHeader from "../components/profile/ProfileHeader";
 import DiscordConnections from "../components/profile/DiscordConnections";
 import { useAuth } from "@/context/AuthContext";
 import { mockAnnouncements, mockProducts } from "../data/mockProfileData";
 import MakeAdminButton from "../components/admin/MakeAdminButton";
+import LoginRequired from '@/components/profile/LoginRequired';
 
 const Profile: React.FC = () => {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, profile, loading, isAdmin } = useAuth();
+
+  if (loading) {
+    return <div>Loading profile...</div>;
+  }
+
+  if (!user || !profile) {
+    return <LoginRequired />;
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -21,7 +30,7 @@ const Profile: React.FC = () => {
           <ProfileHeader />
 
           {/* Profile content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
             {/* Discord Connections */}
             <DiscordConnections />
 

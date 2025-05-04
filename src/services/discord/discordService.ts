@@ -1,30 +1,73 @@
 import { supabase } from "@/integrations/supabase/client";
 import { DiscordConnection, DiscordGuild, StoredDiscordConnection, YouTubeConnection } from "../types/auth-types";
 
+const DISCORD_SYNC_COOLDOWN = 10 * 60 * 1000; // 10 minutes in milliseconds
+const getDiscordSyncTimestampKey = (userId: string) => `discord_sync_ts_${userId}`;
+
+const setDiscordSyncTimestamp = (userId: string) => {
+  try {
+    localStorage.setItem(getDiscordSyncTimestampKey(userId), Date.now().toString());
+  } catch (error) {
+    console.error("Error setting Discord sync timestamp in localStorage:", error);
+  }
+};
+
+const shouldSyncDiscordData = (userId: string): boolean => {
+  try {
+    const timestampStr = localStorage.getItem(getDiscordSyncTimestampKey(userId));
+    if (!timestampStr) {
+      return true; // No timestamp, sync needed
+    }
+    const lastSyncTime = parseInt(timestampStr, 10);
+    return Date.now() - lastSyncTime > DISCORD_SYNC_COOLDOWN;
+  } catch (error) {
+    console.error("Error reading Discord sync timestamp from localStorage:", error);
+    return true; // Error reading, default to syncing
+  }
+};
+
 let discordSyncInProgress = false;
 
-export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnection[] | null> => {
-  // Prevent concurrent sync operations
-  if (discordSyncInProgress) {
-    console.log("Discord sync already in progress, skipping duplicate call");
+interface FetchSyncOptions {
+  userId: string;
+  providerToken: string;
+  force?: boolean;
+}
+
+export const fetchAndSyncDiscordConnections = async (options: FetchSyncOptions): Promise<YouTubeConnection[] | null> => {
+  const { userId, providerToken, force = false } = options;
+
+  if (!userId || !providerToken) {
+    console.error("fetchAndSyncDiscordConnections called without userId or providerToken");
     return null;
   }
   
-  discordSyncInProgress = true;
-  
-  try {
-    // First, get the Discord access token from the session
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.provider_token) {
-      console.error("No provider token available");
-      discordSyncInProgress = false;
+  if (!force && !shouldSyncDiscordData(userId)) {
+    console.log("Discord sync cooldown active, skipping sync. Fetching existing connections from DB.");
+    const { data: existingConnections, error: fetchError } = await supabase
+      .from('youtube_connections')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (fetchError) {
+      console.error("Error fetching existing YouTube connections during cooldown:", fetchError);
       return null;
     }
+    return existingConnections || [];
+  }
 
-    // Call Discord API to get user profile information (for avatar)
+  if (discordSyncInProgress) {
+    console.log("Discord sync operation already in progress, skipping duplicate call");
+    return null;
+  }
+
+  discordSyncInProgress = true;
+  console.log(`Starting Discord data sync for user ${userId}${force ? ' (forced)' : ''}...`);
+
+  try {
     const userResponse = await fetch('https://discord.com/api/v10/users/@me', {
       headers: {
-        Authorization: `Bearer ${session.provider_token}`
+        Authorization: `Bearer ${providerToken}`
       }
     });
 
@@ -32,7 +75,6 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
       const userData = await userResponse.json();
       console.log("Discord user data:", userData);
       
-      // Update the user's profile with the latest Discord avatar
       if (userData.id && userData.avatar) {
         const { error: updateError } = await supabase
           .from('profiles')
@@ -40,7 +82,7 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
             discord_avatar: userData.avatar,
             discord_username: userData.username
           })
-          .eq('id', session.user.id);
+          .eq('id', userId);
           
         if (updateError) {
           console.error("Error updating user profile with Discord avatar:", updateError);
@@ -48,10 +90,9 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
       }
     }
 
-    // Call Discord API to get connections
     const response = await fetch('https://discord.com/api/v10/users/@me/connections', {
       headers: {
-        Authorization: `Bearer ${session.provider_token}`
+        Authorization: `Bearer ${providerToken}`
       }
     });
 
@@ -65,18 +106,16 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
     const connections: DiscordConnection[] = await response.json();
     console.log("Fetched Discord connections:", connections);
     
-    // Store all connections in the discord_connections table
     for (const conn of connections) {
-      // Upsert the connection data
       const { error: upsertError } = await supabase
         .from('discord_connections')
         .upsert({
-          user_id: session.user.id,
+          user_id: userId,
           connection_id: conn.id,
           connection_type: conn.type,
           connection_name: conn.name,
           connection_verified: conn.verified,
-          avatar_url: null // Discord API doesn't provide avatars for connections directly
+          avatar_url: null
         }, {
           onConflict: 'user_id, connection_id, connection_type'
         });
@@ -86,23 +125,18 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
       }
     }
     
-    // Filter for YouTube connections from the Discord API response
     const youtubeConnectionsFromDiscord = connections.filter(conn => conn.type === 'youtube');
-    const youtubeConnectionIdsFromDiscord = new Set(youtubeConnectionsFromDiscord.map(conn => conn.id)); // Use a Set for efficient lookup
+    const youtubeConnectionIdsFromDiscord = new Set(youtubeConnectionsFromDiscord.map(conn => conn.id));
 
-    // Get current YouTube connection IDs from the database for this user
     const { data: existingDbConnections, error: fetchDbError } = await supabase
       .from('youtube_connections')
       .select('youtube_channel_id')
-      .eq('user_id', session.user.id);
+      .eq('user_id', userId);
 
     if (fetchDbError) {
       console.error("Error fetching existing YouTube connections from DB:", fetchDbError);
-      // Decide how to handle this error - maybe return null or proceed cautiously?
-      // For now, we'll log and continue, but this might leave stale data.
     }
 
-    // Identify connections to delete (in DB but not in Discord response)
     const connectionsToDelete: string[] = [];
     if (existingDbConnections) {
       existingDbConnections.forEach(dbConn => {
@@ -112,32 +146,28 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
       });
     }
 
-    // Perform deletions if necessary
     if (connectionsToDelete.length > 0) {
       console.log("Deleting stale YouTube connections:", connectionsToDelete);
       const { error: deleteError } = await supabase
         .from('youtube_connections')
         .delete()
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
         .in('youtube_channel_id', connectionsToDelete);
 
       if (deleteError) {
         console.error("Error deleting stale YouTube connections:", deleteError);
-        // Handle deletion error if needed
       }
     }
     
-    // Implement rate limiting protection and retry for guilds API
     const fetchGuildsWithRetry = async (retryCount = 0, maxRetries = 3): Promise<any[] | null> => {
       try {
         const guildsResponse = await fetch('https://discord.com/api/v10/users/@me/guilds', {
           headers: {
-            Authorization: `Bearer ${session.provider_token}`
+            Authorization: `Bearer ${providerToken}`
           }
         });
 
         if (guildsResponse.status === 429) {
-          // We hit a rate limit
           const rateLimitData = await guildsResponse.json();
           const retryAfter = rateLimitData.retry_after || 1;
           
@@ -170,27 +200,24 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
       console.log("Fetched Discord guilds:", guilds);
       const guildIdsFromApi = new Set(guilds.map((g: any) => g.id));
 
-      // Get current guilds from the database for this user
       const { data: existingDbGuilds, error: fetchDbGuildsError } = await supabase
         .from('discord_guilds')
         .select('guild_id')
-        .eq('user_id', session.user.id);
+        .eq('user_id', userId);
 
       if (fetchDbGuildsError) {
         console.error("Error fetching existing Discord guilds from DB:", fetchDbGuildsError);
       } else if (existingDbGuilds) {
-        // Identify guilds to delete (in DB but not in API response)
         const guildsToDelete = existingDbGuilds
           .filter(dbGuild => !guildIdsFromApi.has(dbGuild.guild_id))
           .map(dbGuild => dbGuild.guild_id);
 
-        // Perform deletions if necessary
         if (guildsToDelete.length > 0) {
           console.log("Deleting stale Discord guilds:", guildsToDelete);
           const { error: deleteError } = await supabase
             .from('discord_guilds')
             .delete()
-            .eq('user_id', session.user.id)
+            .eq('user_id', userId)
             .in('guild_id', guildsToDelete);
 
           if (deleteError) {
@@ -199,13 +226,11 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
         }
       }
 
-      // Upsert the guilds fetched from Discord
       if (guilds.length > 0) {
         const upsertPayload = guilds.map((guild: any) => ({
-          user_id: session.user.id,
+          user_id: userId,
           guild_id: guild.id,
           guild_name: guild.name
-          // Assuming joined_at is managed elsewhere or not strictly needed from this endpoint
         }));
         
         console.log("Upserting Discord guilds:", upsertPayload.map(g => g.guild_id));
@@ -219,10 +244,8 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
       }
     }
     
-    // Upsert the YouTube connections fetched from Discord
     if (youtubeConnectionsFromDiscord.length === 0) {
       console.log("No YouTube connections found in Discord response to upsert.");
-      // If no connections from Discord AND we deleted connections, the final result should be empty
       if (connectionsToDelete.length > 0 && !existingDbConnections?.some(dbConn => youtubeConnectionIdsFromDiscord.has(dbConn.youtube_channel_id))) {
          return [];
       }
@@ -232,11 +255,10 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
         const { error: upsertError } = await supabase
           .from('youtube_connections')
           .upsert({
-            user_id: session.user.id,
+            user_id: userId,
             youtube_channel_id: conn.id,
             youtube_channel_name: conn.name,
             is_verified: conn.verified
-            // Note: youtube_avatar is handled separately by refreshYouTubeAvatar
           }, {
             onConflict: 'user_id, youtube_channel_id'
           });
@@ -247,17 +269,19 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
       }
     }
 
-    // After upserts and deletes, fetch the definitive list from the database
     const { data: finalConnections, error: fetchFinalError } = await supabase
       .from('youtube_connections')
       .select('*')
-      .eq('user_id', session.user.id);
+      .eq('user_id', userId);
 
     if (fetchFinalError) {
       console.error("Error fetching updated YouTube connections after sync:", fetchFinalError);
       discordSyncInProgress = false;
       return null;
     }
+
+    setDiscordSyncTimestamp(userId);
+    console.log("Successfully completed Discord data sync.");
 
     return finalConnections || [];
 

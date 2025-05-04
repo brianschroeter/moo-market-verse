@@ -5,12 +5,13 @@ import {
   // Types are likely imported separately or from a shared types file
   getYouTubeConnections, 
   getYouTubeMemberships,
-  refreshYouTubeAvatar
+  // refreshYouTubeAvatar // No longer used here
 } from "@/services/youtube/youtubeService";
 import { YouTubeConnection, YouTubeMembership } from "@/services/types/auth-types"; // Import types correctly
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { fetchAndSyncDiscordConnections } from "@/services/discord/discordService"; // Import the service function directly
 
 // Import our components
 import YouTubeStatusAlerts from "./youtube/YouTubeStatusAlerts";
@@ -20,124 +21,83 @@ import YouTubeMembershipsList from "./youtube/YouTubeMembershipsList";
 
 const YouTubeConnections: React.FC = () => {
   const { toast } = useToast();
-  const { session } = useAuth();
+  const { session } = useAuth(); // Get session from AuthContext
   const [accounts, setAccounts] = useState<YouTubeConnection[]>([]);
   const [memberships, setMemberships] = useState<YouTubeMembership[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   
-  // Add a refreshOperation tracking Map to prevent duplicate refreshes for the same connection
-  const refreshOperations = useRef<Map<string, boolean>>(new Map());
   // Debounce the initial data fetching
   const initialFetchDone = useRef<boolean>(false);
   
-  const refreshYouTubeData = useCallback(async (showToast = false) => {
-    if (!session?.user?.id) {
-        console.log("No user session found for refresh.");
-        return;
-    }
-    
-    if (refreshing) {
-        console.log("Refresh already in progress, skipping.");
-        return;
-    }
-    
-    setRefreshing(true);
-    if (showToast) {
-        toast({
-            title: "Refreshing",
-            description: "Updating YouTube connections and avatars...",
-        });
-    }
-
-    let refreshedConnections: YouTubeConnection[] = [];
-    let refreshErrors = 0;
-
+  // Function to fetch YT connections and memberships for UI update
+  const fetchYouTubeDisplayData = async () => {
     try {
-        const currentConnections = await getYouTubeConnections();
-        
-        // Clear any old refresh operations tracking
-        refreshOperations.current.clear();
-        
-        const refreshPromises = currentConnections.map(async (conn) => {
-            const channelId = conn.youtube_channel_id;
-            
-            // Skip if this connection is already being refreshed
-            if (refreshOperations.current.get(channelId)) {
-                console.log(`Skipping duplicate refresh for ${conn.youtube_channel_name} (${channelId})`);
-                return conn;
-            }
-            
-            // Mark this connection as being refreshed
-            refreshOperations.current.set(channelId, true);
-            
-            console.log(`Refreshing avatar for ${conn.youtube_channel_name} (${channelId})`);
-            const result = await refreshYouTubeAvatar(conn);
-            
-            // Clear refresh flag regardless of result
-            refreshOperations.current.set(channelId, false);
-            
-            if (result.success && result.avatarUrl) {
-                console.log(`Successfully refreshed avatar for ${conn.youtube_channel_name}: ${result.avatarUrl}`);
-                return { ...conn, youtube_avatar: result.avatarUrl };
-            } else {
-                console.error(`Failed to refresh avatar for ${conn.youtube_channel_name}: ${result.error}`);
-                refreshErrors++;
-                return conn;
-            }
-        });
-        
-        refreshedConnections = await Promise.all(refreshPromises);
-        setAccounts(refreshedConnections);
-
-        if (refreshedConnections.length > 0) {
-            const membershipData = await getYouTubeMemberships();
-            setMemberships(membershipData);
-        } else {
-            setMemberships([]);
-        }
-
-        if (showToast) {
-            if (refreshErrors > 0) {
-                toast({
-                    title: "Refresh Complete (with errors)",
-                    description: `Updated connections. Failed to refresh ${refreshErrors} avatar(s).`,
-                    variant: "default",
-                });
-            } else {
-                toast({
-                    title: "Refresh Complete",
-                    description: `Successfully updated ${refreshedConnections.length} YouTube connections.`,
-                });
-            }
-        }
-
+      const connections = await getYouTubeConnections();
+      setAccounts(connections);
+      if (connections.length > 0) {
+        const memberships = await getYouTubeMemberships();
+        setMemberships(memberships);
+      } else {
+        setMemberships([]);
+      }
     } catch (error) {
-        console.error("Error refreshing YouTube data:", error);
-        if (showToast) {
-            toast({
-                title: "Error",
-                description: "Failed to refresh YouTube connections.",
-                variant: "destructive",
-            });
-        }
-    } finally {
-        setRefreshing(false);
-        setLoading(false);
+      console.error("Error fetching YouTube display data:", error);
+      toast({ title: "Error", description: "Could not load YouTube connections.", variant: "destructive" });
     }
-  }, [session, toast, refreshing]);
+  };
 
   useEffect(() => {
     // Prevent duplicate initial data fetching
     if (!initialFetchDone.current) {
       initialFetchDone.current = true;
       setLoading(true);
-      refreshYouTubeData(false);
+      fetchYouTubeDisplayData().finally(() => setLoading(false)); // Fetch initial data
     }
-  }, [refreshYouTubeData]);
-  
-  const handleRefreshConnections = () => {
-    refreshYouTubeData(true);
+  }, [toast]); // Dependency array updated, session removed if not needed
+
+  const handleRefreshConnections = async () => {
+    if (refreshing) return;
+    
+    // Check if we have the necessary session details from useAuth
+    if (!session?.user?.id || !session?.provider_token) {
+      toast({
+        title: "Refresh Error",
+        description: "Missing user session or Discord token. Please try signing out and back in.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setRefreshing(true);
+    toast({
+      title: "Refreshing Discord & YouTube Data",
+      description: "Please wait...",
+    });
+
+    try {
+      // Call the service function directly with required details and force=true
+      await fetchAndSyncDiscordConnections({ 
+        userId: session.user.id, 
+        providerToken: session.provider_token, 
+        force: true 
+      });
+      
+      toast({
+        title: "Discord Sync Complete",
+        description: "Fetching updated YouTube connections...",
+      });
+      await fetchYouTubeDisplayData(); // Fetch updated YT data for display
+      toast({
+        title: "Refresh Complete",
+        description: "YouTube connections updated.",
+      });
+    } catch (error) {
+      console.error("Error during full refresh:", error);
+      toast({ title: "Refresh Error", description: "Failed to refresh data.", variant: "destructive" });
+    } finally {
+      setRefreshing(false);
+    }
   };
   
   const hasNoYouTubeConnections = accounts.length === 0;
@@ -174,7 +134,7 @@ const YouTubeConnections: React.FC = () => {
           variant="outline" 
           size="sm"
           onClick={handleRefreshConnections}
-          disabled={refreshing}
+          disabled={refreshing || !session?.provider_token}
           className="h-8 px-2 lg:px-3 hover:text-black"
         >
           <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
