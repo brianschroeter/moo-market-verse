@@ -42,7 +42,21 @@ export const getTickets = async (options: FetchTicketsOptions = {}): Promise<Tic
     throw error;
   }
 
-  return data || [];
+  // Manually cast the results to ensure type safety
+  const typedData: Ticket[] = data ? data.map(ticket => ({
+    id: ticket.id,
+    created_at: ticket.created_at,
+    updated_at: ticket.updated_at,
+    user_id: ticket.user_id,
+    subject: ticket.subject,
+    description: ticket.description,
+    // Cast string status to the appropriate union type
+    status: ticket.status as "open" | "awaiting_support" | "awaiting_user" | "closed",
+    priority: ticket.priority as "low" | "medium" | "high" | undefined,
+    profiles: ticket.profiles
+  })) : [];
+
+  return typedData;
 };
 
 export const fetchAdminTickets = async (options: FetchTicketsOptions): Promise<TicketsResponse> => {
@@ -80,8 +94,22 @@ export const fetchAdminTickets = async (options: FetchTicketsOptions): Promise<T
     throw error;
   }
 
+  // Manually cast the results to ensure type safety
+  const typedData: Ticket[] = data ? data.map(ticket => ({
+    id: ticket.id,
+    created_at: ticket.created_at,
+    updated_at: ticket.updated_at,
+    user_id: ticket.user_id,
+    subject: ticket.subject,
+    description: ticket.description,
+    // Cast string status to the appropriate union type
+    status: ticket.status as "open" | "awaiting_support" | "awaiting_user" | "closed",
+    priority: ticket.priority as "low" | "medium" | "high" | undefined,
+    profiles: ticket.profiles
+  })) : [];
+
   return {
-    data: data || [],
+    data: typedData,
     count: count || 0
   };
 };

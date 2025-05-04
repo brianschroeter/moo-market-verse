@@ -2,6 +2,21 @@
 import { supabase } from "@/integrations/supabase/client";
 import { FeaturedContent } from "./types/featuredContent-types";
 
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  is_important: boolean;
+  active: boolean;
+}
+
+export interface FeaturedProduct extends FeaturedContent {
+  product_url?: string;
+  featured?: boolean;
+}
+
 export const getFeaturedContent = async (): Promise<FeaturedContent[]> => {
   const { data, error } = await supabase
     .from('featured_products')
@@ -22,6 +37,36 @@ export const getFeaturedContent = async (): Promise<FeaturedContent[]> => {
     created_at: product.created_at,
     updated_at: product.updated_at
   })) || [];
+};
+
+export const fetchActiveProducts = async (): Promise<FeaturedProduct[]> => {
+  const { data, error } = await supabase
+    .from('featured_products')
+    .select('*')
+    .eq('featured', true)
+    .order('created_at', { ascending: false });
+    
+  if (error) {
+    console.error("Error fetching featured products:", error);
+    throw error;
+  }
+  
+  return data || [];
+};
+
+export const fetchActiveAnnouncements = async (): Promise<Announcement[]> => {
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*')
+    .eq('active', true)
+    .order('created_at', { ascending: false });
+    
+  if (error) {
+    console.error("Error fetching announcements:", error);
+    throw error;
+  }
+  
+  return data || [];
 };
 
 export const createFeaturedContent = async (content: Omit<FeaturedContent, 'id' | 'created_at' | 'updated_at'>): Promise<FeaturedContent> => {

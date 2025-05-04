@@ -117,7 +117,7 @@ const Announcements: React.FC<AnnouncementsProps> = ({
                       asChild
                       className="mt-3 bg-lolcow-blue hover:bg-lolcow-blue/80 text-white w-full"
                     >
-                      <a href={product.product_url} target="_blank" rel="noopener noreferrer">View Product</a>
+                      <a href={product.product_url || product.link} target="_blank" rel="noopener noreferrer">View Product</a>
                     </Button>
                   </div>
                 </div>

@@ -50,6 +50,11 @@ const AdminTickets: React.FC = () => {
     setCurrentPage(page);
   };
 
+  const handleStatusChange = async (ticketId: string, newStatus: string) => {
+    // Implement status change logic here
+    console.log(`Changing ticket ${ticketId} status to ${newStatus}`);
+  };
+
   // Calculate total pages
   const totalPages = Math.ceil(totalTickets / itemsPerPage);
 
@@ -86,7 +91,7 @@ const AdminTickets: React.FC = () => {
               loading={isLoading} 
               searchTerm={searchTerm}
               statusFilter={statusFilter}
-              onStatusChange={async () => {}} // Implement this if needed
+              onStatusChange={handleStatusChange}
             />}
             
             <TicketPagination 
