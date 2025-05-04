@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,7 @@ import { uploadImage } from "@/services/imageUploadService";
 import { useAuth } from "@/context/AuthContext";
 import { FeaturedContent } from "@/services/types/featuredContent-types";
 import { CreateFeaturedContentParams } from "@/services/featuredContentService";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface FeaturedContentFormProps {
@@ -37,6 +37,7 @@ const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const { session } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -122,7 +123,17 @@ const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({
     if (file) {
       setImageFile(file);
       handleImageUpload(file);
+    } else {
+      // If user cancels file selection, reset image state
+      // This prevents keeping an old image preview if they select, then cancel
+      // setImageFile(null); 
+      // setImageUrl(""); // Decide if you want this behavior
     }
+  };
+
+  // Function to trigger the hidden file input
+  const handleButtonClick = () => {
+      fileInputRef.current?.click();
   };
 
   return (
@@ -150,27 +161,54 @@ const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({
           required
         />
       </div>
-      <div className="grid w-full items-center gap-1.5">
-        <Label htmlFor="image" className="text-gray-300">Image Upload</Label>
-        <div className="flex items-center space-x-2">
+      <div className="w-full space-y-1.5">
+        <Label htmlFor="image" className="text-gray-300">Image</Label>
+        <div className="flex items-center">
           <Input
             type="file"
             id="image"
+            ref={fileInputRef}
             accept="image/*"
             onChange={handleImageChange}
-            className="flex-grow bg-lolcow-lightgray/30 text-white border-lolcow-lightgray file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lolcow-blue file:text-white hover:file:bg-lolcow-blue/90"
+            className="hidden"
             disabled={isUploading}
           />
-          {isUploading && <Loader2 className="h-5 w-5 animate-spin text-lolcow-blue" />}
+          <Button 
+            type="button"
+            variant="outline"
+            onClick={handleButtonClick}
+            disabled={isUploading}
+            className="border-lolcow-blue text-lolcow-blue hover:bg-lolcow-blue/20"
+          >
+            {isUploading ? (
+                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+            ) : (
+                 <Upload className="mr-2 h-4 w-4" /> 
+            )}
+            {isUploading ? 'Uploading...' : 'Choose Image'}
+          </Button>
         </div>
-        {imageUrl && (
-          <img
-            src={imageUrl}
-            alt="Uploaded preview"
-            className="w-24 h-24 object-cover rounded mt-2 border border-lolcow-lightgray"
-          />
-        )}
-        <input type="hidden" value={imageUrl} required />
+        <div className="pt-2 space-y-2">
+            {imageFile && !isUploading && (
+              <div className="text-sm text-gray-400 truncate" title={imageFile.name}>
+                 Selected: {imageFile.name}
+              </div>
+             )} 
+             {imageUrl && !imageFile && !isUploading && initialData && (
+              <div className="text-sm text-gray-400">(Current image is set)</div> 
+             )} 
+             {isUploading && (
+              <div className="text-sm text-gray-400 flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Uploading...</div>
+             )} 
+        
+            {imageUrl && (
+              <img
+                src={imageUrl}
+                alt="Image preview"
+                className="w-24 h-24 object-cover rounded border border-lolcow-lightgray"
+              />
+            )}
+        </div>
       </div>
       <div className="grid w-full items-center gap-1.5">
         <Label htmlFor="link" className="text-gray-300">Link</Label>
@@ -209,7 +247,7 @@ const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({
         </Button>
         <Button 
           type="submit"
-          disabled={isSubmitting || isUploading || !imageUrl}
+          disabled={isSubmitting || isUploading || (!imageUrl && !initialData?.image_url)}
           className="bg-lolcow-blue hover:bg-lolcow-blue/90"
         >
           {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

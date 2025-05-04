@@ -129,7 +129,7 @@ const AdminFeaturedContent: React.FC = () => {
         />
 
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-          <DialogContent className="bg-lolcow-darkgray text-white border-lolcow-lightgray">
+          <DialogContent className="bg-lolcow-darkgray text-white border-lolcow-lightgray max-w-lg">
             <DialogHeader>
               <DialogTitle className="text-xl font-fredoka">
                 {editingProduct ? 'Edit Featured Content' : 'Add New Featured Content'}

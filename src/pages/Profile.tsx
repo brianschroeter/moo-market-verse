@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useEffect } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import YouTubeConnections from "@/components/YouTubeConnections";
@@ -8,9 +7,27 @@ import ProfileHeader from "../components/profile/ProfileHeader";
 import DiscordConnections from "../components/profile/DiscordConnections";
 import { useAuth } from "@/context/AuthContext";
 import LoginRequired from '@/components/profile/LoginRequired';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from "@/hooks/use-toast";
 
 const Profile: React.FC = () => {
-  const { user, profile, loading, isAdmin } = useAuth();
+  const { user, profile, loading, session } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!loading && user) {
+      if (!session?.provider_token) {
+        console.warn("Profile: Missing provider_token in session. Redirecting to login.");
+        toast({
+          title: "Re-authentication Required",
+          description: "Your Discord connection needs to be refreshed. Please log in again.",
+          variant: "default",
+        });
+        navigate('/login');
+      }
+    }
+  }, [loading, user, session, navigate, toast]);
 
   if (loading) {
     return <div>Loading profile...</div>;

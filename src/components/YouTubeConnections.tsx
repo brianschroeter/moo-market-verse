@@ -9,7 +9,7 @@ import {
 } from "@/services/youtube/youtubeService";
 import { YouTubeConnection, YouTubeMembership } from "@/services/types/auth-types"; // Import types correctly
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Clock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { fetchAndSyncDiscordConnections } from "@/services/discord/discordService"; // Import the service function directly
 
@@ -19,6 +19,16 @@ import ConnectYouTubeButton from "./youtube/ConnectYouTubeButton";
 import YouTubeConnectionsList from "./youtube/YouTubeConnectionsList";
 import YouTubeMembershipsList from "./youtube/YouTubeMembershipsList";
 
+const COOLDOWN_DURATION_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
+const REFRESH_COOLDOWN_KEY = 'youtubeRefreshCooldownEnd';
+
+// Helper function to format remaining time
+const formatTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+};
+
 const YouTubeConnections: React.FC = () => {
   const { toast } = useToast();
   const { session } = useAuth(); // Get session from AuthContext
@@ -27,11 +37,85 @@ const YouTubeConnections: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   
+  // Cooldown State
+  const [cooldownActive, setCooldownActive] = useState<boolean>(false);
+  const [cooldownEndTime, setCooldownEndTime] = useState<number | null>(null);
+  const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
+  const cooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Debounce the initial data fetching
   const initialFetchDone = useRef<boolean>(false);
   
+  // --- Cooldown Timer Logic ---
+  useEffect(() => {
+    // Function to start the timer interval
+    const startTimer = (endTime: number) => {
+      if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current); // Clear existing timer
+
+      setCooldownEndTime(endTime);
+      setCooldownActive(true);
+
+      cooldownIntervalRef.current = setInterval(() => {
+        const now = Date.now();
+        const remaining = Math.max(0, (endTime - now) / 1000);
+        setCooldownRemaining(remaining);
+
+        if (remaining <= 0) {
+          setCooldownActive(false);
+          setCooldownEndTime(null);
+          localStorage.removeItem(REFRESH_COOLDOWN_KEY);
+          if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+        }
+      }, 1000);
+    };
+
+    // Check localStorage on mount
+    const storedEndTime = localStorage.getItem(REFRESH_COOLDOWN_KEY);
+    if (storedEndTime) {
+      const endTime = parseInt(storedEndTime, 10);
+      const now = Date.now();
+      if (endTime > now) {
+        startTimer(endTime); // Start timer if cooldown is still valid
+      } else {
+        localStorage.removeItem(REFRESH_COOLDOWN_KEY); // Clear expired cooldown
+      }
+    }
+
+    // Cleanup interval on unmount
+    return () => {
+      if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    };
+  }, []); // Run only on mount and unmount
+
+  // Function to activate cooldown
+  const activateCooldown = () => {
+    const endTime = Date.now() + COOLDOWN_DURATION_MS;
+    localStorage.setItem(REFRESH_COOLDOWN_KEY, endTime.toString());
+    
+    // Ensure timer starts immediately after activation
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current); 
+
+    setCooldownEndTime(endTime);
+    setCooldownActive(true);
+    setCooldownRemaining(COOLDOWN_DURATION_MS / 1000); // Initial display value
+
+    cooldownIntervalRef.current = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, (endTime - now) / 1000);
+      setCooldownRemaining(remaining);
+
+      if (remaining <= 0) {
+        setCooldownActive(false);
+        setCooldownEndTime(null);
+        localStorage.removeItem(REFRESH_COOLDOWN_KEY);
+        if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+      }
+    }, 1000);
+  };
+  // --- End Cooldown Timer Logic ---
+
   // Function to fetch YT connections and memberships for UI update
-  const fetchYouTubeDisplayData = async () => {
+  const fetchYouTubeDisplayData = useCallback(async () => {
     try {
       const connections = await getYouTubeConnections();
       setAccounts(connections);
@@ -45,7 +129,7 @@ const YouTubeConnections: React.FC = () => {
       console.error("Error fetching YouTube display data:", error);
       toast({ title: "Error", description: "Could not load YouTube connections.", variant: "destructive" });
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     // Prevent duplicate initial data fetching
@@ -54,9 +138,18 @@ const YouTubeConnections: React.FC = () => {
       setLoading(true);
       fetchYouTubeDisplayData().finally(() => setLoading(false)); // Fetch initial data
     }
-  }, [toast]); // Dependency array updated, session removed if not needed
+  }, [fetchYouTubeDisplayData]); // Depend on the memoized fetch function
 
   const handleRefreshConnections = async () => {
+    // Check cooldown first
+    if (cooldownActive) {
+      toast({
+          title: "Cooldown Active",
+          description: `Please wait ${formatTime(cooldownRemaining)} before refreshing again.`,
+          variant: "default"
+      });
+      return;
+    }
     if (refreshing) return;
     
     // Check if we have the necessary session details from useAuth
@@ -92,6 +185,10 @@ const YouTubeConnections: React.FC = () => {
         title: "Refresh Complete",
         description: "YouTube connections updated.",
       });
+      
+      // Activate cooldown AFTER successful refresh
+      activateCooldown(); 
+
     } catch (error) {
       console.error("Error during full refresh:", error);
       toast({ title: "Refresh Error", description: "Failed to refresh data.", variant: "destructive" });
@@ -134,11 +231,27 @@ const YouTubeConnections: React.FC = () => {
           variant="outline" 
           size="sm"
           onClick={handleRefreshConnections}
-          disabled={refreshing || !session?.provider_token}
-          className="h-8 px-2 lg:px-3 hover:text-black"
+          disabled={refreshing || cooldownActive || !session?.provider_token}
+          className="h-8 px-2 lg:px-3 hover:text-black min-w-[80px]"
+          title={
+              !session?.provider_token ? "Discord token missing. Please sign out and back in." 
+            : cooldownActive ? `Refresh available in ${formatTime(cooldownRemaining)}`
+            : refreshing ? "Refresh in progress..."
+            : "Refresh Discord & YouTube connections"
+          }
         >
-          <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">Refresh</span>
+          {cooldownActive ? (
+            <>
+              <Clock className="h-4 w-4 mr-1" /> 
+              <span className="hidden sm:inline">{formatTime(cooldownRemaining)}</span>
+              <span className="sm:hidden">{formatTime(cooldownRemaining)}</span>
+            </>
+          ) : (
+            <>
+              <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </>
+          )}
         </Button>
       </CardHeader>
       <CardContent>
