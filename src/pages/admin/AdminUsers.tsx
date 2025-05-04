@@ -382,8 +382,9 @@ const AdminUsers: React.FC = (): ReactNode => {
     setUserGuilds([]); // Clear previous guilds
 
     try {
+      // Fix: Remove the third type parameter from the RPC call
       const { data, error } = await supabase
-        .rpc<'get_guilds_for_user', { user_uuid: string }, Guild[]>('get_guilds_for_user', { user_uuid: user.id });
+        .rpc('get_guilds_for_user', { user_uuid: user.id });
 
       if (error) {
         throw error;
@@ -399,8 +400,6 @@ const AdminUsers: React.FC = (): ReactNode => {
         description: `Failed to load guilds for ${user.username}. ${error instanceof Error ? error.message : ''}`,
         variant: "destructive",
       });
-      // Close dialog on error?
-      // setShowGuildsDialog(false);
     } finally {
       setLoadingGuilds(false);
     }
