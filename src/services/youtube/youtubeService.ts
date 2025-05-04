@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { YouTubeConnection, YouTubeMembership } from "../types/auth-types";
 
@@ -109,6 +108,34 @@ export const updateYouTubeConnectionAvatar = async (
     return true;
   } catch (error) {
     console.error("Error in updateYouTubeConnectionAvatar:", error);
+    return false;
+  }
+};
+
+// New function to refresh YouTube channel avatar
+export const refreshYouTubeAvatar = async (connection: YouTubeConnection): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error("No active session");
+      return false;
+    }
+
+    const { error } = await supabase.functions.invoke("verify-youtube", {
+      body: { 
+        youtubeChannelId: connection.youtube_channel_id,
+        youtubeChannelName: connection.youtube_channel_name
+      },
+    });
+
+    if (error) {
+      console.error("Error refreshing YouTube avatar:", error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error in refreshYouTubeAvatar:", error);
     return false;
   }
 };

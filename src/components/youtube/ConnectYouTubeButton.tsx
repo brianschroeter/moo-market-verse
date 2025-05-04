@@ -10,7 +10,6 @@ const ConnectYouTubeButton: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [channelId, setChannelId] = useState('');
   const [channelName, setChannelName] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -28,7 +27,7 @@ const ConnectYouTubeButton: React.FC = () => {
     const success = await verifyYouTubeConnection(
       channelId.trim(),
       channelName.trim(), 
-      avatarUrl.trim() || null
+      null // Let the API fetch the avatar automatically
     );
 
     if (success) {
@@ -94,18 +93,14 @@ const ConnectYouTubeButton: React.FC = () => {
                   value={channelName}
                   onChange={(e) => setChannelName(e.target.value)}
                 />
+                <p className="text-xs text-gray-400">Leave blank to use the name from YouTube</p>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm text-gray-300">Avatar URL (Optional)</label>
-                <Input
-                  type="text"
-                  placeholder="https://example.com/avatar.jpg"
-                  className="bg-lolcow-lightgray border-lolcow-lightgray text-white"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                />
-                <p className="text-xs text-gray-400">Direct link to your channel's profile picture</p>
+              <div className="bg-gray-700 p-3 rounded-md">
+                <p className="text-xs text-gray-300">
+                  <i className="fa-solid fa-info-circle mr-1"></i>
+                  Your channel avatar will be automatically fetched from YouTube's API
+                </p>
               </div>
             </div>
 
