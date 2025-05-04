@@ -115,6 +115,72 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
       }
     }
     
+    // Call Discord API to get guilds
+    const guildsResponse = await fetch('https://discord.com/api/v10/users/@me/guilds', {
+      headers: {
+        Authorization: `Bearer ${session.provider_token}`
+      }
+    });
+
+    if (!guildsResponse.ok) {
+      const errorData = await guildsResponse.json();
+      console.error("Failed to fetch Discord guilds:", errorData);
+      // Decide if this error should prevent further processing or just be logged
+      // For now, we'll log it and continue syncing connections if possible
+    } else {
+      const guilds: { id: string; name: string; }[] = await guildsResponse.json(); // Assuming basic guild structure
+      console.log("Fetched Discord guilds:", guilds);
+      const guildIdsFromApi = new Set(guilds.map(g => g.id));
+
+      // Get current guilds from the database for this user
+      const { data: existingDbGuilds, error: fetchDbGuildsError } = await supabase
+        .from('discord_guilds')
+        .select('guild_id')
+        .eq('user_id', session.user.id);
+
+      if (fetchDbGuildsError) {
+        console.error("Error fetching existing Discord guilds from DB:", fetchDbGuildsError);
+      } else if (existingDbGuilds) {
+        // Identify guilds to delete (in DB but not in API response)
+        const guildsToDelete = existingDbGuilds
+          .filter(dbGuild => !guildIdsFromApi.has(dbGuild.guild_id))
+          .map(dbGuild => dbGuild.guild_id);
+
+        // Perform deletions if necessary
+        if (guildsToDelete.length > 0) {
+          console.log("Deleting stale Discord guilds:", guildsToDelete);
+          const { error: deleteError } = await supabase
+            .from('discord_guilds')
+            .delete()
+            .eq('user_id', session.user.id)
+            .in('guild_id', guildsToDelete);
+
+          if (deleteError) {
+            console.error("Error deleting stale Discord guilds:", deleteError);
+          }
+        }
+      }
+
+      // Upsert the guilds fetched from Discord
+      if (guilds.length > 0) {
+        const upsertPayload = guilds.map(guild => ({
+          user_id: session.user.id,
+          guild_id: guild.id,
+          guild_name: guild.name
+          // Assuming joined_at is managed elsewhere or not strictly needed from this endpoint
+        }));
+        
+        console.log("Upserting Discord guilds:", upsertPayload.map(g => g.guild_id));
+        const { error: upsertError } = await supabase
+          .from('discord_guilds')
+          .upsert(upsertPayload, { onConflict: 'user_id, guild_id' });
+
+        if (upsertError) {
+          console.error("Error upserting Discord guilds:", upsertError);
+        }
+      }
+    }
+    
     // Upsert the YouTube connections fetched from Discord
     if (youtubeConnectionsFromDiscord.length === 0) {
       console.log("No YouTube connections found in Discord response to upsert.");
