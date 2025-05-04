@@ -18,6 +18,7 @@ const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }
         <AvatarImage 
           src={avatarUrl} 
           alt={account.youtube_channel_name} 
+          className="object-cover"
         />
         <AvatarFallback className="bg-gray-700 text-white">
           {account.youtube_channel_name.substring(0, 1).toUpperCase()}

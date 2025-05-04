@@ -47,7 +47,7 @@ serve(async (req) => {
     }
 
     // Get the request body
-    const { youtubeChannelId } = await req.json();
+    const { youtubeChannelId, youtubeChannelName, youtubeAvatar } = await req.json();
 
     if (!youtubeChannelId) {
       return new Response(
@@ -88,8 +88,8 @@ serve(async (req) => {
       .upsert({
         user_id: user.id,
         youtube_channel_id: youtubeChannelId,
-        youtube_channel_name: "YouTube User", // This would be populated from YouTube API
-        youtube_avatar: null,
+        youtube_channel_name: youtubeChannelName || "YouTube User", // Use provided name or default
+        youtube_avatar: youtubeAvatar || null, // Store the avatar URL
         is_verified: false, // Set to false initially, will be verified through an admin process
         updated_at: new Date().toISOString()
       }, {

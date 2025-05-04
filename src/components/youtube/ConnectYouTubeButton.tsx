@@ -1,54 +1,132 @@
 
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { Link } from "react-router-dom";
-import { signInWithDiscord } from "@/services/authService";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { verifyYouTubeConnection } from '@/services/youtube/youtubeService';
 
 const ConnectYouTubeButton: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const [channelId, setChannelId] = useState('');
+  const [channelName, setChannelName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  
-  const handleReconnectDiscord = async () => {
-    try {
+
+  const handleConnect = async () => {
+    if (!channelId.trim()) {
       toast({
-        title: "Reconnecting to Discord",
-        description: "Redirecting to Discord authentication to fetch your YouTube connections.",
+        title: "Error",
+        description: "Channel ID is required",
+        variant: "destructive",
       });
-      await signInWithDiscord();
-    } catch (error) {
-      console.error("Discord reconnection error:", error);
+      return;
+    }
+
+    setIsSubmitting(true);
+    const success = await verifyYouTubeConnection(
+      channelId.trim(),
+      channelName.trim(), 
+      avatarUrl.trim() || null
+    );
+
+    if (success) {
       toast({
-        title: "Connection Error",
-        description: "Failed to initiate Discord reconnection.",
+        title: "Success",
+        description: "YouTube connection created! Verification is pending.",
+      });
+      setOpen(false);
+      // Refresh page to show new connection
+      window.location.reload();
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to connect YouTube account",
         variant: "destructive",
       });
     }
+    setIsSubmitting(false);
   };
 
   return (
-    <div className="flex flex-col items-center justify-center py-8">
-      <p className="text-gray-300 mb-4 text-center">
-        No YouTube accounts found connected to your Discord.
-      </p>
-      <div className="space-y-4">
-        <Button 
-          onClick={handleReconnectDiscord}
-          className="bg-[#5865F2] hover:bg-[#4752c4]"
+    <div className="py-6">
+      <div className="bg-lolcow-lightgray p-4 rounded-lg text-center">
+        <p className="text-gray-300 mb-4">
+          Connect your YouTube account to access membership benefits.
+        </p>
+        <Button
+          onClick={() => setOpen(true)}
+          className="bg-red-600 hover:bg-red-700 text-white"
         >
-          <i className="fa-brands fa-discord mr-2"></i>
-          Reconnect Discord
+          <i className="fa-brands fa-youtube mr-2"></i>
+          Connect YouTube
         </Button>
-        
-        <div className="bg-lolcow-lightgray p-4 rounded-lg text-sm text-gray-300">
-          <h4 className="text-white mb-2">How to connect YouTube to Discord:</h4>
-          <ol className="list-decimal list-inside space-y-1">
-            <li>Open Discord desktop or web app</li>
-            <li>Go to User Settings &gt; Connections</li>
-            <li>Click on the YouTube icon</li>
-            <li>Log in to your YouTube account and authorize</li>
-            <li>Return here and click "Reconnect Discord" above</li>
-          </ol>
-        </div>
+
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="bg-lolcow-darkgray border-lolcow-lightgray">
+            <DialogHeader>
+              <DialogTitle className="text-white">Connect YouTube Channel</DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Enter your YouTube channel information below.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm text-gray-300">YouTube Channel ID</label>
+                <Input
+                  type="text"
+                  placeholder="e.g. UCzXVyw3hQ3fKDHX009LFJGQ"
+                  className="bg-lolcow-lightgray border-lolcow-lightgray text-white"
+                  value={channelId}
+                  onChange={(e) => setChannelId(e.target.value)}
+                />
+                <p className="text-xs text-gray-400">This is the unique identifier for your channel</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-gray-300">Channel Name (Optional)</label>
+                <Input
+                  type="text"
+                  placeholder="e.g. My Gaming Channel"
+                  className="bg-lolcow-lightgray border-lolcow-lightgray text-white"
+                  value={channelName}
+                  onChange={(e) => setChannelName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-gray-300">Avatar URL (Optional)</label>
+                <Input
+                  type="text"
+                  placeholder="https://example.com/avatar.jpg"
+                  className="bg-lolcow-lightgray border-lolcow-lightgray text-white"
+                  value={avatarUrl}
+                  onChange={(e) => setAvatarUrl(e.target.value)}
+                />
+                <p className="text-xs text-gray-400">Direct link to your channel's profile picture</p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button 
+                onClick={() => setOpen(false)}
+                variant="outline" 
+                className="bg-transparent border-gray-500 text-gray-300 hover:bg-gray-700 hover:text-white"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleConnect}
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Connecting...' : 'Connect Channel'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -44,3 +44,26 @@ export const updateProfile = async (profileData: Partial<Profile>): Promise<Prof
   
   return data as Profile;
 };
+
+export const updateProfileAvatar = async (avatarUrl: string): Promise<boolean> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.user) {
+    return false;
+  }
+  
+  const { error } = await supabase
+    .from("profiles")
+    .update({ 
+      discord_avatar: avatarUrl,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", session.user.id);
+  
+  if (error) {
+    console.error("Error updating profile avatar:", error);
+    return false;
+  }
+  
+  return true;
+};
