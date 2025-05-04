@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -56,22 +55,13 @@ const AdminUsers: React.FC = () => {
         throw rolesError;
       }
 
-      // Fetch discord connections
-      const { data: discordConnections, error: discordError } = await supabase
-        .from('discord_connections')
+      // Fetch all connections (assuming discord_connections holds all types)
+      const { data: allConnections, error: connectionsError } = await supabase
+        .from('discord_connections') // Changed from fetching discord/youtube separately
         .select('*');
 
-      if (discordError) {
-        throw discordError;
-      }
-
-      // Fetch YouTube connections
-      const { data: youtubeConnections, error: youtubeError } = await supabase
-        .from('youtube_connections')
-        .select('*');
-
-      if (youtubeError) {
-        throw youtubeError;
+      if (connectionsError) {
+        throw connectionsError; // Changed error variable
       }
 
       // Process and combine the data
@@ -97,26 +87,19 @@ const AdminUsers: React.FC = () => {
         }
       });
 
-      // Add Discord connections
-      discordConnections.forEach(conn => {
+      // Add All connections (using connection_type)
+      allConnections.forEach(conn => {
         const user = userMap.get(conn.user_id);
         if (user) {
+          // Use connection_type from the table
+          const platform = conn.connection_type || 'Unknown'; // Default if null/undefined
+          // Capitalize first letter for display
+          const displayPlatform = platform.charAt(0).toUpperCase() + platform.slice(1);
+          
           user.connections.push({
-            platform: "Discord",
-            username: conn.connection_name,
-            connected: true
-          });
-        }
-      });
-
-      // Add YouTube connections
-      youtubeConnections.forEach(conn => {
-        const user = userMap.get(conn.user_id);
-        if (user) {
-          user.connections.push({
-            platform: "YouTube",
-            username: conn.youtube_channel_name,
-            connected: true
+            platform: displayPlatform, // Use the type from the DB
+            username: conn.connection_name, // Assuming this holds the username for all types
+            connected: conn.connection_verified !== null ? conn.connection_verified : true // Use verification status if available
           });
         }
       });
@@ -264,7 +247,7 @@ const AdminUsers: React.FC = () => {
                         user.connections.map((conn, index) => (
                           <div key={index} className="flex items-center">
                             <span className={`w-2 h-2 rounded-full mr-2 ${conn.connected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                            <span className="text-gray-300">{conn.platform}: </span>
+                            <span className="text-white font-medium">{conn.platform}: </span>
                             <span className="ml-1 text-gray-400">
                               {conn.connected ? conn.username : "Not connected"}
                             </span>
