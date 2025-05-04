@@ -1,22 +1,40 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { StoredDiscordConnection, getDiscordConnections } from "@/services/authService";
+import { 
+  StoredDiscordConnection, 
+  getDiscordConnections,
+  YouTubeConnection, 
+  getYouTubeConnections 
+} from "@/services/authService";
 
 const DiscordConnections: React.FC = () => {
   const [connections, setConnections] = useState<StoredDiscordConnection[]>([]);
+  const [youtubeConnections, setYoutubeConnections] = useState<Record<string, YouTubeConnection>>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
   useEffect(() => {
     const fetchConnections = async () => {
+      setLoading(true);
       try {
-        const connectionData = await getDiscordConnections();
-        setConnections(connectionData);
+        const [discordConnectionData, youtubeConnectionData] = await Promise.all([
+          getDiscordConnections(),
+          getYouTubeConnections()
+        ]);
+        
+        setConnections(discordConnectionData);
+        
+        // Create a map of YouTube connections keyed by channel ID for easy lookup
+        const youtubeMap: Record<string, YouTubeConnection> = {};
+        youtubeConnectionData.forEach(conn => {
+          youtubeMap[conn.youtube_channel_id] = conn;
+        });
+        setYoutubeConnections(youtubeMap);
+
       } catch (error) {
         console.error("Error loading Discord connections:", error);
         toast({
@@ -63,49 +81,52 @@ const DiscordConnections: React.FC = () => {
               {connections.length === 0 ? (
                 <p className="text-gray-400">No external accounts connected</p>
               ) : (
-                connections.map((connection) => (
-                  <div 
-                    key={connection.id} 
-                    className="flex items-center space-x-3 p-3 bg-lolcow-lightgray rounded-lg"
-                  >
-                    <Avatar className="h-10 w-10">
-                      {connection.connection_type === 'youtube' ? (
+                connections.map((connection) => {
+                  // Check if there's specific YouTube data for this connection
+                  const isYouTube = connection.connection_type === 'youtube';
+                  const youtubeData = isYouTube ? youtubeConnections[connection.connection_id] : undefined;
+                  
+                  // Determine the avatar URL
+                  let avatarSrc = connection.avatar_url; // Default to the generic one (likely null)
+                  if (isYouTube && youtubeData?.youtube_avatar) {
+                    avatarSrc = youtubeData.youtube_avatar;
+                  } else if (!avatarSrc) {
+                    // Fallback if generic is null and no specific YouTube avatar found
+                    avatarSrc = `https://i.pravatar.cc/40?u=${connection.connection_id}`;
+                  }
+
+                  return (
+                    <div 
+                      key={connection.id} 
+                      className="flex items-center space-x-3 p-3 bg-lolcow-lightgray rounded-lg"
+                    >
+                      <Avatar className="h-10 w-10">
                         <AvatarImage 
-                          src={connection.avatar_url || `https://i.pravatar.cc/40?u=${connection.connection_id}`} 
+                          src={avatarSrc} 
                           alt={connection.connection_name} 
                         />
-                      ) : connection.connection_type === 'twitch' ? (
-                        <AvatarImage 
-                          src={connection.avatar_url || `https://i.pravatar.cc/40?u=${connection.connection_id}`} 
-                          alt={connection.connection_name}
-                        />
-                      ) : (
-                        <AvatarImage 
-                          src={connection.avatar_url || `https://i.pravatar.cc/40?u=${connection.connection_id}`}
-                          alt={connection.connection_name}
-                        />
-                      )}
-                      <AvatarFallback className="bg-gray-700">
-                        {connection.connection_type.substring(0, 1).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-grow">
-                      <p className="text-white">{connection.connection_name}</p>
-                      <div className="flex items-center">
-                        <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded-full">
-                          {connection.connection_type}
-                        </span>
-                        {connection.connection_verified ? (
-                          <span className="text-xs text-green-500 ml-2 flex items-center">
-                            <i className="fa-solid fa-check-circle mr-1"></i> Verified
+                        <AvatarFallback className="bg-gray-700">
+                          {connection.connection_name.substring(0, 1).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-grow">
+                        <p className="text-white">{connection.connection_name}</p>
+                        <div className="flex items-center">
+                          <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded-full">
+                            {connection.connection_type}
                           </span>
-                        ) : (
-                          <span className="text-xs text-yellow-500 ml-2">Unverified</span>
-                        )}
+                          {connection.connection_verified ? (
+                            <span className="text-xs text-green-500 ml-2 flex items-center">
+                              <i className="fa-solid fa-check-circle mr-1"></i> Verified
+                            </span>
+                          ) : (
+                            <span className="text-xs text-yellow-500 ml-2">Unverified</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
