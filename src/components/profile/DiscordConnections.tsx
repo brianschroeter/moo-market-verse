@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -82,12 +81,14 @@ const DiscordConnections: React.FC = () => {
                   </AvatarFallback>
                 </Avatar>
               )}
-              <span className="text-gray-300">{profile?.discord_username || 'Connected'}</span>
+              <div className="flex flex-col">
+                <span className="text-gray-300">{profile?.discord_username || 'Connected'}</span>
+                <span className="text-green-500 text-xs">
+                  <i className="fa-solid fa-check-circle mr-1"></i>
+                  Active
+                </span>
+              </div>
             </div>
-            <span className="text-green-500">
-              <i className="fa-solid fa-check-circle mr-1"></i>
-              Active
-            </span>
           </div>
           
           <div className="bg-lolcow-lightgray p-4 rounded-lg">
