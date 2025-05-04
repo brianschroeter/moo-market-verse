@@ -1,3 +1,4 @@
+
 import React from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -6,8 +7,6 @@ import Announcements from "../components/Announcements";
 import ProfileHeader from "../components/profile/ProfileHeader";
 import DiscordConnections from "../components/profile/DiscordConnections";
 import { useAuth } from "@/context/AuthContext";
-import { mockAnnouncements, mockProducts } from "../data/mockProfileData";
-import MakeAdminButton from "../components/admin/MakeAdminButton";
 
 const Profile: React.FC = () => {
   const { user, loading, isAdmin } = useAuth();
@@ -32,10 +31,7 @@ const Profile: React.FC = () => {
 
             {/* Announcements & Featured */}
             <div className="col-span-1 lg:col-span-3">
-              <Announcements 
-                announcements={mockAnnouncements}
-                featuredProducts={mockProducts}
-              />
+              <Announcements loadFromDb={true} />
             </div>
           </div>
         </div>

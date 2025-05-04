@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          active: boolean | null
+          content: string
+          created_at: string
+          id: string
+          is_important: boolean | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          content: string
+          created_at?: string
+          id?: string
+          is_important?: boolean | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_important?: boolean | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       discord_connections: {
         Row: {
           avatar_url: string | null
