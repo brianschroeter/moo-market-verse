@@ -67,6 +67,13 @@ export const verifyYouTubeConnection = async (
       return false;
     }
 
+    // Log before calling edge function
+    console.log("[verifyYouTubeConnection] About to invoke verify-youtube edge function with:", {
+      youtubeChannelId,
+      youtubeChannelName,
+      youtubeAvatar,
+    });
+
     const { data, error } = await supabase.functions.invoke("verify-youtube", {
       body: { 
         youtubeChannelId,
@@ -75,14 +82,16 @@ export const verifyYouTubeConnection = async (
       },
     });
 
+    console.log("[verifyYouTubeConnection] Edge function response:", data);
+
     if (error) {
-      console.error("Error verifying YouTube connection:", error);
+      console.error("[verifyYouTubeConnection] Error from edge function:", error);
       return false;
     }
     
     return true;
   } catch (error) {
-    console.error("Error in verifyYouTubeConnection:", error);
+    console.error("[verifyYouTubeConnection] Exception in function:", error);
     return false;
   }
 };
@@ -96,20 +105,20 @@ export const refreshYouTubeAvatar = async (connection: YouTubeConnection): Promi
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      console.error("No active session");
+      console.error("[refreshYouTubeAvatar] No active session");
       return { 
         success: false, 
         error: "No active session. Please log in again." 
       };
     }
 
-    console.log("Calling verify-youtube edge function with parameters:", {
+    console.log("[refreshYouTubeAvatar] About to invoke verify-youtube with:", {
       youtubeChannelId: connection.youtube_channel_id,
       youtubeChannelName: connection.youtube_channel_name,
       refreshAvatar: true
     });
 
-    const { data, error } = await supabase.functions.invoke("verify-youtube", {
+    const functionResponse = await supabase.functions.invoke("verify-youtube", {
       body: { 
         youtubeChannelId: connection.youtube_channel_id,
         youtubeChannelName: connection.youtube_channel_name,
@@ -117,19 +126,23 @@ export const refreshYouTubeAvatar = async (connection: YouTubeConnection): Promi
       },
     });
 
+    // Log entire response object for debugging
+    console.log("[refreshYouTubeAvatar] Complete edge function response object:", functionResponse);
+    
+    const { data, error } = functionResponse;
+
     if (error) {
-      console.error("Edge function error:", error);
+      console.error("[refreshYouTubeAvatar] Edge function error:", error);
       return { 
         success: false, 
         error: `Edge function error: ${error.message || JSON.stringify(error)}` 
       };
     }
     
-    // Log the entire response for debugging
-    console.log("Edge function response:", data);
+    console.log("[refreshYouTubeAvatar] Edge function data:", data);
     
     if (data?.success) {
-      console.log("Avatar refreshed successfully:", data.avatar);
+      console.log("[refreshYouTubeAvatar] Avatar refreshed successfully:", data.avatar);
       return {
         success: true,
         avatarUrl: data.avatar
@@ -142,7 +155,7 @@ export const refreshYouTubeAvatar = async (connection: YouTubeConnection): Promi
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Error in refreshYouTubeAvatar:", error);
+    console.error("[refreshYouTubeAvatar] Exception in function:", error);
     return { 
       success: false, 
       error: `Client error: ${errorMessage}` 

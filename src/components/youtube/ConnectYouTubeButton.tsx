@@ -11,6 +11,7 @@ const ConnectYouTubeButton: React.FC = () => {
   const [channelId, setChannelId] = useState('');
   const [channelName, setChannelName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleConnect = async () => {
@@ -24,28 +25,48 @@ const ConnectYouTubeButton: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const success = await verifyYouTubeConnection(
-      channelId.trim(),
-      channelName.trim(), 
-      null // Let the API fetch the avatar automatically
-    );
+    setDebugInfo("Connecting to YouTube channel...");
+    
+    try {
+      console.log("[ConnectYouTubeButton] Connecting YouTube channel:", channelId);
+      setDebugInfo(prev => `${prev}\nSending connection request...`);
+      
+      const success = await verifyYouTubeConnection(
+        channelId.trim(),
+        channelName.trim(), 
+        null // Let the API fetch the avatar automatically
+      );
 
-    if (success) {
-      toast({
-        title: "Success",
-        description: "YouTube connection created! Verification is pending.",
-      });
-      setOpen(false);
-      // Refresh page to show new connection
-      window.location.reload();
-    } else {
+      setDebugInfo(prev => `${prev}\nConnection response: ${success ? "Success" : "Failed"}`);
+      
+      if (success) {
+        toast({
+          title: "Success",
+          description: "YouTube connection created! Verification is pending.",
+        });
+        setOpen(false);
+        // Refresh page to show new connection
+        window.location.reload();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to connect YouTube account",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("[ConnectYouTubeButton] Error connecting channel:", error);
+      setDebugInfo(prev => `${prev}\nException: ${errorMessage}`);
+      
       toast({
         title: "Error",
-        description: "Failed to connect YouTube account",
+        description: "An exception occurred while connecting the channel",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (
@@ -102,6 +123,13 @@ const ConnectYouTubeButton: React.FC = () => {
                   Your channel avatar will be automatically fetched from YouTube's API
                 </p>
               </div>
+              
+              {debugInfo && (
+                <div className="bg-gray-700 p-3 rounded-md mt-4">
+                  <p className="text-xs text-white font-bold mb-1">Debug Information:</p>
+                  <pre className="text-xs text-gray-300 overflow-auto max-h-32 whitespace-pre-wrap">{debugInfo}</pre>
+                </div>
+              )}
             </div>
 
             <DialogFooter>

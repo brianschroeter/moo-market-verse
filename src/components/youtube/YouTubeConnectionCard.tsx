@@ -23,13 +23,16 @@ const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }
 
   const handleRefreshAvatar = async () => {
     setIsRefreshing(true);
-    setDebugInfo(null);
+    setDebugInfo("Starting avatar refresh request...");
     
     try {
-      console.log("Refreshing avatar for channel:", localAccount.youtube_channel_id);
+      console.log("[YouTubeConnectionCard] Starting refresh for channel:", localAccount.youtube_channel_id);
+      setDebugInfo(prev => `${prev}\nSending request to refresh avatar...`);
       
       const result = await refreshYouTubeAvatar(localAccount);
-      console.log("Refresh avatar response:", result);
+      console.log("[YouTubeConnectionCard] Refresh avatar response:", result);
+      
+      setDebugInfo(prev => `${prev}\nReceived response: ${JSON.stringify(result, null, 2)}`);
       
       if (result.success) {
         toast({
@@ -43,13 +46,15 @@ const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }
             ...localAccount,
             youtube_avatar: result.avatarUrl
           });
+          setDebugInfo(prev => `${prev}\nAvatar updated successfully with URL: ${result.avatarUrl}`);
         } else {
+          setDebugInfo(prev => `${prev}\nSuccess reported but no avatar URL returned. Reloading page.`);
           // Reload page as fallback if no avatar URL returned
           window.location.reload();
         }
       } else {
         const errorMsg = result.error || "Could not refresh the YouTube avatar.";
-        setDebugInfo(errorMsg);
+        setDebugInfo(prev => `${prev}\nError: ${errorMsg}`);
         
         toast({
           title: "Refresh Failed",
@@ -59,8 +64,8 @@ const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("Error refreshing avatar:", error);
-      setDebugInfo(`Error: ${errorMessage}`);
+      console.error("[YouTubeConnectionCard] Error refreshing avatar:", error);
+      setDebugInfo(prev => `${prev}\nException: ${errorMessage}`);
       
       toast({
         title: "Error",
@@ -106,8 +111,8 @@ const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }
       </div>
       
       {debugInfo && (
-        <div className="mt-2 p-2 bg-gray-700 rounded text-xs text-gray-300 overflow-auto">
-          <p className="font-mono">{debugInfo}</p>
+        <div className="mt-2 p-2 bg-gray-700 rounded text-xs text-gray-300 overflow-auto max-h-48">
+          <p className="font-mono whitespace-pre-wrap">{debugInfo}</p>
         </div>
       )}
     </div>
