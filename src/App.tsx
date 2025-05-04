@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import Support from "./pages/Support";
+import Schedule from "./pages/Schedule";
+import Leaderboard from "./pages/Leaderboard";
 import NotFound from "./pages/NotFound";
 import TicketList from "./pages/TicketList";
 import TicketDetail from "./pages/TicketDetail";
@@ -39,6 +41,8 @@ const App = () => {
               <Route path="/login" element={<Login />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/support" element={<Support />} />
+              <Route path="/schedule" element={<Schedule />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/tickets" element={<TicketList />} />
               <Route path="/tickets/:ticketId" element={<TicketDetail />} />
               <Route path="/admin/users" element={<AdminUsers />} />

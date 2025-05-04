@@ -36,11 +36,17 @@ const Navbar: React.FC = () => {
               <Link to="/" className="nav-link">
                 Home
               </Link>
-              <Link to="/login" className="nav-link">
-                Login
+              <Link to="/schedule" className="nav-link">
+                Schedule
+              </Link>
+              <Link to="/leaderboard" className="nav-link">
+                Leaderboard
               </Link>
               <Link to="/profile" className="nav-link">
                 Profile
+              </Link>
+              <Link to="/support" className="nav-link">
+                Support
               </Link>
             </div>
           </div>
@@ -80,11 +86,18 @@ const Navbar: React.FC = () => {
               Home
             </Link>
             <Link
-              to="/login"
+              to="/schedule"
               className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
               onClick={toggleMenu}
             >
-              Login
+              Schedule
+            </Link>
+            <Link
+              to="/leaderboard"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
+              onClick={toggleMenu}
+            >
+              Leaderboard
             </Link>
             <Link
               to="/profile"
@@ -92,6 +105,20 @@ const Navbar: React.FC = () => {
               onClick={toggleMenu}
             >
               Profile
+            </Link>
+            <Link
+              to="/support"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
+              onClick={toggleMenu}
+            >
+              Support
+            </Link>
+            <Link
+              to="/login"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
+              onClick={toggleMenu}
+            >
+              Login
             </Link>
           </div>
         </div>

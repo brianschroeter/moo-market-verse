@@ -3,6 +3,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../Navbar";
 import Footer from "../Footer";
+import { Button } from "@/components/ui/button";
 
 const LoginRequired: React.FC = () => {
   return (
@@ -16,9 +17,9 @@ const LoginRequired: React.FC = () => {
           <p className="text-gray-300 mb-6">
             You need to log in with Discord to view your profile.
           </p>
-          <Link to="/login" className="btn-primary">
-            Login with Discord
-          </Link>
+          <Button asChild className="btn-primary">
+            <Link to="/login">Login with Discord</Link>
+          </Button>
         </div>
       </main>
       <Footer />
