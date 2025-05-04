@@ -1,72 +1,71 @@
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useParams } from "react-router-dom";
 import { FileUp, List } from "lucide-react";
-
-// Mock ticket data
-const mockTicketDetails = {
-  id: "ticket-001",
-  subject: "YouTube Connection Issue",
-  status: "open",
-  created: "May 2, 2025 09:15 AM",
-  lastUpdated: "May 2, 2025 02:30 PM",
-  messages: [
-    {
-      id: "msg1",
-      from: "user",
-      userName: "CowFan123",
-      userAvatar: "https://cdn.discordapp.com/avatars/123456789/abcdef.png",
-      content: "I'm having trouble connecting my YouTube account. I've tried multiple times but it keeps failing with an error message saying 'Connection failed'.",
-      timestamp: "May 2, 2025 09:15 AM",
-      attachments: [
-        { name: "error_screenshot.png", size: 1456000, type: "image/png" }
-      ]
-    },
-    {
-      id: "msg2",
-      from: "admin",
-      userName: "Support Team",
-      userAvatar: "https://via.placeholder.com/40",
-      content: "Hi there, thanks for reaching out. Could you please let us know which browser you're using and if you've tried clearing your cache?",
-      timestamp: "May 2, 2025 11:30 AM",
-      attachments: []
-    },
-    {
-      id: "msg3",
-      from: "user",
-      userName: "CowFan123",
-      userAvatar: "https://cdn.discordapp.com/avatars/123456789/abcdef.png",
-      content: "I'm using Chrome and yes, I've tried clearing my cache. I've also tried on Firefox with the same result.",
-      timestamp: "May 2, 2025 02:30 PM",
-      attachments: []
-    }
-  ]
-};
+import { Ticket, TicketMessage, TicketAttachment, fetchTicketById } from "@/services/ticketService";
+import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
 
 const TicketDetail: React.FC = () => {
-  const { ticketId } = useParams();
+  const { ticketId } = useParams<{ ticketId: string }>();
+  const { toast } = useToast();
+  const [ticketData, setTicketData] = useState<{
+    ticket: Ticket;
+    messages: TicketMessage[];
+    attachments: TicketAttachment[];
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [reply, setReply] = React.useState("");
   const [files, setFiles] = React.useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // In a real app, we would fetch ticket details using the ticketId
-  const ticketDetails = mockTicketDetails;
-  
+  useEffect(() => {
+    const loadTicket = async () => {
+      if (!ticketId) {
+        setError("Ticket ID is missing.");
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const fetchedData = await fetchTicketById(ticketId);
+        if (!fetchedData || !fetchedData.ticket) {
+            throw new Error("Ticket not found.");
+        }
+        setTicketData(fetchedData);
+      } catch (err) {
+        console.error("Error fetching ticket details:", err);
+        const errorMessage = err instanceof Error ? err.message : "Failed to load ticket details.";
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTicket();
+  }, [ticketId, toast]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API call
     setTimeout(() => {
       setReply("");
       setFiles([]);
       setIsSubmitting(false);
-      // In a real app, we would update the ticket details here
     }, 1000);
   };
   
@@ -94,6 +93,63 @@ const TicketDetail: React.FC = () => {
     else return (bytes / 1048576).toFixed(1) + ' MB';
   };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow py-12 px-4 sm:px-6 lg:px-8 bg-lolcow-black">
+          <div className="max-w-4xl mx-auto">
+            <Skeleton className="h-8 w-3/4 mb-6 bg-lolcow-lightgray/50" />
+            <Skeleton className="h-6 w-1/4 mb-8 bg-lolcow-lightgray/30" />
+            <div className="space-y-6">
+              <Skeleton className="h-32 w-full lolcow-card bg-lolcow-lightgray/30" />
+              <Skeleton className="h-32 w-full lolcow-card bg-lolcow-lightgray/30" />
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow py-12 px-4 sm:px-6 lg:px-8 bg-lolcow-black flex items-center justify-center">
+          <div className="text-center lolcow-card">
+            <h2 className="text-xl font-semibold text-red-500 mb-4">Error Loading Ticket</h2>
+            <p className="text-gray-400 mb-6">{error}</p>
+            <Link to="/tickets">
+              <Button variant="outline">Back to Tickets</Button>
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+  
+  if (!ticketData || !ticketData.ticket) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow py-12 px-4 sm:px-6 lg:px-8 bg-lolcow-black flex items-center justify-center">
+          <div className="text-center lolcow-card">
+            <h2 className="text-xl font-semibold text-white mb-4">Ticket Not Found</h2>
+            <p className="text-gray-400 mb-6">The requested ticket could not be found.</p>
+            <Link to="/tickets">
+              <Button variant="outline">Back to Tickets</Button>
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const { ticket, messages } = ticketData;
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -107,78 +163,56 @@ const TicketDetail: React.FC = () => {
                   All Tickets
                 </Link>
                 <span className="text-gray-500">/</span>
-                <h1 className="text-2xl font-fredoka text-white">{ticketDetails.subject}</h1>
+                <h1 className="text-2xl font-fredoka text-white">{ticket.subject}</h1>
               </div>
-              <p className="text-gray-400 mt-1">ID: {ticketDetails.id}</p>
+              <p className="text-gray-400 mt-1">ID: {ticket.id}</p>
             </div>
             <div className="mt-2 sm:mt-0">
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                ticketDetails.status === "open" ? "bg-blue-500" : 
-                ticketDetails.status === "replied" ? "bg-green-500" : "bg-gray-500"
+                ticket.status === "open" ? "bg-blue-500" : 
+                ticket.status === "replied" ? "bg-green-500" : "bg-gray-500"
               }`}>
-                {ticketDetails.status.charAt(0).toUpperCase() + ticketDetails.status.slice(1)}
+                {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
               </span>
             </div>
           </div>
 
-          {/* Ticket Messages */}
           <div className="space-y-6 mb-8">
-            {ticketDetails.messages.map((message) => (
+            {messages.map((message) => (
               <div 
                 key={message.id} 
                 className={`lolcow-card ${
-                  message.from === "admin" ? "border-l-4 border-l-lolcow-blue" : ""
+                  !message.from_user ? "border-l-4 border-l-lolcow-blue" : ""
                 }`}
               >
                 <div className="flex items-start space-x-4">
                   <img 
-                    src={message.userAvatar} 
-                    alt={message.userName} 
+                    src={message.from_user ? "https://cdn.discordapp.com/avatars/123456789/abcdef.png" : "https://via.placeholder.com/40"} 
+                    alt={message.from_user ? "User" : "Support Team"} 
                     className="w-10 h-10 rounded-full"
                   />
                   <div className="flex-1">
                     <div className="flex justify-between">
                       <h3 className="font-medium text-white">
-                        {message.userName}
-                        {message.from === "admin" && (
+                        {message.from_user ? "User" : "Support Team"}
+                        {!message.from_user && (
                           <span className="ml-2 bg-lolcow-blue text-xs px-2 py-0.5 rounded text-white">
                             Staff
                           </span>
                         )}
                       </h3>
-                      <span className="text-gray-400 text-sm">{message.timestamp}</span>
+                      <span className="text-gray-400 text-sm">{format(new Date(message.created_at), "PPpp")}</span>
                     </div>
                     <div className="mt-2 text-gray-300 whitespace-pre-wrap">
                       {message.content}
                     </div>
-                    
-                    {/* Attachments */}
-                    {message.attachments.length > 0 && (
-                      <div className="mt-3">
-                        <h4 className="text-sm font-medium text-gray-400">Attachments:</h4>
-                        <ul className="mt-1 space-y-1">
-                          {message.attachments.map((attachment, index) => (
-                            <li key={index} className="flex items-center space-x-2">
-                              <FileUp className="h-4 w-4 text-gray-400" />
-                              <a 
-                                href="#" 
-                                className="text-lolcow-blue hover:underline text-sm"
-                              >
-                                {attachment.name} ({formatFileSize(attachment.size)})
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Reply Form */}
-          {ticketDetails.status !== "closed" && (
+          {ticket.status !== "closed" && (
             <div className="lolcow-card">
               <h3 className="text-xl font-fredoka text-white mb-4">Add Reply</h3>
               <form onSubmit={handleSubmit}>
@@ -192,7 +226,6 @@ const TicketDetail: React.FC = () => {
                   />
                 </div>
                 
-                {/* File Upload */}
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <input
                     type="file"
@@ -216,7 +249,6 @@ const TicketDetail: React.FC = () => {
                   </span>
                 </div>
                 
-                {/* Selected Files */}
                 {files.length > 0 && (
                   <div className="mt-3">
                     <ul className="space-y-2">
