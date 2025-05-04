@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, ReactNode } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -18,16 +18,18 @@ interface UserData {
     platform: string;
     username: string;
     connected: boolean;
+    connection_id: string;
   }[];
   roles: string[];
 }
 
-const AdminUsers: React.FC = () => {
+const AdminUsers: React.FC = (): ReactNode => {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
   const [newConnection, setNewConnection] = useState({ platform: "YouTube", username: "" });
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAddingConnection, setIsAddingConnection] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -99,7 +101,8 @@ const AdminUsers: React.FC = () => {
           user.connections.push({
             platform: displayPlatform, // Use the type from the DB
             username: conn.connection_name, // Assuming this holds the username for all types
-            connected: conn.connection_verified !== null ? conn.connection_verified : true // Use verification status if available
+            connected: conn.connection_verified !== null ? conn.connection_verified : true, // Use verification status if available
+            connection_id: conn.connection_id // Store the connection_id
           });
         }
       });
@@ -129,13 +132,140 @@ const AdminUsers: React.FC = () => {
     });
   };
 
-  const handleAddConnection = () => {
-    // In a real app, we would send this to the API
-    toast({
-      title: "Connection Added",
-      description: `Added ${newConnection.platform} connection for ${currentUser?.username}`,
-    });
-    setShowConnectionDialog(false);
+  const handleAddConnection = async () => {
+    if (!currentUser || !newConnection.username.trim()) {
+      toast({
+        title: "Error",
+        description: "User or connection details missing.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsAddingConnection(true);
+
+    try {
+      const connectionType = newConnection.platform.toLowerCase();
+      const connectionName = newConnection.username.trim();
+
+      // Use the same table 'discord_connections' used in fetchUsers
+      const { error } = await supabase
+        .from('discord_connections')
+        .insert({
+          user_id: currentUser.id,
+          connection_type: connectionType,
+          connection_name: connectionName,
+          connection_id: connectionName, // Use username/channelId as connection_id for manual add
+          connection_verified: true // Manually added connections are considered verified
+          // Add other necessary fields if your table has them
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      // Optimistically update the local state
+      const addedConnection = {
+        platform: newConnection.platform,
+        username: connectionName,
+        connected: true,
+        connection_id: connectionName // Include connection_id used in insert
+      };
+      setUsers(users.map(u => {
+        if (u.id === currentUser.id) {
+          return {
+            ...u,
+            connections: [...u.connections, addedConnection]
+          };
+        }
+        return u;
+      }));
+      // Update currentUser as well for the dialog state
+      setCurrentUser({
+          ...currentUser,
+          connections: [...currentUser.connections, addedConnection]
+      });
+
+
+      toast({
+        title: "Connection Added",
+        description: `Added ${newConnection.platform} connection for ${currentUser.username}.`,
+      });
+      
+      // Reset form and close dialog
+      setNewConnection({ platform: 'YouTube', username: '' });
+      setShowConnectionDialog(false);
+
+    } catch (error) {
+      console.error("Error adding connection:", error);
+      toast({
+        title: "Error",
+        description: `Failed to add ${newConnection.platform} connection. ${error instanceof Error ? error.message : ''}`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsAddingConnection(false);
+    }
+  };
+
+  const handleRemoveConnection = async (connectionId: string) => {
+    if (!currentUser) return;
+
+    // Add loading state if needed
+
+    try {
+      // Use connectionId for matching
+      const { error } = await supabase
+        .from('discord_connections')
+        .delete()
+        .match({ 
+          user_id: currentUser.id, 
+          connection_id: connectionId // Match by user_id and connection_id
+        });
+
+      if (error) {
+        // Log the error for debugging
+        console.error("Supabase delete error:", error);
+        throw error;
+      }
+
+      // Optimistically update local state using connectionId
+      setUsers(users.map(u => {
+        if (u.id === currentUser.id) {
+          return {
+            ...u,
+            // Filter using connectionId
+            connections: u.connections.filter(c => c.connection_id !== connectionId)
+          };
+        }
+        return u;
+      }));
+      setCurrentUser(prevUser => {
+        if (!prevUser) return null;
+        return {
+            ...prevUser,
+            // Filter using connectionId
+            connections: prevUser.connections.filter(c => c.connection_id !== connectionId)
+        };
+      });
+
+
+      toast({
+        title: "Connection Removed",
+        // Update description if needed, platform/username are not directly available here anymore
+        description: `Connection removed for ${currentUser.username}.` 
+      });
+
+    } catch (error) {
+      console.error("Error removing connection:", error);
+      toast({
+        title: "Error",
+        description: `Failed to remove connection. ${error instanceof Error ? error.message : ''}`,
+        variant: "destructive"
+      });
+    } finally {
+      // Stop loading state
+    }
   };
 
   const handleToggleAdminRole = async (user: UserData) => {
@@ -351,6 +481,7 @@ const AdminUsers: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       className="text-red-500 hover:text-white hover:bg-red-500"
+                      onClick={() => handleRemoveConnection(conn.connection_id)}
                     >
                       Remove
                     </Button>
@@ -377,13 +508,15 @@ const AdminUsers: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-gray-300 mb-1">Username</label>
+                  <label className="block text-gray-300 mb-1">
+                    {newConnection.platform === 'YouTube' ? 'YouTube Channel ID' : 'Username'}
+                  </label>
                   <input 
                     type="text" 
                     className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
                     value={newConnection.username}
                     onChange={(e) => setNewConnection({...newConnection, username: e.target.value})}
-                    placeholder="Enter username"
+                    placeholder={newConnection.platform === 'YouTube' ? 'Enter Channel ID (e.g., UC...)' : 'Enter username'}
                   />
                 </div>
               </div>
@@ -394,12 +527,15 @@ const AdminUsers: React.FC = () => {
             <Button
               className="mr-2 bg-lolcow-blue hover:bg-lolcow-blue/80"
               onClick={handleAddConnection}
+              disabled={isAddingConnection || !newConnection.username.trim()}
             >
-              Add Connection
+              {isAddingConnection ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} 
+              {isAddingConnection ? 'Adding...' : 'Add Connection'}
             </Button>
             <Button 
               variant="outline" 
               onClick={() => setShowConnectionDialog(false)}
+              disabled={isAddingConnection}
             >
               Cancel
             </Button>
