@@ -11,9 +11,9 @@ const Footer: React.FC = () => {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2">
               <img
-                src="/lovable-uploads/bc7a4d90-6d79-44cf-9581-c106f198164b.png"
+                src="/lovable-uploads/logo.png"
                 alt="LolCow Logo"
-                className="h-10 w-10"
+                className="w-10"
               />
               <div className="text-xl font-fredoka">
                 <span className="text-lolcow-blue">LOL</span>

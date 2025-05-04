@@ -33,9 +33,9 @@ const LoginCard: React.FC = () => {
       <div className="lolcow-card p-8">
         <div className="flex justify-center mb-6">
           <img 
-            src="/lovable-uploads/bc7a4d90-6d79-44cf-9581-c106f198164b.png" 
+            src="/lovable-uploads/logo.png" 
             alt="LolCow Logo" 
-            className="w-24 h-24" 
+            className="w-24" 
           />
         </div>
         

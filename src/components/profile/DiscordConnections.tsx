@@ -8,40 +8,39 @@ import {
   StoredDiscordConnection, 
   getDiscordConnections,
   YouTubeConnection, 
-  getYouTubeConnections 
+  getYouTubeMemberships 
 } from "@/services/authService";
+import { YouTubeConnection as YouTubeConnectionFromYoutubeService } from "@/services/youtube/youtubeService";
+import { Membership } from "@/services/authService";
 import { useAuth } from "@/context/AuthContext";
 
 const DiscordConnections: React.FC = () => {
   const [connections, setConnections] = useState<StoredDiscordConnection[]>([]);
-  const [youtubeConnections, setYoutubeConnections] = useState<Record<string, YouTubeConnection>>({});
+  const [youtubeConnections, setYoutubeConnections] = useState<YouTubeConnectionFromYoutubeService[]>([]);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { profile } = useAuth();
   
   useEffect(() => {
-    const fetchConnections = async () => {
+    const fetchConnectionsAndMemberships = async () => {
       setLoading(true);
       try {
-        const [discordConnectionData, youtubeConnectionData] = await Promise.all([
+        const [discordConnectionData, youtubeConnectionData, membershipData] = await Promise.all([
           getDiscordConnections(),
-          getYouTubeConnections()
+          getYouTubeMemberships(),
+          getUserMemberships()
         ]);
         
         setConnections(discordConnectionData);
-        
-        // Create a map of YouTube connections keyed by channel ID for easy lookup
-        const youtubeMap: Record<string, YouTubeConnection> = {};
-        youtubeConnectionData.forEach(conn => {
-          youtubeMap[conn.youtube_channel_id] = conn;
-        });
-        setYoutubeConnections(youtubeMap);
+        setYoutubeConnections(youtubeConnectionData);
+        setMemberships(membershipData);
 
       } catch (error) {
-        console.error("Error loading Discord connections:", error);
+        console.error("Error loading connections or memberships:", error);
         toast({
           title: "Error",
-          description: "Failed to load Discord connections",
+          description: "Failed to load connections or membership data",
           variant: "destructive",
         });
       } finally {
@@ -49,7 +48,7 @@ const DiscordConnections: React.FC = () => {
       }
     };
     
-    fetchConnections();
+    fetchConnectionsAndMemberships();
   }, [toast]);
 
   const getDiscordAvatarUrl = () => {
@@ -58,6 +57,14 @@ const DiscordConnections: React.FC = () => {
     }
     return null;
   };
+
+  // Determine if Discord access should be shown
+  const hasYouTubeConnection = youtubeConnections.length > 0;
+  const hasMemberships = memberships.length > 0;
+  // Assuming 'ban_world' is the identifier for the Ban World tier
+  const onlyHasBanWorld = hasMemberships && memberships.every(m => m.membership_level === 'ban_world');
+  
+  const showDiscordAccess = hasYouTubeConnection && hasMemberships && !onlyHasBanWorld;
 
   return (
     <Card className="lolcow-card">
@@ -91,23 +98,35 @@ const DiscordConnections: React.FC = () => {
             </div>
           </div>
           
-          <div className="bg-lolcow-lightgray p-4 rounded-lg">
-            <h3 className="text-white text-lg mb-2">Server Access</h3>
-            <p className="text-gray-300">
-              Based on your membership roles, you have access to the LolCow Discord server.
-            </p>
-            <Button 
-              className="mt-3 bg-purple-600 hover:bg-purple-700 text-white hover:scale-105 transition-transform duration-200 ease-in-out"
-              size="sm" 
-              asChild
-            >
-              <a href="https://discord.gg/lolcow" target="_blank" rel="noopener noreferrer">
-                <i className="fa-brands fa-discord mr-1"></i>
-                Join Server
-                <ExternalLink className="h-3 w-3 ml-1" />
-              </a>
-            </Button>
-          </div>
+          {showDiscordAccess ? (
+            <div className="bg-lolcow-lightgray p-4 rounded-lg">
+              <h3 className="text-white text-lg mb-2">Server Access</h3>
+              <p className="text-gray-300">
+                Based on your membership roles, you have access to the LolCow Discord server.
+              </p>
+              <Button 
+                className="mt-3 bg-purple-600 hover:bg-purple-700 text-white hover:scale-105 transition-transform duration-200 ease-in-out"
+                size="sm" 
+                asChild
+              >
+                <a href="https://discord.gg/lolcow" target="_blank" rel="noopener noreferrer">
+                  <i className="fa-brands fa-discord mr-1"></i>
+                  Join Server
+                  <ExternalLink className="h-3 w-3 ml-1" />
+                </a>
+              </Button>
+            </div>
+          ) : (
+            <div className="bg-lolcow-lightgray p-4 rounded-lg">
+              <h3 className="text-white text-lg mb-2">Discord Access Not Ready</h3>
+              <p className="text-gray-300 text-sm">
+                {!hasYouTubeConnection && "Please connect your YouTube account first."}
+                {hasYouTubeConnection && !hasMemberships && "You need an active YouTube membership to access the Discord server."}
+                {hasYouTubeConnection && onlyHasBanWorld && "Your current membership tier does not grant Discord access."}
+              </p>
+              {/* Optionally add buttons to connect YT or view memberships */}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

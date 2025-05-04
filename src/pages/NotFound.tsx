@@ -17,7 +17,7 @@ const NotFound = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-lolcow-black p-4">
       <img
-        src="/lovable-uploads/bc7a4d90-6d79-44cf-9581-c106f198164b.png"
+        src="/lovable-uploads/logo.png"
         alt="Confused LolCow"
         className="w-32 h-32 mb-8"
       />

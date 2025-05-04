@@ -29,9 +29,9 @@ const Hero: React.FC = () => {
           
           <div className="flex justify-center">
             <img 
-              src="/lovable-uploads/bc7a4d90-6d79-44cf-9581-c106f198164b.png" 
+              src="/lovable-uploads/logo.png" 
               alt="LolCow Mascot" 
-              className="w-64 h-64 md:w-80 md:h-80 animate-float" 
+              className="w-64 md:w-80 animate-float" 
             />
           </div>
         </div>
