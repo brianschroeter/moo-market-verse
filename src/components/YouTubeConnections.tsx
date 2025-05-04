@@ -6,10 +6,14 @@ import {
   YouTubeConnection, 
   YouTubeMembership,
   getYouTubeConnections, 
-  getYouTubeMemberships 
+  getYouTubeMemberships,
+  fetchAndSyncDiscordConnections
 } from "@/services/authService";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
-// Import our newly created components
+// Import our components
 import YouTubeStatusAlerts from "./youtube/YouTubeStatusAlerts";
 import ConnectYouTubeButton from "./youtube/ConnectYouTubeButton";
 import YouTubeConnectionsList from "./youtube/YouTubeConnectionsList";
@@ -17,30 +21,85 @@ import YouTubeMembershipsList from "./youtube/YouTubeMembershipsList";
 
 const YouTubeConnections: React.FC = () => {
   const { toast } = useToast();
+  const { session } = useAuth();
   const [accounts, setAccounts] = useState<YouTubeConnection[]>([]);
   const [memberships, setMemberships] = useState<YouTubeMembership[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const connections = await getYouTubeConnections();
+      setAccounts(connections);
+      
+      if (connections.length > 0) {
+        const membershipData = await getYouTubeMemberships();
+        setMemberships(membershipData);
+      }
+    } catch (error) {
+      console.error("Error fetching YouTube data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load YouTube connections",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const connections = await getYouTubeConnections();
+    fetchData();
+  }, []);
+  
+  const handleRefreshConnections = async () => {
+    if (!session?.provider_token) {
+      toast({
+        title: "Session Expired",
+        description: "Please log out and log back in to refresh your connections",
+      });
+      return;
+    }
+    
+    try {
+      setRefreshing(true);
+      toast({
+        title: "Refreshing",
+        description: "Checking for new YouTube connections...",
+      });
+      
+      const connections = await fetchAndSyncDiscordConnections();
+      
+      if (connections) {
         setAccounts(connections);
-        
         if (connections.length > 0) {
           const membershipData = await getYouTubeMemberships();
           setMemberships(membershipData);
         }
-      } catch (error) {
-        console.error("Error fetching YouTube data:", error);
-      } finally {
-        setLoading(false);
+        
+        toast({
+          title: "Refresh Complete",
+          description: `Found ${connections.length} YouTube connections`,
+        });
+      } else {
+        toast({
+          title: "Refresh Failed",
+          description: "Could not refresh YouTube connections",
+          variant: "destructive",
+        });
       }
-    };
-    
-    fetchData();
-  }, []);
+    } catch (error) {
+      console.error("Error refreshing connections:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh YouTube connections",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
   
   const hasNoYouTubeConnections = accounts.length === 0;
   const hasOnlyBanWorldRole = !hasNoYouTubeConnections && 
@@ -67,10 +126,21 @@ const YouTubeConnections: React.FC = () => {
 
   return (
     <Card className="lolcow-card w-full">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-xl font-fredoka text-white flex items-center">
           <i className="fa-brands fa-youtube text-red-500 mr-2"></i> YouTube Connections
         </CardTitle>
+        
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={handleRefreshConnections}
+          disabled={refreshing}
+          className="h-8 px-2 lg:px-3"
+        >
+          <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">Refresh</span>
+        </Button>
       </CardHeader>
       <CardContent>
         <YouTubeStatusAlerts 

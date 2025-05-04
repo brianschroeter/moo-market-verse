@@ -43,6 +43,17 @@ export interface DiscordGuild {
   joined_at: string;
 }
 
+export interface DiscordConnection {
+  id: string;
+  type: string;
+  name: string;
+  visibility: number;
+  friend_sync: boolean;
+  show_activity: boolean;
+  verified: boolean;
+  access_token?: string;
+}
+
 export const signInWithDiscord = async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "discord",
@@ -58,6 +69,70 @@ export const signInWithDiscord = async () => {
   }
   
   return data;
+};
+
+export const fetchAndSyncDiscordConnections = async () => {
+  try {
+    // First, get the Discord access token from the session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.provider_token) {
+      console.error("No provider token available");
+      return null;
+    }
+
+    // Call Discord API to get connections
+    const response = await fetch('https://discord.com/api/v10/users/@me/connections', {
+      headers: {
+        Authorization: `Bearer ${session.provider_token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Failed to fetch Discord connections:", errorData);
+      return null;
+    }
+
+    const connections: DiscordConnection[] = await response.json();
+    console.log("Fetched Discord connections:", connections);
+    
+    // Filter for YouTube connections
+    const youtubeConnections = connections.filter(conn => conn.type === 'youtube');
+    
+    if (youtubeConnections.length === 0) {
+      console.log("No YouTube connections found");
+      return [];
+    }
+    
+    // For each YouTube connection, store in database
+    const storedConnections: YouTubeConnection[] = [];
+    
+    for (const conn of youtubeConnections) {
+      // Store in database
+      const { data, error } = await supabase
+        .from('youtube_connections')
+        .upsert({
+          user_id: session.user.id,
+          youtube_channel_id: conn.id,
+          youtube_channel_name: conn.name,
+          is_verified: conn.verified
+        }, {
+          onConflict: 'user_id, youtube_channel_id',
+          returning: 'representation'
+        });
+        
+      if (error) {
+        console.error("Error storing YouTube connection:", error);
+      } else if (data) {
+        storedConnections.push(data as unknown as YouTubeConnection);
+      }
+    }
+    
+    return storedConnections;
+  } catch (error) {
+    console.error("Error syncing Discord connections:", error);
+    return null;
+  }
 };
 
 export const signOut = async () => {
@@ -90,9 +165,16 @@ export const getProfile = async (): Promise<Profile | null> => {
 };
 
 export const getYouTubeConnections = async (): Promise<YouTubeConnection[]> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.user) {
+    return [];
+  }
+  
   const { data, error } = await supabase
     .from("youtube_connections")
-    .select("*");
+    .select("*")
+    .eq("user_id", session.user.id);
   
   if (error) {
     console.error("Error fetching YouTube connections:", error);
@@ -103,9 +185,16 @@ export const getYouTubeConnections = async (): Promise<YouTubeConnection[]> => {
 };
 
 export const getDiscordGuilds = async (): Promise<DiscordGuild[]> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.user) {
+    return [];
+  }
+  
   const { data, error } = await supabase
     .from("discord_guilds")
-    .select("*");
+    .select("*")
+    .eq("user_id", session.user.id);
   
   if (error) {
     console.error("Error fetching Discord guilds:", error);
@@ -116,9 +205,16 @@ export const getDiscordGuilds = async (): Promise<DiscordGuild[]> => {
 };
 
 export const getYouTubeMemberships = async (): Promise<YouTubeMembership[]> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.user) {
+    return [];
+  }
+  
   const { data, error } = await supabase
     .from("youtube_memberships")
-    .select("*");
+    .select("*")
+    .eq("youtube_connection_id", supabase.rpc("get_user_youtube_connections"));
   
   if (error) {
     console.error("Error fetching YouTube memberships:", error);

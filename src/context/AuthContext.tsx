@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { Profile, getProfile } from "@/services/authService";
+import { Profile, getProfile, fetchAndSyncDiscordConnections } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -61,6 +61,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (currentSession?.user) {
           setTimeout(() => {
             fetchProfile(currentSession.user.id);
+            
+            // If just signed in, try to sync Discord connections
+            if (event === 'SIGNED_IN' && currentSession.provider_token) {
+              syncDiscordConnections();
+            }
           }, 0);
         } else {
           setProfile(null);
@@ -89,6 +94,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (currentSession?.user) {
           await fetchProfile(currentSession.user.id);
+          
+          // If we have a provider token, sync Discord connections
+          if (currentSession.provider_token) {
+            syncDiscordConnections();
+          }
         }
       } catch (error) {
         console.error("Error getting session:", error);
@@ -103,6 +113,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe();
     };
   }, []);
+
+  const syncDiscordConnections = async () => {
+    try {
+      const connections = await fetchAndSyncDiscordConnections();
+      if (connections) {
+        console.log("Successfully synced Discord connections:", connections);
+      }
+    } catch (error) {
+      console.error("Error syncing Discord connections:", error);
+      toast({
+        title: "Connection Error",
+        description: "Failed to sync your Discord connections. Some features may not work properly.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     try {
