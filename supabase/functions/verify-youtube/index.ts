@@ -7,13 +7,21 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with',
+  'Access-Control-Max-Age': '86400', // 24 hours
 };
 
 serve(async (req) => {
+  console.log("Received request to verify-youtube function");
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    console.log("Handling CORS preflight request");
+    return new Response(null, { 
+      status: 204, 
+      headers: corsHeaders 
+    });
   }
 
   try {
@@ -28,12 +36,31 @@ serve(async (req) => {
       }
     );
 
+    // Log request headers for debugging
+    console.log("Request headers:", Object.fromEntries(req.headers.entries()));
+
     // Get the authenticated user
     const {
       data: { user },
+      error: userError
     } = await supabaseClient.auth.getUser();
 
+    if (userError) {
+      console.error("Error getting user:", userError);
+      return new Response(
+        JSON.stringify({ error: "Authentication error", details: userError }),
+        { 
+          status: 401, 
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          } 
+        }
+      );
+    }
+
     if (!user) {
+      console.error("No authenticated user found");
       return new Response(
         JSON.stringify({ error: "Not authenticated" }),
         { 
@@ -46,11 +73,31 @@ serve(async (req) => {
       );
     }
 
+    console.log("Authenticated user ID:", user.id);
+
     // Get the request body
-    const requestData = await req.json();
+    let requestData;
+    try {
+      requestData = await req.json();
+      console.log("Request data:", JSON.stringify(requestData));
+    } catch (jsonError) {
+      console.error("Failed to parse request JSON:", jsonError);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          } 
+        }
+      );
+    }
+    
     const { youtubeChannelId, youtubeChannelName, refreshAvatar } = requestData;
 
     if (!youtubeChannelId) {
+      console.error("Missing youtubeChannelId in request");
       return new Response(
         JSON.stringify({ error: "YouTube channel ID is required" }),
         { 
@@ -70,10 +117,24 @@ serve(async (req) => {
       .eq('id', user.id)
       .single();
 
-    if (profileError || !profile) {
-      console.error("Profile not found", profileError);
+    if (profileError) {
+      console.error("Profile not found:", profileError);
       return new Response(
         JSON.stringify({ error: "Profile not found", details: profileError }),
+        { 
+          status: 404, 
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          } 
+        }
+      );
+    }
+
+    if (!profile) {
+      console.error("Profile is null for user:", user.id);
+      return new Response(
+        JSON.stringify({ error: "User profile not found" }),
         { 
           status: 404, 
           headers: { 
@@ -92,7 +153,10 @@ serve(async (req) => {
     if (!youtubeApiKey) {
       console.error("YouTube API key not found in environment variables");
       return new Response(
-        JSON.stringify({ error: "YouTube API key not configured" }),
+        JSON.stringify({ 
+          error: "YouTube API key not configured",
+          message: "The server is missing the YouTube API key configuration."
+        }),
         { 
           status: 500, 
           headers: { 
@@ -106,18 +170,20 @@ serve(async (req) => {
     try {
       console.log(`Fetching YouTube data for channel ID: ${youtubeChannelId}`);
       
-      const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${youtubeChannelId}&key=${youtubeApiKey}`
-      );
+      // Construct YouTube API URL
+      const youtubeApiUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${youtubeChannelId}&key=${youtubeApiKey}`;
+      console.log("YouTube API URL (without key):", youtubeApiUrl.replace(youtubeApiKey, "API_KEY_HIDDEN"));
+      
+      const response = await fetch(youtubeApiUrl);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`YouTube API Error: ${errorText}`);
+        console.error(`YouTube API Error: Status ${response.status}, ${errorText}`);
         throw new Error(`YouTube API returned ${response.status}: ${errorText}`);
       }
       
       const data = await response.json();
-      console.log("YouTube API response:", JSON.stringify(data));
+      console.log("YouTube API response items length:", data.items?.length);
       
       if (data.items && data.items.length > 0) {
         const channelData = data.items[0];
@@ -134,7 +200,10 @@ serve(async (req) => {
       } else {
         console.error("No channel found with the provided ID");
         return new Response(
-          JSON.stringify({ error: "No YouTube channel found with the provided ID" }),
+          JSON.stringify({ 
+            error: "No YouTube channel found with the provided ID",
+            channelId: youtubeChannelId
+          }),
           { 
             status: 404, 
             headers: { 
@@ -160,6 +229,8 @@ serve(async (req) => {
 
     // If this is just a refresh avatar request, update the existing connection
     if (refreshAvatar) {
+      console.log("Processing avatar refresh request");
+      
       const { data: existingConnection, error: connectionError } = await supabaseClient
         .from('youtube_connections')
         .select('*')
@@ -181,41 +252,15 @@ serve(async (req) => {
         );
       }
 
-      if (existingConnection) {
-        // Update the existing connection with the new avatar
-        const { data: updatedConnection, error: updateError } = await supabaseClient
-          .from('youtube_connections')
-          .update({
-            youtube_avatar: youtubeAvatar,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingConnection.id)
-          .select()
-          .single();
-
-        if (updateError) {
-          console.error("Error updating YouTube connection:", updateError);
-          return new Response(
-            JSON.stringify({ error: "Failed to update YouTube avatar", details: updateError }),
-            { 
-              status: 500, 
-              headers: { 
-                'Content-Type': 'application/json',
-                ...corsHeaders
-              } 
-            }
-          );
-        }
-
+      if (!existingConnection) {
+        console.error("No existing connection found for this channel ID and user");
         return new Response(
           JSON.stringify({ 
-            message: "YouTube avatar refreshed successfully", 
-            success: true,
-            avatar: youtubeAvatar,
-            connection: updatedConnection
+            error: "YouTube connection not found", 
+            message: "No connection exists for this YouTube channel ID and user"
           }),
           { 
-            status: 200, 
+            status: 404, 
             headers: { 
               'Content-Type': 'application/json',
               ...corsHeaders
@@ -223,6 +268,52 @@ serve(async (req) => {
           }
         );
       }
+
+      console.log("Found existing connection:", existingConnection);
+      console.log("Updating with new avatar URL:", youtubeAvatar);
+
+      // Update the existing connection with the new avatar
+      const { data: updatedConnection, error: updateError } = await supabaseClient
+        .from('youtube_connections')
+        .update({
+          youtube_avatar: youtubeAvatar,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingConnection.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error("Error updating YouTube connection:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to update YouTube avatar", details: updateError }),
+          { 
+            status: 500, 
+            headers: { 
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            } 
+          }
+        );
+      }
+
+      console.log("Connection updated successfully");
+
+      return new Response(
+        JSON.stringify({ 
+          message: "YouTube avatar refreshed successfully", 
+          success: true,
+          avatar: youtubeAvatar,
+          connection: updatedConnection
+        }),
+        { 
+          status: 200, 
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          } 
+        }
+      );
     }
 
     // Create or update YouTube connection with the fetched data
@@ -254,6 +345,8 @@ serve(async (req) => {
       );
     }
     
+    console.log("YouTube connection created/updated successfully");
+    
     return new Response(
       JSON.stringify({ 
         message: "YouTube connection saved. Verification pending.", 
@@ -273,7 +366,10 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in verify-youtube function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      }),
       { 
         status: 500, 
         headers: { 

@@ -67,7 +67,7 @@ export const verifyYouTubeConnection = async (
       return false;
     }
 
-    const { error } = await supabase.functions.invoke("verify-youtube", {
+    const { data, error } = await supabase.functions.invoke("verify-youtube", {
       body: { 
         youtubeChannelId,
         youtubeChannelName,
@@ -88,13 +88,26 @@ export const verifyYouTubeConnection = async (
 };
 
 // Function to refresh YouTube channel avatar
-export const refreshYouTubeAvatar = async (connection: YouTubeConnection): Promise<boolean> => {
+export const refreshYouTubeAvatar = async (connection: YouTubeConnection): Promise<{
+  success: boolean;
+  avatarUrl?: string;
+  error?: string;
+}> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       console.error("No active session");
-      return false;
+      return { 
+        success: false, 
+        error: "No active session. Please log in again." 
+      };
     }
+
+    console.log("Calling verify-youtube edge function with parameters:", {
+      youtubeChannelId: connection.youtube_channel_id,
+      youtubeChannelName: connection.youtube_channel_name,
+      refreshAvatar: true
+    });
 
     const { data, error } = await supabase.functions.invoke("verify-youtube", {
       body: { 
@@ -105,18 +118,34 @@ export const refreshYouTubeAvatar = async (connection: YouTubeConnection): Promi
     });
 
     if (error) {
-      console.error("Error refreshing YouTube avatar:", error);
-      return false;
+      console.error("Edge function error:", error);
+      return { 
+        success: false, 
+        error: `Edge function error: ${error.message || JSON.stringify(error)}` 
+      };
     }
+    
+    // Log the entire response for debugging
+    console.log("Edge function response:", data);
     
     if (data?.success) {
       console.log("Avatar refreshed successfully:", data.avatar);
-      return true;
+      return {
+        success: true,
+        avatarUrl: data.avatar
+      };
     }
     
-    return false;
+    return {
+      success: false,
+      error: data?.message || "Unknown error from edge function"
+    };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("Error in refreshYouTubeAvatar:", error);
-    return false;
+    return { 
+      success: false, 
+      error: `Client error: ${errorMessage}` 
+    };
   }
 };
