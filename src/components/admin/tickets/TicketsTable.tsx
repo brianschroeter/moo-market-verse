@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { Ticket } from "@/pages/admin/AdminTickets";
+import { Ticket } from "@/services/ticketAdminService";
 
 interface TicketsTableProps {
   tickets: Ticket[];
@@ -78,7 +78,7 @@ const TicketsTable: React.FC<TicketsTableProps> = ({
                 {ticket.subject}
               </TableCell>
               <TableCell className="text-gray-300">
-                {ticket.profiles?.discord_username || 'Unknown User'}
+                {ticket.profile?.discord_username || 'Unknown User'}
               </TableCell>
               <TableCell>{getStatusBadge(ticket.status)}</TableCell>
               <TableCell className="text-gray-300">

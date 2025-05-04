@@ -45,16 +45,12 @@ const AdminUsers: React.FC = () => {
         return transformedData;
       } catch (err: any) {
         console.error("Error fetching users:", err);
-        throw err;
-      }
-    },
-    onSettled: (data, error) => {
-      if (error) {
         toast({
           title: "Error",
-          description: "Failed to load users. " + (error as Error).message,
+          description: "Failed to load users. " + (err as Error).message,
           variant: "destructive",
         });
+        throw err;
       }
     }
   });
