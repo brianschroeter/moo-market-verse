@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { FeaturedContent, FeaturedProduct, Announcement } from "./types/featuredContent-types";
 
@@ -19,6 +18,7 @@ export const getFeaturedContent = async (): Promise<FeaturedContent[]> => {
     description: product.description,
     image_url: product.image_url,
     link: product.product_url,
+    featured: product.featured ?? false,
     created_at: product.created_at,
     updated_at: product.updated_at
   })) || [];
@@ -70,6 +70,7 @@ export interface CreateFeaturedContentParams {
   description: string;
   image_url: string;
   link: string;
+  featured?: boolean;
 }
 
 export const createFeaturedContent = async (content: CreateFeaturedContentParams): Promise<FeaturedContent> => {
@@ -79,7 +80,8 @@ export const createFeaturedContent = async (content: CreateFeaturedContentParams
       name: content.name,
       description: content.description,
       image_url: content.image_url,
-      product_url: content.link
+      product_url: content.link,
+      featured: content.featured ?? false
     })
     .select()
     .single();
@@ -95,6 +97,49 @@ export const createFeaturedContent = async (content: CreateFeaturedContentParams
     description: data.description,
     image_url: data.image_url,
     link: data.product_url,
+    featured: data.featured,
+    created_at: data.created_at,
+    updated_at: data.updated_at
+  };
+};
+
+export interface UpdateFeaturedContentParams {
+  id: string;
+  name?: string;
+  description?: string;
+  image_url?: string;
+  link?: string;
+  featured?: boolean;
+}
+
+export const updateFeaturedContent = async (content: UpdateFeaturedContentParams): Promise<FeaturedContent> => {
+  const { id, ...updateData } = content;
+  
+  const dbUpdateData: { [key: string]: any } = { ...updateData };
+  if (updateData.link !== undefined) {
+      dbUpdateData.product_url = updateData.link;
+      delete dbUpdateData.link;
+  }
+
+  const { data, error } = await supabase
+    .from('featured_products')
+    .update(dbUpdateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating featured content:", error);
+    throw error;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    description: data.description,
+    image_url: data.image_url,
+    link: data.product_url,
+    featured: data.featured,
     created_at: data.created_at,
     updated_at: data.updated_at
   };
@@ -136,6 +181,60 @@ export const updateFeaturedProductStatus = async (id: string, featured: boolean)
     
   if (error) {
     console.error("Error updating product featured status:", error);
+    throw error;
+  }
+};
+
+// --- Announcement Functions --- 
+
+// Get ALL announcements (for admin)
+export const getAnnouncements = async (): Promise<Announcement[]> => {
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*')
+    .order('created_at', { ascending: false });
+    
+  if (error) {
+    console.error("Error fetching all announcements:", error);
+    throw error;
+  }
+  
+  return data || [];
+};
+
+// Type for Update Payload
+export interface UpdateAnnouncementParams extends Partial<Omit<Announcement, 'id' | 'created_at' | 'updated_at'>> {
+  id: string; // ID is required to know which one to update
+}
+
+// Update announcement function
+export const updateAnnouncement = async (params: UpdateAnnouncementParams): Promise<Announcement> => {
+  const { id, ...updateData } = params;
+  
+  const { data, error } = await supabase
+    .from('announcements')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+    
+  if (error) {
+    console.error("Error updating announcement:", error);
+    throw error;
+  }
+  
+  return data;
+};
+
+// Delete announcement function
+export const deleteAnnouncement = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('announcements')
+    .delete()
+    .eq('id', id);
+    
+  if (error) {
+    console.error("Error deleting announcement:", error);
     throw error;
   }
 };

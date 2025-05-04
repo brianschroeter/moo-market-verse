@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -18,6 +17,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminFeaturedContent from "./pages/admin/AdminFeaturedContent";
 import AdminTickets from "./pages/admin/AdminTickets";
 import AdminNavigation from "./pages/admin/AdminNavigation";
+import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -84,6 +84,11 @@ const App = () => {
                 <Route path="/admin/navigation" element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminNavigation />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/announcements" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminAnnouncements />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<NotFound />} />

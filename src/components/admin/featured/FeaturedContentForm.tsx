@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,41 +10,54 @@ import { createFeaturedContent } from "@/services/featuredContentService";
 import { v4 as uuidv4 } from 'uuid';
 import { uploadImage } from "@/services/imageUploadService";
 import { useAuth } from "@/context/AuthContext";
+import { FeaturedContent } from "@/services/types/featuredContent-types";
+import { CreateFeaturedContentParams } from "@/services/featuredContentService";
+import { Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
-const FeaturedContentForm: React.FC = () => {
+interface FeaturedContentFormProps {
+  initialData?: FeaturedContent | null;
+  onSubmit: (data: CreateFeaturedContentParams) => void;
+  isSubmitting: boolean;
+  onCancel: () => void;
+}
+
+const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({ 
+  initialData, 
+  onSubmit, 
+  isSubmitting, 
+  onCancel 
+}) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [link, setLink] = useState("");
+  const [featured, setFeatured] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { session } = useAuth();
 
-  const createProductMutation = useMutation({
-    mutationFn: createFeaturedContent,
-    onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ["featuredContent"]});
+  useEffect(() => {
+    if (initialData) {
+      setName(initialData.name);
+      setDescription(initialData.description);
+      setImageUrl(initialData.image_url);
+      setLink(initialData.link);
+      setFeatured(initialData.featured);
+      setImageFile(null);
+    } else {
       setName("");
       setDescription("");
       setImageUrl("");
       setLink("");
+      setFeatured(false);
       setImageFile(null);
-      toast({
-        title: "Success",
-        description: "Product added successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add product",
-        variant: "destructive",
-      });
-    },
-  });
+    }
+  }, [initialData]);
 
   const handleImageUpload = async (file: File) => {
+    setIsUploading(true);
     try {
       if (!session?.user?.id) {
         toast({
@@ -79,6 +91,8 @@ const FeaturedContentForm: React.FC = () => {
         description: error.message || "Failed to upload image",
         variant: "destructive",
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -94,11 +108,12 @@ const FeaturedContentForm: React.FC = () => {
       return;
     }
 
-    createProductMutation.mutate({
+    onSubmit({
       name,
       description,
       image_url: imageUrl,
       link,
+      featured,
     });
   };
 
@@ -111,66 +126,97 @@ const FeaturedContentForm: React.FC = () => {
   };
 
   return (
-    <Card className="lolcow-card">
-      <CardHeader>
-        <CardTitle>Add New Product</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              type="text"
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Product Name"
-            />
-          </div>
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Product Description"
-            />
-          </div>
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="image">Image Upload</Label>
-            <Input
-              type="file"
-              id="image"
-              accept="image/*"
-              onChange={handleImageChange}
-            />
-            {imageUrl && (
-              <img
-                src={imageUrl}
-                alt="Uploaded"
-                className="w-24 h-24 object-cover rounded mt-2"
-              />
-            )}
-          </div>
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="link">Link</Label>
-            <Input
-              type="url"
-              id="link"
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              placeholder="Product Link"
-            />
-          </div>
-          <Button 
-            type="submit" 
-            disabled={createProductMutation.isPending}
-          >
-            {createProductMutation.isPending ? "Adding..." : "Add Product"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <form onSubmit={handleSubmit} className="space-y-4 py-4">
+      <div className="grid w-full items-center gap-1.5">
+        <Label htmlFor="name" className="text-gray-300">Name</Label>
+        <Input
+          type="text"
+          id="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Product Name"
+          className="bg-lolcow-lightgray/30 text-white border-lolcow-lightgray focus:ring-lolcow-blue"
+          required
+        />
+      </div>
+      <div className="grid w-full items-center gap-1.5">
+        <Label htmlFor="description" className="text-gray-300">Description</Label>
+        <Textarea
+          id="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Product Description"
+          className="bg-lolcow-lightgray/30 text-white border-lolcow-lightgray focus:ring-lolcow-blue"
+          required
+        />
+      </div>
+      <div className="grid w-full items-center gap-1.5">
+        <Label htmlFor="image" className="text-gray-300">Image Upload</Label>
+        <div className="flex items-center space-x-2">
+          <Input
+            type="file"
+            id="image"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="flex-grow bg-lolcow-lightgray/30 text-white border-lolcow-lightgray file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-lolcow-blue file:text-white hover:file:bg-lolcow-blue/90"
+            disabled={isUploading}
+          />
+          {isUploading && <Loader2 className="h-5 w-5 animate-spin text-lolcow-blue" />}
+        </div>
+        {imageUrl && (
+          <img
+            src={imageUrl}
+            alt="Uploaded preview"
+            className="w-24 h-24 object-cover rounded mt-2 border border-lolcow-lightgray"
+          />
+        )}
+        <input type="hidden" value={imageUrl} required />
+      </div>
+      <div className="grid w-full items-center gap-1.5">
+        <Label htmlFor="link" className="text-gray-300">Link</Label>
+        <Input
+          type="url"
+          id="link"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          placeholder="https://example.com"
+          className="bg-lolcow-lightgray/30 text-white border-lolcow-lightgray focus:ring-lolcow-blue"
+          required
+        />
+      </div>
+      <div className="flex items-center space-x-2 pt-2">
+        <Checkbox 
+          id="featured"
+          checked={featured}
+          onCheckedChange={(checked) => setFeatured(Boolean(checked))}
+          className="border-gray-500 data-[state=checked]:bg-lolcow-blue data-[state=checked]:border-lolcow-blue"
+        />
+        <Label 
+          htmlFor="featured" 
+          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-300"
+        >
+          Feature this content?
+        </Label>
+      </div>
+      <div className="flex justify-end space-x-3 pt-4">
+        <Button 
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isSubmitting || isUploading}
+        >
+          Cancel
+        </Button>
+        <Button 
+          type="submit"
+          disabled={isSubmitting || isUploading || !imageUrl}
+          className="bg-lolcow-blue hover:bg-lolcow-blue/90"
+        >
+          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          {isSubmitting ? (initialData ? 'Updating...' : 'Adding...') : (initialData ? 'Update Product' : 'Add Product')}
+        </Button>
+      </div>
+    </form>
   );
 };
 

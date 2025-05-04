@@ -12,9 +12,9 @@ const AdminNavbar: React.FC = () => {
           <div className="flex items-center space-x-4">
             <Link to="/" className="flex items-center space-x-2">
               <img
-                src="/lovable-uploads/bc7a4d90-6d79-44cf-9581-c106f198164b.png"
+                src="/lovable-uploads/logo.png"
                 alt="LolCow Logo"
-                className="h-12 w-12"
+                className="w-12"
               />
               <div className="text-2xl font-fredoka">
                 <span className="text-lolcow-blue">LOL</span>

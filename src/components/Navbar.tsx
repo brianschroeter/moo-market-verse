@@ -1,15 +1,34 @@
-
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, LogOut, LogIn, Shield } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { getMenuItems, MenuItem } from "@/services/menu/menu.service";
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, isAdmin, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const { data: menuItems = [], isLoading: isLoadingMenuItems } = useQuery<MenuItem[]>({
+    queryKey: ["menuItems"],
+    queryFn: getMenuItems,
+  });
+
+  const baseNavStructure = [
+    { key: "home", label: "Home", path: "/" },
+    { key: "schedule", label: "Schedule", path: "/schedule" },
+    { key: "leaderboard", label: "Leaderboard", path: "/leaderboard" },
+    { key: "profile", label: "Profile", path: "/profile" },
+    { key: "support", label: "Support", path: "/support" },
+  ];
+
+  const enabledNavItems = baseNavStructure.filter(item => {
+    const dbItem = menuItems.find(db => db.item_key === item.key);
+    return !dbItem || dbItem.is_enabled;
+  });
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -60,21 +79,13 @@ const Navbar: React.FC = () => {
           {/* Desktop navigation links */}
           <div className="hidden md:block">
             <div className="flex items-center space-x-6">
-              <Link to="/" className="nav-link">
-                Home
-              </Link>
-              <Link to="/schedule" className="nav-link">
-                Schedule
-              </Link>
-              <Link to="/leaderboard" className="nav-link">
-                Leaderboard
-              </Link>
-              <Link to="/profile" className="nav-link">
-                Profile
-              </Link>
-              <Link to="/support" className="nav-link">
-                Support
-              </Link>
+              {/* Map over enabled items */}
+              {enabledNavItems.map(item => (
+                <Link key={item.key} to={item.path} className="nav-link">
+                  {item.label}
+                </Link>
+              ))}
+              {/* Keep Admin link separate as it's based on role, not menu_items table */}
               {isAdmin && (
                 <Link to="/admin/users" className="nav-link flex items-center">
                   <Shield className="h-4 w-4 mr-1" />
@@ -121,41 +132,18 @@ const Navbar: React.FC = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-lolcow-darkgray border-t border-lolcow-lightgray">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <Link
-              to="/"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
-              onClick={toggleMenu}
-            >
-              Home
-            </Link>
-            <Link
-              to="/schedule"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
-              onClick={toggleMenu}
-            >
-              Schedule
-            </Link>
-            <Link
-              to="/leaderboard"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
-              onClick={toggleMenu}
-            >
-              Leaderboard
-            </Link>
-            <Link
-              to="/profile"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
-              onClick={toggleMenu}
-            >
-              Profile
-            </Link>
-            <Link
-              to="/support"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
-              onClick={toggleMenu}
-            >
-              Support
-            </Link>
+            {/* Map over enabled items */}
+            {enabledNavItems.map(item => (
+              <Link
+                key={item.key}
+                to={item.path}
+                className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
+                onClick={toggleMenu}
+              >
+                {item.label}
+              </Link>
+            ))}
+            {/* Keep Admin link separate */}
             {isAdmin && (
               <Link
                 to="/admin/users"
@@ -165,6 +153,7 @@ const Navbar: React.FC = () => {
                 Admin
               </Link>
             )}
+            {/* Keep Auth button separate */}
             <button
               onClick={() => {
                 handleAuthAction();
