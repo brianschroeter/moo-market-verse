@@ -13,9 +13,9 @@ const ProfileHeader: React.FC = () => {
 
   const getDiscordAvatarUrl = () => {
     if (profile.discord_avatar) {
-      return `https://cdn.discordapp.com/avatars/${profile.discord_id}/${profile.discord_avatar}.png`;
+      return `https://cdn.discordapp.com/avatars/${profile.discord_id}/${profile.discord_avatar}.png?size=128`;
     }
-    return "https://via.placeholder.com/40";
+    return "https://via.placeholder.com/128";
   };
 
   const formatJoinDate = () => {
@@ -33,7 +33,11 @@ const ProfileHeader: React.FC = () => {
         {/* Avatar */}
         <div className="relative">
           <Avatar className="w-32 h-32 border-4 border-lolcow-blue">
-            <AvatarImage src={getDiscordAvatarUrl()} alt={profile.discord_username} />
+            <AvatarImage 
+              src={getDiscordAvatarUrl()} 
+              alt={profile.discord_username}
+              className="object-cover"
+            />
             <AvatarFallback className="bg-lolcow-darkgray text-white text-4xl">
               {profile.discord_username.charAt(0).toUpperCase()}
             </AvatarFallback>

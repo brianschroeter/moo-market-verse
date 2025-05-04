@@ -1,5 +1,6 @@
 
 import React from "react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { YouTubeConnection } from "@/services/authService";
 
 interface YouTubeConnectionCardProps {
@@ -9,11 +10,15 @@ interface YouTubeConnectionCardProps {
 const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }) => {
   return (
     <div className="flex items-center p-3 bg-lolcow-lightgray rounded-lg">
-      <img 
-        src={account.youtube_avatar || "https://via.placeholder.com/40"} 
-        alt={account.youtube_channel_name} 
-        className="w-10 h-10 rounded-full mr-3"
-      />
+      <Avatar className="h-10 w-10 mr-3">
+        <AvatarImage 
+          src={account.youtube_avatar || `https://i.pravatar.cc/40?u=${account.youtube_channel_id}`} 
+          alt={account.youtube_channel_name} 
+        />
+        <AvatarFallback className="bg-gray-700 text-white">
+          {account.youtube_channel_name.substring(0, 1).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
       <div className="flex-grow">
         <p className="text-white">{account.youtube_channel_name}</p>
         <p className="text-sm text-gray-400">{account.youtube_channel_id}</p>

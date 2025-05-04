@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 
@@ -53,6 +54,18 @@ export interface DiscordConnection {
   access_token?: string;
 }
 
+export interface StoredDiscordConnection {
+  id: string;
+  user_id: string;
+  connection_id: string;
+  connection_type: string;
+  connection_name: string;
+  connection_verified: boolean | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const signInWithDiscord = async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "discord",
@@ -95,7 +108,28 @@ export const fetchAndSyncDiscordConnections = async () => {
     const connections: DiscordConnection[] = await response.json();
     console.log("Fetched Discord connections:", connections);
     
-    // Filter for YouTube connections
+    // Store all connections in the discord_connections table
+    for (const conn of connections) {
+      // Upsert the connection data
+      const { error: upsertError } = await supabase
+        .from('discord_connections')
+        .upsert({
+          user_id: session.user.id,
+          connection_id: conn.id,
+          connection_type: conn.type,
+          connection_name: conn.name,
+          connection_verified: conn.verified,
+          avatar_url: null // Discord API doesn't provide avatars for connections directly
+        }, {
+          onConflict: 'user_id, connection_id, connection_type'
+        });
+        
+      if (upsertError) {
+        console.error(`Error upserting ${conn.type} connection:`, upsertError);
+      }
+    }
+    
+    // Filter for YouTube connections and store them in the youtube_connections table
     const youtubeConnections = connections.filter(conn => conn.type === 'youtube');
     
     if (youtubeConnections.length === 0) {
@@ -104,10 +138,8 @@ export const fetchAndSyncDiscordConnections = async () => {
     }
     
     // For each YouTube connection, store in database
-    const storedConnections: YouTubeConnection[] = []; // Initialize an empty array, but we won't use it directly from upsert results
-    
     for (const conn of youtubeConnections) {
-      // Upsert the connection data. We don't need the return value here.
+      // Upsert the connection data
       const { error: upsertError } = await supabase
         .from('youtube_connections')
         .upsert({
@@ -115,14 +147,11 @@ export const fetchAndSyncDiscordConnections = async () => {
           youtube_channel_id: conn.id,
           youtube_channel_name: conn.name,
           is_verified: conn.verified
-          // youtube_avatar can potentially be fetched here if Discord provides it
         }, {
-          onConflict: 'user_id, youtube_channel_id',
-          // returning: 'minimal' // Ensures data is null, reducing payload
+          onConflict: 'user_id, youtube_channel_id'
         });
         
       if (upsertError) {
-        // Log the error but continue trying to upsert others
         console.error("Error upserting YouTube connection:", upsertError);
       }
     }
@@ -135,11 +164,10 @@ export const fetchAndSyncDiscordConnections = async () => {
 
     if (fetchError) {
       console.error("Error fetching updated YouTube connections after sync:", fetchError);
-      return null; // Return null if fetching fails after sync
+      return null;
     }
 
-    console.log("Returning updated connections from DB:", updatedConnections);
-    return updatedConnections || []; // Return the fetched connections or an empty array
+    return updatedConnections || [];
 
   } catch (error) {
     console.error("Error syncing Discord connections:", error);
@@ -196,6 +224,26 @@ export const getYouTubeConnections = async (): Promise<YouTubeConnection[]> => {
   return data as YouTubeConnection[];
 };
 
+export const getDiscordConnections = async (): Promise<StoredDiscordConnection[]> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.user) {
+    return [];
+  }
+  
+  const { data, error } = await supabase
+    .from("discord_connections")
+    .select("*")
+    .eq("user_id", session.user.id);
+  
+  if (error) {
+    console.error("Error fetching Discord connections:", error);
+    return [];
+  }
+  
+  return data as StoredDiscordConnection[];
+};
+
 export const getDiscordGuilds = async (): Promise<DiscordGuild[]> => {
   const { data: { session } } = await supabase.auth.getSession();
   
@@ -223,7 +271,7 @@ export const getYouTubeMemberships = async (): Promise<YouTubeMembership[]> => {
     return [];
   }
   
-  // Fix: Fix the RPC call by using it correctly
+  // Get user's YouTube connections
   const { data: userConnections } = await supabase
     .from('youtube_connections')
     .select('id')

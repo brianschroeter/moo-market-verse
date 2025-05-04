@@ -9,6 +9,50 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      discord_connections: {
+        Row: {
+          avatar_url: string | null
+          connection_id: string
+          connection_name: string
+          connection_type: string
+          connection_verified: boolean | null
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          connection_id: string
+          connection_name: string
+          connection_type: string
+          connection_verified?: boolean | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          connection_id?: string
+          connection_name?: string
+          connection_type?: string
+          connection_verified?: boolean | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discord_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discord_guilds: {
         Row: {
           guild_id: string

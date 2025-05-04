@@ -1,13 +1,40 @@
 
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Menu, X, LogOut, LogIn } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleAuthAction = async () => {
+    if (user) {
+      try {
+        await signOut();
+        toast({
+          title: "Logged out",
+          description: "You have been successfully logged out",
+        });
+        navigate('/');
+      } catch (error) {
+        console.error('Error signing out:', error);
+        toast({
+          title: "Error",
+          description: "Failed to sign out. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      navigate('/login');
+    }
   };
 
   return (
@@ -53,9 +80,19 @@ const Navbar: React.FC = () => {
 
           {/* Right side - Auth button */}
           <div className="flex items-center space-x-4">
-            <Link to="/login" className="btn-primary">
-              Login
-            </Link>
+            <button onClick={handleAuthAction} className="btn-primary flex items-center space-x-2">
+              {user ? (
+                <>
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="h-4 w-4" />
+                  <span>Login</span>
+                </>
+              )}
+            </button>
 
             {/* Mobile menu button */}
             <div className="md:hidden">
@@ -113,13 +150,15 @@ const Navbar: React.FC = () => {
             >
               Support
             </Link>
-            <Link
-              to="/login"
-              className="block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
-              onClick={toggleMenu}
+            <button
+              onClick={() => {
+                handleAuthAction();
+                toggleMenu();
+              }}
+              className="w-full text-left block px-3 py-2 rounded-md text-base font-medium hover:text-lolcow-blue"
             >
-              Login
-            </Link>
+              {user ? "Logout" : "Login"}
+            </button>
           </div>
         </div>
       )}
