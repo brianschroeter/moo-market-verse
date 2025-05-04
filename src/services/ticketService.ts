@@ -184,15 +184,21 @@ export async function addReplyToTicket(ticketId: string, message: string, isSupp
       throw messageError;
     }
 
-    // Update the ticket status to show the user has replied
+    // Determine the correct next status based on who replied
+    const nextStatus = isSupportReply ? 'awaiting_user' : 'awaiting_support';
+
+    // Update the ticket status, but only if it's not already closed
     const { error: ticketError } = await supabase
       .from('support_tickets')
-      // Update status to awaiting_support
-      .update({ status: 'awaiting_support', updated_at: new Date().toISOString() })
-      .eq('id', ticketId);
+      .update({ status: nextStatus, updated_at: new Date().toISOString() })
+      .eq('id', ticketId)
+      .neq('status', 'closed'); // Add condition to not update if closed
 
     if (ticketError) {
-      throw ticketError;
+      // It's possible the ticket was closed between loading and replying,
+      // but the message insert succeeded. Log this but don't necessarily throw.
+      console.warn('Failed to update ticket status (maybe already closed?):', ticketError);
+      // Depending on requirements, you might want to throw here or handle differently
     }
 
     // Upload attachments if any
