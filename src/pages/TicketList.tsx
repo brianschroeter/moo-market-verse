@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -12,15 +11,27 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 
 const TicketStatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  let bgColor = "bg-gray-500";
-  
-  if (status === "open") bgColor = "bg-blue-500";
-  else if (status === "replied") bgColor = "bg-green-500";
-  else if (status === "closed") bgColor = "bg-gray-500";
+  let bgColor = "bg-gray-500"; // Default/Closed
+  let statusText = status.replace('_', ' ').replace(/\\b\\w/g, l => l.toUpperCase());
+
+  switch (status) {
+    case "open":
+      bgColor = "bg-blue-500";
+      break;
+    case "awaiting_support":
+      bgColor = "bg-yellow-500"; // Yellow for awaiting support
+      break;
+    case "awaiting_user":
+      bgColor = "bg-green-500"; // Green for awaiting user
+      break;
+    case "closed":
+      bgColor = "bg-gray-500"; // Gray for closed
+      break;
+  }
   
   return (
     <span className={`px-2 py-1 rounded-full text-xs font-medium ${bgColor}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {statusText}
     </span>
   );
 };

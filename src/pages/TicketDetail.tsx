@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useParams } from "react-router-dom";
 import { FileUp, List } from "lucide-react";
-import { Ticket, TicketMessage, TicketAttachment, fetchTicketById, addReplyToTicket } from "@/services/ticketService";
+import { Ticket, TicketMessage, TicketAttachment, fetchTicketById, addReplyToTicket, closeTicket } from "@/services/ticketService";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -27,6 +27,7 @@ const TicketDetail: React.FC = () => {
   const [reply, setReply] = React.useState("");
   const [files, setFiles] = React.useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isClosing, setIsClosing] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -89,7 +90,7 @@ const TicketDetail: React.FC = () => {
         return { 
           ...prevData, 
           messages: updatedMessages,
-          ticket: { ...prevData.ticket, status: 'replied', updated_at: new Date().toISOString() } 
+          ticket: { ...prevData.ticket, status: 'awaiting_support', updated_at: new Date().toISOString() } 
         };
       });
 
@@ -116,6 +117,24 @@ const TicketDetail: React.FC = () => {
     }
   };
   
+  const handleCloseTicket = async () => {
+    if (!ticketId) return;
+    setIsClosing(true);
+    try {
+      await closeTicket(ticketId);
+      setTicketData(prevData => {
+        if (!prevData) return null;
+        return { ...prevData, ticket: { ...prevData.ticket, status: 'closed', updated_at: new Date().toISOString() } };
+      });
+      toast({ title: "Success", description: "Ticket closed." });
+    } catch (err) {
+      console.error("Error closing ticket:", err);
+      toast({ title: "Error", description: "Failed to close ticket.", variant: "destructive" });
+    } finally {
+      setIsClosing(false);
+    }
+  };
+  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setFiles(Array.from(e.target.files));
@@ -138,6 +157,10 @@ const TicketDetail: React.FC = () => {
     if (bytes < 1024) return bytes + ' bytes';
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
     else return (bytes / 1048576).toFixed(1) + ' MB';
+  };
+
+  const formatStatusText = (status: string): string => {
+    return status.replace('_', ' ').replace(/\\b\\w/g, l => l.toUpperCase());
   };
 
   if (loading) {
@@ -219,10 +242,12 @@ const TicketDetail: React.FC = () => {
             </div>
             <div className="mt-2 sm:mt-0">
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                ticket.status === "open" ? "bg-blue-500" : 
-                ticket.status === "replied" ? "bg-green-500" : "bg-gray-500"
+                ticket.status === 'open' ? 'bg-blue-500' : 
+                ticket.status === 'awaiting_support' ? 'bg-yellow-500' :
+                ticket.status === 'awaiting_user' ? 'bg-green-500' :
+                ticket.status === 'closed' ? 'bg-gray-500' : 'bg-gray-500'
               }`}>
-                {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
+                {formatStatusText(ticket.status)}
               </span>
             </div>
           </div>
@@ -262,8 +287,8 @@ const TicketDetail: React.FC = () => {
             ))}
           </div>
 
-          {ticket.status !== "closed" && (
-            <div className="lolcow-card">
+          {ticket.status !== 'closed' && (
+            <div className="lolcow-card mt-8">
               <h3 className="text-xl font-fredoka text-white mb-4">Add Reply</h3>
               <form onSubmit={handleSubmit}>
                 <div>
@@ -325,12 +350,24 @@ const TicketDetail: React.FC = () => {
                   <Button
                     type="submit"
                     className="bg-lolcow-blue hover:bg-lolcow-blue/80"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !reply.trim()}
                   >
                     {isSubmitting ? "Sending..." : "Send Reply"}
                   </Button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {ticket.status !== 'closed' && (
+            <div className="mt-6 flex justify-end">
+              <Button
+                variant="destructive"
+                onClick={handleCloseTicket}
+                disabled={isClosing}
+              >
+                {isClosing ? "Closing..." : "Close Ticket"}
+              </Button>
             </div>
           )}
         </div>

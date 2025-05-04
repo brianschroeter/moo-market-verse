@@ -184,10 +184,11 @@ export async function addReplyToTicket(ticketId: string, message: string, attach
       throw messageError;
     }
 
-    // Update the ticket status to show there's a new reply
+    // Update the ticket status to show the user has replied
     const { error: ticketError } = await supabase
       .from('support_tickets')
-      .update({ status: 'replied', updated_at: new Date().toISOString() })
+      // Update status to awaiting_support
+      .update({ status: 'awaiting_support', updated_at: new Date().toISOString() })
       .eq('id', ticketId);
 
     if (ticketError) {
@@ -200,6 +201,23 @@ export async function addReplyToTicket(ticketId: string, message: string, attach
     }
   } catch (error) {
     console.error('Error adding reply:', error);
+    throw error;
+  }
+}
+
+// New function to close a ticket
+export async function closeTicket(ticketId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('support_tickets')
+      .update({ status: 'closed', updated_at: new Date().toISOString() })
+      .eq('id', ticketId);
+
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error closing ticket:', error);
     throw error;
   }
 }
