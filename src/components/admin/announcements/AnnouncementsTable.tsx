@@ -19,34 +19,14 @@ interface AnnouncementsTableProps {
   announcements: Announcement[];
   isLoading: boolean;
   onEdit: (announcement: Announcement) => void;
+  onDeleteRequest: (announcement: Announcement) => void;
 }
 
-const AnnouncementsTable: React.FC<AnnouncementsTableProps> = ({ announcements, isLoading, onEdit }) => {
+const AnnouncementsTable: React.FC<AnnouncementsTableProps> = ({ announcements, isLoading, onEdit, onDeleteRequest }) => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteAnnouncement,
-    onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ["announcements"]}); // Use correct queryKey
-      toast({
-        title: "Success",
-        description: "Announcement deleted successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete announcement",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleDelete = (id: string) => {
-     if (window.confirm("Are you sure you want to delete this announcement?")) {
-         deleteMutation.mutate(id);
-     }
+  const handleDelete = (announcement: Announcement) => {
+    onDeleteRequest(announcement);
   };
 
   return (
@@ -114,8 +94,7 @@ const AnnouncementsTable: React.FC<AnnouncementsTableProps> = ({ announcements, 
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleDelete(announcement.id)}
-                        disabled={deleteMutation.isPending}
+                        onClick={() => handleDelete(announcement)}
                       >
                         <Trash className="h-4 w-4" />
                       </Button>

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getFeaturedContent, createFeaturedContent, updateFeaturedContent } from "@/services/featuredContentService";
+import { getFeaturedContent, createFeaturedContent, updateFeaturedContent, deleteFeaturedContent } from "@/services/featuredContentService";
 import { FeaturedContent } from "@/services/types/featuredContent-types";
 import { CreateFeaturedContentParams, UpdateFeaturedContentParams } from "@/services/featuredContentService";
 import FeaturedContentTable from "@/components/admin/featured/FeaturedContentTable";
@@ -10,12 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmationDialog } from '@/components/common/ConfirmationDialog';
 
 const AdminFeaturedContent: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<FeaturedContent | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<FeaturedContent | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const queryKey = ["featuredContent"];
 
   const { data: products = [], isLoading } = useQuery<FeaturedContent[]>({
     queryKey: ["featuredContent"],
@@ -49,6 +54,22 @@ const AdminFeaturedContent: React.FC = () => {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteFeaturedContent,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      toast({ title: "Success", description: "Featured content deleted." });
+      setShowDeleteConfirm(false);
+      setProductToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete content.", variant: 'destructive' });
+    },
+    onSettled: () => {
+        setIsDeleting(false);
+    }
+  });
+
   // --- End Mutations ---
 
   const handleEdit = (product: FeaturedContent) => {
@@ -74,6 +95,17 @@ const AdminFeaturedContent: React.FC = () => {
     }
   };
 
+  const handleDeleteRequest = (product: FeaturedContent) => {
+      setProductToDelete(product);
+      setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+      if (!productToDelete) return;
+      setIsDeleting(true);
+      deleteMutation.mutate(productToDelete.id);
+  };
+
   const isMutating = createMutation.isPending || updateMutation.isPending;
 
   return (
@@ -93,6 +125,7 @@ const AdminFeaturedContent: React.FC = () => {
           products={products}
           isLoading={isLoading}
           onEdit={handleEdit}
+          onDeleteRequest={handleDeleteRequest}
         />
 
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
@@ -114,6 +147,23 @@ const AdminFeaturedContent: React.FC = () => {
             />
           </DialogContent>
         </Dialog>
+
+        <ConfirmationDialog
+            open={showDeleteConfirm}
+            onOpenChange={setShowDeleteConfirm}
+            onConfirm={handleConfirmDelete}
+            isConfirming={isDeleting}
+            title="Confirm Content Deletion"
+            description={
+              <>
+                Are you sure you want to delete the featured content:{' '}
+                <span className="font-semibold text-white">{productToDelete?.name}</span>?
+                This action cannot be undone.
+              </>
+            }
+            confirmText="Delete Content"
+            confirmVariant="destructive"
+          />
       </div>
     </AdminLayout>
   );

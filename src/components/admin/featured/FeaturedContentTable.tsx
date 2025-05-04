@@ -20,32 +20,15 @@ interface FeaturedContentTableProps {
   products: FeaturedContent[];
   isLoading: boolean;
   onEdit: (product: FeaturedContent) => void;
+  onDeleteRequest: (product: FeaturedContent) => void;
 }
 
-const FeaturedContentTable: React.FC<FeaturedContentTableProps> = ({ products, isLoading, onEdit }) => {
+const FeaturedContentTable: React.FC<FeaturedContentTableProps> = ({ products, isLoading, onEdit, onDeleteRequest }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const deleteProductMutation = useMutation({
-    mutationFn: deleteFeaturedContent,
-    onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ["featuredContent"]});
-      toast({
-        title: "Success",
-        description: "Product deleted successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete product",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleDelete = (id: string) => {
-    deleteProductMutation.mutate(id);
+  const handleDelete = (product: FeaturedContent) => {
+    onDeleteRequest(product);
   };
 
   return (
@@ -110,7 +93,7 @@ const FeaturedContentTable: React.FC<FeaturedContentTableProps> = ({ products, i
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleDelete(product.id)}
+                      onClick={() => handleDelete(product)}
                     >
                       <Trash className="h-4 w-4" />
                     </Button>

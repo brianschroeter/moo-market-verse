@@ -15,10 +15,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmationDialog } from '@/components/common/ConfirmationDialog';
 
 const AdminAnnouncements: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -57,8 +61,21 @@ const AdminAnnouncements: React.FC = () => {
     },
   });
 
-  // Note: Delete mutation is handled within the AnnouncementsTable component in this example
-  // If you prefer handling delete here, you'd add a deleteMutation and pass a handler down.
+  const deleteMutation = useMutation({
+    mutationFn: deleteAnnouncement,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      toast({ title: "Success", description: "Announcement deleted." });
+      setShowDeleteConfirm(false);
+      setAnnouncementToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete announcement.", variant: 'destructive' });
+    },
+    onSettled: () => {
+        setIsDeleting(false);
+    }
+  });
 
   // --- End Mutations ---
 
@@ -86,6 +103,17 @@ const AdminAnnouncements: React.FC = () => {
     }
   };
 
+  const handleDeleteRequest = (announcement: Announcement) => {
+      setAnnouncementToDelete(announcement);
+      setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+      if (!announcementToDelete) return;
+      setIsDeleting(true);
+      deleteMutation.mutate(announcementToDelete.id);
+  };
+
   const isMutating = createMutation.isPending || updateMutation.isPending;
 
   return (
@@ -107,6 +135,7 @@ const AdminAnnouncements: React.FC = () => {
           announcements={announcements}
           isLoading={isLoading}
           onEdit={handleEdit}
+          onDeleteRequest={handleDeleteRequest}
         />
 
         {/* Add/Edit Dialog */}
@@ -129,6 +158,24 @@ const AdminAnnouncements: React.FC = () => {
             />
           </DialogContent>
         </Dialog>
+
+        {/* Add Confirmation Dialog for Deletion */}
+         <ConfirmationDialog
+            open={showDeleteConfirm}
+            onOpenChange={setShowDeleteConfirm}
+            onConfirm={handleConfirmDelete}
+            isConfirming={isDeleting}
+            title="Confirm Announcement Deletion"
+            description={
+              <>
+                Are you sure you want to delete the announcement:{' '}
+                <span className="font-semibold text-white">{announcementToDelete?.title}</span>?
+                This action cannot be undone.
+              </>
+            }
+            confirmText="Delete Announcement"
+            confirmVariant="destructive"
+          />
       </div>
     </AdminLayout>
   );

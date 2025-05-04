@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { assignRole, removeRole } from "@/services/roleService";
 import { Input } from "@/components/ui/input";
 import { useSearchParams } from 'react-router-dom';
+import { ConfirmationDialog } from '@/components/common/ConfirmationDialog';
 
 interface UserData {
   id: string;
@@ -793,27 +794,22 @@ const AdminUsers: React.FC = (): ReactNode => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to permanently delete user <span className="font-semibold">{userToDelete?.username}</span>?
-              This action cannot be undone. All associated data (profile, connections, etc.) will be removed.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleConfirmDelete} disabled={isDeleting}>
-              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Confirm Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Replace Delete Confirmation Dialog with reusable component */}
+      <ConfirmationDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        onConfirm={handleConfirmDelete}
+        isConfirming={isDeleting}
+        title="Confirm User Deletion"
+        description={
+          <> {/* Use JSX fragment for dynamic description */}
+            Are you sure you want to permanently delete user <span className="font-semibold text-white">{userToDelete?.username}</span>?
+            This action cannot be undone. All associated data (profile, connections, etc.) will be removed.
+          </>
+        }
+        confirmText="Confirm Delete"
+        confirmVariant="destructive"
+      />
 
     </AdminLayout>
   );
