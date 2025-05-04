@@ -123,9 +123,13 @@ export const fetchAndSyncDiscordConnections = async () => {
       if (error) {
         console.error("Error storing YouTube connection:", error);
       } else if (data) {
-        // Check if data is an array and has at least one element
-        const connection = Array.isArray(data) && data.length > 0 ? data[0] : data;
-        storedConnections.push(connection as YouTubeConnection);
+        // Fix: Type assertion for data before checking if it's an array
+        const dataArray = data as unknown as any[];
+        if (Array.isArray(dataArray) && dataArray.length > 0) {
+          storedConnections.push(dataArray[0] as YouTubeConnection);
+        } else {
+          storedConnections.push(data as YouTubeConnection);
+        }
       }
     }
     
