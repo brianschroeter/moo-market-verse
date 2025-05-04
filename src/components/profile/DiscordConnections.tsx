@@ -8,16 +8,16 @@ import {
   StoredDiscordConnection, 
   getDiscordConnections,
   YouTubeConnection, 
+  YouTubeMembership,
+  getYouTubeConnections,
   getYouTubeMemberships 
 } from "@/services/authService";
-import { YouTubeConnection as YouTubeConnectionFromYoutubeService } from "@/services/youtube/youtubeService";
-import { Membership } from "@/services/authService";
 import { useAuth } from "@/context/AuthContext";
 
 const DiscordConnections: React.FC = () => {
   const [connections, setConnections] = useState<StoredDiscordConnection[]>([]);
-  const [youtubeConnections, setYoutubeConnections] = useState<YouTubeConnectionFromYoutubeService[]>([]);
-  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [youtubeConnections, setYoutubeConnections] = useState<YouTubeConnection[]>([]);
+  const [memberships, setMemberships] = useState<YouTubeMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { profile } = useAuth();
@@ -28,8 +28,8 @@ const DiscordConnections: React.FC = () => {
       try {
         const [discordConnectionData, youtubeConnectionData, membershipData] = await Promise.all([
           getDiscordConnections(),
-          getYouTubeMemberships(),
-          getUserMemberships()
+          getYouTubeConnections(),
+          getYouTubeMemberships()
         ]);
         
         setConnections(discordConnectionData);
