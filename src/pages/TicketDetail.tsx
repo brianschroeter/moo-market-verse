@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -5,11 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useParams } from "react-router-dom";
 import { FileUp, List } from "lucide-react";
-import { Ticket, TicketMessage, TicketAttachment, fetchTicketById, addReplyToTicket, closeTicket } from "@/services/ticketService";
+import { 
+  Ticket, 
+  TicketMessage, 
+  TicketAttachment, 
+  fetchTicketById, 
+  addReplyToTicket, 
+  closeTicket, 
+  getAttachmentUrl 
+} from "@/services/ticket";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Profile } from "@/services/types/auth-types";
+import { Profile } from "@/services/ticket";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
