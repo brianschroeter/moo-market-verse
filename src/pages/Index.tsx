@@ -3,6 +3,7 @@ import React from "react";
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import Footer from "../components/Footer";
+import FeaturedProducts from "../components/FeaturedProducts";
 
 const Index: React.FC = () => {
   return (
@@ -10,6 +11,9 @@ const Index: React.FC = () => {
       <Navbar />
       <main className="flex-grow">
         <Hero />
+        
+        {/* Featured Products section */}
+        <FeaturedProducts />
         
         {/* Discord community section */}
         <section className="py-16 bg-lolcow-black">

@@ -43,6 +43,7 @@ export const fetchActiveProducts = async (): Promise<FeaturedProduct[]> => {
     description: product.description,
     image_url: product.image_url,
     product_url: product.product_url,
+    link: product.product_url, // Adding for backward compatibility
     featured: product.featured,
     created_at: product.created_at,
     updated_at: product.updated_at
@@ -107,6 +108,34 @@ export const deleteFeaturedContent = async (id: string): Promise<void> => {
     
   if (error) {
     console.error("Error deleting featured content:", error);
+    throw error;
+  }
+};
+
+// Add these two functions for managing announcements
+export const createAnnouncement = async (data: Omit<Announcement, 'id' | 'created_at' | 'updated_at'>): Promise<Announcement> => {
+  const { data: result, error } = await supabase
+    .from('announcements')
+    .insert(data)
+    .select()
+    .single();
+    
+  if (error) {
+    console.error("Error creating announcement:", error);
+    throw error;
+  }
+  
+  return result;
+};
+
+export const updateFeaturedProductStatus = async (id: string, featured: boolean): Promise<void> => {
+  const { error } = await supabase
+    .from('featured_products')
+    .update({ featured })
+    .eq('id', id);
+    
+  if (error) {
+    console.error("Error updating product featured status:", error);
     throw error;
   }
 };

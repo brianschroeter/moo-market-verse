@@ -12,6 +12,7 @@ export interface FeaturedContent {
 export interface FeaturedProduct extends Omit<FeaturedContent, 'link'> {
   product_url: string;
   featured?: boolean;
+  link?: string; // Add backward compatibility for components that still use 'link'
 }
 
 export interface Announcement {

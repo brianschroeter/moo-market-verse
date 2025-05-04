@@ -440,6 +440,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_all_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+          created_at: string
+          updated_at: string
+          user_metadata: Json
+        }[]
+      }
       get_guilds_for_user: {
         Args: { user_uuid: string }
         Returns: {

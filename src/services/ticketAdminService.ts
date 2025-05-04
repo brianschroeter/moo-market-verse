@@ -52,8 +52,8 @@ export const getTicketsWithProfile = async (filter?: TicketFilter): Promise<Tick
       profile: {
         discord_username: ticket.profiles.discord_username
       },
-      description: ticket.description || "",
-      priority: (ticket.priority as "low" | "medium" | "high") || "medium"
+      description: ticket.description || "", // Default to empty string if not present
+      priority: (ticket.priority as "low" | "medium" | "high") || "medium" // Default to medium if not present
     })) || [];
     
   } catch (error) {
@@ -94,8 +94,8 @@ export const getTickets = async (filter?: TicketFilter): Promise<Ticket[]> => {
       profile: {
         discord_username: ticket.profiles.discord_username
       },
-      description: ticket.description || "",
-      priority: (ticket.priority as "low" | "medium" | "high") || "medium"
+      description: ticket.description || "", // Default to empty string if not present
+      priority: (ticket.priority as "low" | "medium" | "high") || "medium" // Default to medium if not present
     })) || [];
     
   } catch (error) {
