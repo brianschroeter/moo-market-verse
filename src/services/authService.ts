@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 
@@ -105,35 +104,43 @@ export const fetchAndSyncDiscordConnections = async () => {
     }
     
     // For each YouTube connection, store in database
-    const storedConnections: YouTubeConnection[] = [];
+    const storedConnections: YouTubeConnection[] = []; // Initialize an empty array, but we won't use it directly from upsert results
     
     for (const conn of youtubeConnections) {
-      // Store in database - Fix: Remove 'returning' option which doesn't exist
-      const { data, error } = await supabase
+      // Upsert the connection data. We don't need the return value here.
+      const { error: upsertError } = await supabase
         .from('youtube_connections')
         .upsert({
           user_id: session.user.id,
           youtube_channel_id: conn.id,
           youtube_channel_name: conn.name,
           is_verified: conn.verified
+          // youtube_avatar can potentially be fetched here if Discord provides it
         }, {
-          onConflict: 'user_id, youtube_channel_id'
+          onConflict: 'user_id, youtube_channel_id',
+          // returning: 'minimal' // Ensures data is null, reducing payload
         });
         
-      if (error) {
-        console.error("Error storing YouTube connection:", error);
-      } else if (data) {
-        // Fix: Type assertion for data before checking if it's an array
-        const dataArray = data as unknown as any[];
-        if (Array.isArray(dataArray) && dataArray.length > 0) {
-          storedConnections.push(dataArray[0] as YouTubeConnection);
-        } else {
-          storedConnections.push(data as YouTubeConnection);
-        }
+      if (upsertError) {
+        // Log the error but continue trying to upsert others
+        console.error("Error upserting YouTube connection:", upsertError);
       }
     }
-    
-    return storedConnections;
+
+    // After attempting to upsert all connections, fetch the definitive list from the database
+    const { data: updatedConnections, error: fetchError } = await supabase
+      .from('youtube_connections')
+      .select('*')
+      .eq('user_id', session.user.id);
+
+    if (fetchError) {
+      console.error("Error fetching updated YouTube connections after sync:", fetchError);
+      return null; // Return null if fetching fails after sync
+    }
+
+    console.log("Returning updated connections from DB:", updatedConnections);
+    return updatedConnections || []; // Return the fetched connections or an empty array
+
   } catch (error) {
     console.error("Error syncing Discord connections:", error);
     return null;
