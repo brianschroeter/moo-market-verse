@@ -23,6 +23,7 @@ const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }
   const handleRefreshAvatar = async () => {
     setIsRefreshing(true);
     try {
+      console.log("Refreshing avatar for channel:", localAccount.youtube_channel_id);
       const success = await refreshYouTubeAvatar(localAccount);
       
       if (success) {
