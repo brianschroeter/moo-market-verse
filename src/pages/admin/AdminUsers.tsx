@@ -39,10 +39,10 @@ const AdminUsers: React.FC = (): ReactNode => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Fetch profiles
+      // Fetch profiles - explicitly select discord_id if needed, though '*' should get it.
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*');
+        .select('*, discord_id'); // Ensure discord_id is selected
 
       if (profilesError) {
         throw profilesError;
@@ -70,11 +70,19 @@ const AdminUsers: React.FC = (): ReactNode => {
       const userMap = new Map<string, UserData>();
 
       profiles.forEach(profile => {
-        userMap.set(profile.id, {
+        // Log the profile data for debugging
+        // console.log("Processing profile:", profile);
+
+        // Construct the full avatar URL using discord_id
+        const avatarUrl = profile.discord_avatar && profile.discord_id 
+                        ? `https://cdn.discordapp.com/avatars/${profile.discord_id}/${profile.discord_avatar}.png` 
+                        : null; // Set to null if no avatar hash or discord_id
+
+        userMap.set(profile.id, { // Keep using profile.id (UUID) as the map key
           id: profile.id,
           email: "", // We don't have direct access to this
           username: profile.discord_username || "Unknown",
-          avatar: profile.discord_avatar,
+          avatar: avatarUrl, // Use the correctly constructed URL
           joined: new Date(profile.created_at).toLocaleDateString(),
           connections: [],
           roles: []
