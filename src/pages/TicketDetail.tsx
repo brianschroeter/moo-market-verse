@@ -9,6 +9,7 @@ import { Ticket, TicketMessage, TicketAttachment, fetchTicketById } from "@/serv
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { Profile } from "@/services/types/auth-types";
 
 const TicketDetail: React.FC = () => {
   const { ticketId } = useParams<{ ticketId: string }>();
@@ -17,6 +18,7 @@ const TicketDetail: React.FC = () => {
     ticket: Ticket;
     messages: TicketMessage[];
     attachments: TicketAttachment[];
+    userProfile: Profile | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -148,7 +150,10 @@ const TicketDetail: React.FC = () => {
     );
   }
 
-  const { ticket, messages } = ticketData;
+  const { ticket, messages, userProfile } = ticketData;
+  const userAvatar = userProfile?.discord_id && userProfile?.discord_avatar 
+    ? `https://cdn.discordapp.com/avatars/${userProfile.discord_id}/${userProfile.discord_avatar}.png`
+    : "https://via.placeholder.com/40";
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -187,14 +192,14 @@ const TicketDetail: React.FC = () => {
               >
                 <div className="flex items-start space-x-4">
                   <img 
-                    src={message.from_user ? "https://cdn.discordapp.com/avatars/123456789/abcdef.png" : "https://via.placeholder.com/40"} 
-                    alt={message.from_user ? "User" : "Support Team"} 
+                    src={message.from_user ? userAvatar : "https://via.placeholder.com/40"} 
+                    alt={message.from_user ? (userProfile?.discord_username || "User") : "Support Team"} 
                     className="w-10 h-10 rounded-full"
                   />
                   <div className="flex-1">
                     <div className="flex justify-between">
                       <h3 className="font-medium text-white">
-                        {message.from_user ? "User" : "Support Team"}
+                        {message.from_user ? (userProfile?.discord_username || "User") : "Support Team"}
                         {!message.from_user && (
                           <span className="ml-2 bg-lolcow-blue text-xs px-2 py-0.5 rounded text-white">
                             Staff

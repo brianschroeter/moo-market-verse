@@ -1,7 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { Profile } from "@/services/types/auth-types"; // Corrected import path using alias
 
 export interface Ticket {
   id: string;
@@ -53,6 +53,7 @@ export async function fetchTicketById(ticketId: string): Promise<{
   ticket: Ticket | null;
   messages: TicketMessage[];
   attachments: TicketAttachment[];
+  userProfile: Profile | null;
 }> {
   try {
     // Fetch the ticket
@@ -87,10 +88,28 @@ export async function fetchTicketById(ticketId: string): Promise<{
       throw attachmentsError;
     }
 
+    // Fetch the user profile if ticket exists
+    let userProfile: Profile | null = null;
+    if (ticket?.user_id) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', ticket.user_id)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError);
+        // Don't throw error, just proceed without profile
+      } else {
+        userProfile = profileData;
+      }
+    }
+
     return {
       ticket,
       messages: messages || [],
-      attachments: attachments || []
+      attachments: attachments || [],
+      userProfile
     };
   } catch (error) {
     console.error('Error fetching ticket details:', error);
