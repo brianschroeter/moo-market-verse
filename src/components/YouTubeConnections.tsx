@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -26,9 +26,19 @@ const YouTubeConnections: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   
+  // Add a refreshOperation tracking Map to prevent duplicate refreshes for the same connection
+  const refreshOperations = useRef<Map<string, boolean>>(new Map());
+  // Debounce the initial data fetching
+  const initialFetchDone = useRef<boolean>(false);
+  
   const refreshYouTubeData = useCallback(async (showToast = false) => {
     if (!session?.user?.id) {
         console.log("No user session found for refresh.");
+        return;
+    }
+    
+    if (refreshing) {
+        console.log("Refresh already in progress, skipping.");
         return;
     }
     
@@ -46,9 +56,27 @@ const YouTubeConnections: React.FC = () => {
     try {
         const currentConnections = await getYouTubeConnections();
         
+        // Clear any old refresh operations tracking
+        refreshOperations.current.clear();
+        
         const refreshPromises = currentConnections.map(async (conn) => {
-            console.log(`Refreshing avatar for ${conn.youtube_channel_name} (${conn.youtube_channel_id})`);
+            const channelId = conn.youtube_channel_id;
+            
+            // Skip if this connection is already being refreshed
+            if (refreshOperations.current.get(channelId)) {
+                console.log(`Skipping duplicate refresh for ${conn.youtube_channel_name} (${channelId})`);
+                return conn;
+            }
+            
+            // Mark this connection as being refreshed
+            refreshOperations.current.set(channelId, true);
+            
+            console.log(`Refreshing avatar for ${conn.youtube_channel_name} (${channelId})`);
             const result = await refreshYouTubeAvatar(conn);
+            
+            // Clear refresh flag regardless of result
+            refreshOperations.current.set(channelId, false);
+            
             if (result.success && result.avatarUrl) {
                 console.log(`Successfully refreshed avatar for ${conn.youtube_channel_name}: ${result.avatarUrl}`);
                 return { ...conn, youtube_avatar: result.avatarUrl };
@@ -97,11 +125,15 @@ const YouTubeConnections: React.FC = () => {
         setRefreshing(false);
         setLoading(false);
     }
-  }, [session, toast]);
+  }, [session, toast, refreshing]);
 
   useEffect(() => {
-    setLoading(true);
-    refreshYouTubeData(false);
+    // Prevent duplicate initial data fetching
+    if (!initialFetchDone.current) {
+      initialFetchDone.current = true;
+      setLoading(true);
+      refreshYouTubeData(false);
+    }
   }, [refreshYouTubeData]);
   
   const handleRefreshConnections = () => {

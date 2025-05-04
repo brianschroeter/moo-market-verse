@@ -1,12 +1,23 @@
 import { supabase } from "@/integrations/supabase/client";
 import { DiscordConnection, DiscordGuild, StoredDiscordConnection, YouTubeConnection } from "../types/auth-types";
 
+let discordSyncInProgress = false;
+
 export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnection[] | null> => {
+  // Prevent concurrent sync operations
+  if (discordSyncInProgress) {
+    console.log("Discord sync already in progress, skipping duplicate call");
+    return null;
+  }
+  
+  discordSyncInProgress = true;
+  
   try {
     // First, get the Discord access token from the session
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.provider_token) {
       console.error("No provider token available");
+      discordSyncInProgress = false;
       return null;
     }
 
@@ -47,6 +58,7 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
     if (!response.ok) {
       const errorData = await response.json();
       console.error("Failed to fetch Discord connections:", errorData);
+      discordSyncInProgress = false;
       return null;
     }
 
@@ -115,22 +127,48 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
       }
     }
     
-    // Call Discord API to get guilds
-    const guildsResponse = await fetch('https://discord.com/api/v10/users/@me/guilds', {
-      headers: {
-        Authorization: `Bearer ${session.provider_token}`
-      }
-    });
+    // Implement rate limiting protection and retry for guilds API
+    const fetchGuildsWithRetry = async (retryCount = 0, maxRetries = 3): Promise<any[] | null> => {
+      try {
+        const guildsResponse = await fetch('https://discord.com/api/v10/users/@me/guilds', {
+          headers: {
+            Authorization: `Bearer ${session.provider_token}`
+          }
+        });
 
-    if (!guildsResponse.ok) {
-      const errorData = await guildsResponse.json();
-      console.error("Failed to fetch Discord guilds:", errorData);
-      // Decide if this error should prevent further processing or just be logged
-      // For now, we'll log it and continue syncing connections if possible
-    } else {
-      const guilds: { id: string; name: string; }[] = await guildsResponse.json(); // Assuming basic guild structure
+        if (guildsResponse.status === 429) {
+          // We hit a rate limit
+          const rateLimitData = await guildsResponse.json();
+          const retryAfter = rateLimitData.retry_after || 1;
+          
+          if (retryCount < maxRetries) {
+            console.log(`Rate limited, waiting ${retryAfter}s before retry ${retryCount + 1}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, retryAfter * 1000 + 100));
+            return fetchGuildsWithRetry(retryCount + 1, maxRetries);
+          } else {
+            console.error("Failed to fetch guilds after max retries due to rate limits");
+            return null;
+          }
+        }
+
+        if (!guildsResponse.ok) {
+          const errorData = await guildsResponse.json();
+          console.error("Failed to fetch Discord guilds:", errorData);
+          return null;
+        }
+
+        return await guildsResponse.json();
+      } catch (error) {
+        console.error("Error fetching guilds:", error);
+        return null;
+      }
+    };
+
+    const guilds = await fetchGuildsWithRetry();
+    
+    if (guilds && guilds.length > 0) {
       console.log("Fetched Discord guilds:", guilds);
-      const guildIdsFromApi = new Set(guilds.map(g => g.id));
+      const guildIdsFromApi = new Set(guilds.map((g: any) => g.id));
 
       // Get current guilds from the database for this user
       const { data: existingDbGuilds, error: fetchDbGuildsError } = await supabase
@@ -163,7 +201,7 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
 
       // Upsert the guilds fetched from Discord
       if (guilds.length > 0) {
-        const upsertPayload = guilds.map(guild => ({
+        const upsertPayload = guilds.map((guild: any) => ({
           user_id: session.user.id,
           guild_id: guild.id,
           guild_name: guild.name
@@ -217,6 +255,7 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
 
     if (fetchFinalError) {
       console.error("Error fetching updated YouTube connections after sync:", fetchFinalError);
+      discordSyncInProgress = false;
       return null;
     }
 
@@ -225,6 +264,8 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
   } catch (error) {
     console.error("Error syncing Discord connections:", error);
     return null;
+  } finally {
+    discordSyncInProgress = false;
   }
 };
 

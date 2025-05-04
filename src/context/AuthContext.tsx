@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Profile, getProfile, fetchAndSyncDiscordConnections, signOut as authSignOut } from "@/services/authService";
@@ -27,6 +27,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Add sync status tracking to prevent duplicate operations
+  const syncInProgress = useRef<boolean>(false);
+  const profileFetchInProgress = useRef<boolean>(false);
 
   useEffect(() => {
     // Check for auth errors in URL
@@ -107,9 +111,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // If we have a provider token, sync Discord connections
           if (currentSession.provider_token) {
             await syncDiscordConnections();
-            
-            // After syncing, fetch the profile again to get updated data
-            await fetchProfile(currentSession.user.id);
           }
         }
       } catch (error) {
@@ -137,7 +138,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const syncDiscordConnections = async () => {
+    // Prevent multiple sync operations from running concurrently
+    if (syncInProgress.current) {
+      console.log("Discord connection sync already in progress, skipping duplicate call");
+      return;
+    }
+    
     try {
+      syncInProgress.current = true;
       const connections = await fetchAndSyncDiscordConnections();
       if (connections) {
         console.log("Successfully synced Discord connections:", connections);
@@ -149,15 +157,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Failed to sync your Discord connections. Some features may not work properly.",
         variant: "destructive",
       });
+    } finally {
+      syncInProgress.current = false;
     }
   };
 
   const fetchProfile = async (userId: string) => {
+    // Prevent multiple profile fetches from running concurrently
+    if (profileFetchInProgress.current) {
+      console.log("Profile fetch already in progress, skipping duplicate call");
+      return;
+    }
+    
     try {
+      profileFetchInProgress.current = true;
       const userProfile = await getProfile();
       setProfile(userProfile);
     } catch (error) {
       console.error("Error fetching profile:", error);
+    } finally {
+      profileFetchInProgress.current = false;
     }
   };
 
