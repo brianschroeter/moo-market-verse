@@ -75,7 +75,11 @@ const DiscordConnections: React.FC = () => {
             <p className="text-gray-300">
               Based on your membership roles, you have access to the LolCow Discord server.
             </p>
-            <Button variant="outline" className="mt-3" size="sm" asChild>
+            <Button 
+              className="mt-3 bg-purple-600 hover:bg-purple-700 text-white hover:scale-105 transition-transform duration-200 ease-in-out"
+              size="sm" 
+              asChild
+            >
               <a href="https://discord.gg/lolcow" target="_blank" rel="noopener noreferrer">
                 <i className="fa-brands fa-discord mr-1"></i>
                 Join Server

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -136,7 +135,7 @@ const YouTubeConnections: React.FC = () => {
           size="sm"
           onClick={handleRefreshConnections}
           disabled={refreshing}
-          className="h-8 px-2 lg:px-3"
+          className="h-8 px-2 lg:px-3 hover:text-black"
         >
           <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
           <span className="hidden sm:inline">Refresh</span>
