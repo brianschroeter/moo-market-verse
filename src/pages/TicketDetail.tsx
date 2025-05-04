@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,57 @@ const TicketDetail: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isClosing, setIsClosing] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Pre-process attachments to map them to message IDs
+  const attachmentsByMessageId = useMemo(() => {
+    const map = new Map<string | null, TicketAttachment[]>();
+
+    // Guard against null/undefined ticketData or missing messages/attachments
+    if (!ticketData || !ticketData.messages || ticketData.messages.length === 0 || !ticketData.attachments) {
+      // Handle cases where data isn't fully loaded yet
+      // We can still process attachments that might belong to the initial ticket (message_id: null)
+      (ticketData?.attachments || []).forEach(att => {
+        if (att.message_id === null) {
+            if (!map.has(null)) map.set(null, []);
+             // Temporarily map null-message_id attachments to null key if initial message isn't loaded yet
+            map.get(null)?.push(att); 
+        }
+      });
+      return map; // Return map (might be empty or contain only initial attachments)
+    }
+
+    // Data is loaded, proceed with full mapping
+    const messages = ticketData.messages;
+    const attachments = ticketData.attachments;
+    
+    // Assuming the first message in the sorted list is the initial one
+    const initialMessageId = messages[0].id; 
+
+    // Add attachments associated with the initial message (previously mapped to null)
+    const initialAttachments = map.get(null) || [];
+    if (initialAttachments.length > 0) {
+        map.set(initialMessageId, initialAttachments);
+        map.delete(null); // Clear the temporary null entry
+    }
+
+    attachments.forEach(att => {
+      const key = att.message_id === null ? initialMessageId : att.message_id;
+      
+      // Skip attachments already processed (initial ones)
+      if (att.message_id === null && map.has(initialMessageId)) {
+        // Already handled above
+      } else {
+          if (!map.has(key)) {
+            map.set(key, []);
+          }
+          map.get(key)?.push(att);
+      }
+    });
+
+    console.log('Processed Attachments Map:', map); // Log the created map
+    return map;
+  // Depend on the entire ticketData object
+  }, [ticketData]);
 
   useEffect(() => {
     const loadTicket = async () => {
@@ -226,12 +277,11 @@ const TicketDetail: React.FC = () => {
     );
   }
 
-  const { ticket, messages, attachments, userProfile } = ticketData;
+  // Destructure after the checks and hook calls
+  const { ticket, messages, userProfile } = ticketData; 
   const userAvatar = userProfile?.discord_id && userProfile?.discord_avatar 
     ? `https://cdn.discordapp.com/avatars/${userProfile.discord_id}/${userProfile.discord_avatar}.png`
     : "https://via.placeholder.com/40";
-  
-  console.log('Data for Render:', { messages, attachments });
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -264,11 +314,8 @@ const TicketDetail: React.FC = () => {
 
           <div className="space-y-6 mb-8">
             {messages.map((message, index) => {
-              const messageAttachments = attachments.filter(att => 
-                att.message_id === message.id || (index === 0 && att.message_id === null)
-              );
-              
-              console.log(`Message ${index} (ID: ${message.id}): Found ${messageAttachments.length} attachments`, messageAttachments);
+              // Get attachments for this message from the pre-processed map
+              const messageAttachments = attachmentsByMessageId.get(message.id) || [];
 
               return (
                 <div 
