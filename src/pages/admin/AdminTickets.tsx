@@ -37,13 +37,14 @@ const AdminTickets: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalTickets, setTotalTickets] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const itemsPerPage = 10;
   const { toast } = useToast();
   const navigate = useNavigate();
   
   useEffect(() => {
     fetchTickets();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, statusFilter]);
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -63,6 +64,11 @@ const AdminTickets: React.FC = () => {
       // Add search filter if provided
       if (searchTerm) {
         query = query.ilike('subject', `%${searchTerm}%`);
+      }
+
+      // Add status filter if not "all"
+      if (statusFilter !== "all") {
+        query = query.eq('status', statusFilter);
       }
       
       // Complete the query with ordering and pagination
@@ -99,6 +105,8 @@ const AdminTickets: React.FC = () => {
         return <Badge className="bg-green-500">Open</Badge>;
       case 'awaiting_support':
         return <Badge className="bg-blue-500">Awaiting Support</Badge>;
+      case 'awaiting_user':
+        return <Badge className="bg-yellow-500">Awaiting User</Badge>;
       case 'in_progress':
         return <Badge className="bg-yellow-500">In Progress</Badge>;
       case 'closed':
@@ -229,8 +237,8 @@ const AdminTickets: React.FC = () => {
         <p className="text-gray-400">Manage user support tickets and inquiries</p>
       </div>
 
-      <div className="flex justify-between items-center mb-6">
-        <div className="relative max-w-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+        <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
           <Input
             type="text"
@@ -241,8 +249,52 @@ const AdminTickets: React.FC = () => {
           />
         </div>
         
-        <div className="text-white">
-          Total tickets: {totalTickets}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="text-gray-400 mr-2">Filter:</div>
+          <Button
+            variant={statusFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("all")}
+            className={statusFilter === "all" ? "bg-lolcow-blue" : ""}
+          >
+            All
+          </Button>
+          <Button
+            variant={statusFilter === "open" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("open")}
+            className={statusFilter === "open" ? "bg-green-500" : ""}
+          >
+            Open
+          </Button>
+          <Button
+            variant={statusFilter === "awaiting_support" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("awaiting_support")}
+            className={statusFilter === "awaiting_support" ? "bg-blue-500" : ""}
+          >
+            Awaiting Support
+          </Button>
+          <Button
+            variant={statusFilter === "awaiting_user" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("awaiting_user")}
+            className={statusFilter === "awaiting_user" ? "bg-yellow-500" : ""}
+          >
+            Awaiting User
+          </Button>
+          <Button
+            variant={statusFilter === "closed" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("closed")}
+            className={statusFilter === "closed" ? "bg-gray-500 text-white" : ""}
+          >
+            Closed
+          </Button>
+        </div>
+        
+        <div className="text-white whitespace-nowrap">
+          Total: {totalTickets}
         </div>
       </div>
 
@@ -327,8 +379,8 @@ const AdminTickets: React.FC = () => {
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="h-32 text-center text-gray-400">
-                    {searchTerm 
-                      ? "No tickets found matching your search."
+                    {searchTerm || statusFilter !== "all"
+                      ? "No tickets found matching your criteria."
                       : "No tickets available."}
                   </TableCell>
                 </TableRow>

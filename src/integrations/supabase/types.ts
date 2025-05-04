@@ -85,6 +85,27 @@ export type Database = {
           },
         ]
       }
+      menu_items: {
+        Row: {
+          created_at: string
+          is_enabled: boolean
+          item_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          is_enabled?: boolean
+          item_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          is_enabled?: boolean
+          item_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
