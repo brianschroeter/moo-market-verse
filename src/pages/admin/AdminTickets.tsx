@@ -1,136 +1,125 @@
-
-import React, { useEffect, useState } from "react";
-import AdminLayout from "../../components/AdminLayout";
-import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import AdminLayout from "@/components/AdminLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { getTickets } from "@/services/ticketAdminService";
 import TicketsTable from "@/components/admin/tickets/TicketsTable";
 import TicketFilters from "@/components/admin/tickets/TicketFilters";
 import TicketPagination from "@/components/admin/tickets/TicketPagination";
-import { fetchAdminTickets, updateTicketStatus } from "@/services/ticketAdminService";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 
-export interface Ticket {
+// Define the Ticket type
+export type Ticket = {
   id: string;
-  subject: string;
-  status: string;
   created_at: string;
   updated_at: string;
   user_id: string;
-  profile?: {
-    discord_username: string;
-  };
-}
+  subject: string;
+  description: string;
+  status: "open" | "pending" | "closed";
+  priority: "low" | "medium" | "high";
+};
 
 const AdminTickets: React.FC = () => {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalTickets, setTotalTickets] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const itemsPerPage = 10;
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  
-  useEffect(() => {
-    fetchTickets();
-  }, [currentPage, searchTerm, statusFilter]);
+  const [sorting, setSorting] = useState([]);
+  const [filtering, setFiltering] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
+  const [columnVisibility, setColumnVisibility] = useState({});
+  const [rowSelection, setRowSelection] = useState({});
 
-  const fetchTickets = async () => {
-    setLoading(true);
-    try {
-      const response = await fetchAdminTickets({
-        page: currentPage,
-        itemsPerPage,
-        searchTerm,
-        statusFilter
-      });
-      
-      setTickets(response.data);
-      setTotalTickets(response.count);
-      setTotalPages(Math.ceil(response.count / itemsPerPage));
-    } catch (error) {
-      console.error("Error fetching tickets:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load tickets.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: tickets, isLoading, error } = useQuery<Ticket[]>("tickets", () =>
+    getTickets({ status: statusFilter, priority: priorityFilter })
+  );
 
-  const handleStatusChange = async (ticketId: string, newStatus: string) => {
-    try {
-      await updateTicketStatus(ticketId, newStatus);
+  const columns: ColumnDef<Ticket>[] = [
+    {
+      accessorKey: "id",
+      header: "ID",
+    },
+    {
+      accessorKey: "created_at",
+      header: "Created At",
+    },
+    {
+      accessorKey: "updated_at",
+      header: "Updated At",
+    },
+    {
+      accessorKey: "user_id",
+      header: "User ID",
+    },
+    {
+      accessorKey: "subject",
+      header: "Subject",
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+    },
+    {
+      accessorKey: "priority",
+      header: "Priority",
+    },
+  ];
 
-      // Update the local state
-      setTickets(tickets.map(ticket => {
-        if (ticket.id === ticketId) {
-          return { ...ticket, status: newStatus };
-        }
-        return ticket;
-      }));
+  const table = useReactTable({
+    data: tickets || [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onSortingChange: setSorting,
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+    },
+  });
 
-      toast({
-        title: "Status Updated",
-        description: `Ticket status changed to ${newStatus}.`,
-      });
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update ticket status.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-  };
-
-  const handleStatusFilterChange = (status: string) => {
+  const handleStatusFilterChange = (status: string | null) => {
     setStatusFilter(status);
-    setCurrentPage(1);
+  };
+
+  const handlePriorityFilterChange = (priority: string | null) => {
+    setPriorityFilter(priority);
   };
 
   return (
     <AdminLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-fredoka text-white mb-2">Support Tickets</h1>
-        <p className="text-gray-400">Manage user support tickets and inquiries</p>
-      </div>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-fredoka text-white">Support Tickets</h1>
+          <p className="text-gray-400 mt-1">View and manage support tickets from users</p>
+        </div>
 
-      <TicketFilters 
-        searchTerm={searchTerm}
-        onSearchChange={handleSearchChange}
-        statusFilter={statusFilter}
-        onStatusFilterChange={handleStatusFilterChange}
-        totalTickets={totalTickets}
-      />
-      
-      <div className="lolcow-card overflow-hidden mb-6">
-        <TicketsTable
-          tickets={tickets}
-          loading={loading}
-          searchTerm={searchTerm}
-          statusFilter={statusFilter}
-          onStatusChange={handleStatusChange}
-        />
+        <Card className="lolcow-card">
+          <CardHeader>
+            <CardTitle>All Tickets</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TicketFilters
+              onStatusChange={handleStatusFilterChange}
+              onPriorityChange={handlePriorityFilterChange}
+            />
+            <TicketsTable table={table} />
+            <TicketPagination table={table} />
+          </CardContent>
+        </Card>
       </div>
-      
-      <TicketPagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={handlePageChange}
-      />
     </AdminLayout>
   );
 };
