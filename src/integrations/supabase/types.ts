@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          active: boolean | null
+          content: string
+          created_at: string
+          id: string
+          is_important: boolean | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          content: string
+          created_at?: string
+          id?: string
+          is_important?: boolean | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_important?: boolean | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       discord_connections: {
         Row: {
           avatar_url: string | null
@@ -84,6 +114,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      featured_products: {
+        Row: {
+          created_at: string
+          description: string
+          featured: boolean | null
+          id: string
+          image_url: string
+          name: string
+          product_url: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          featured?: boolean | null
+          id?: string
+          image_url: string
+          name: string
+          product_url: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          featured?: boolean | null
+          id?: string
+          image_url?: string
+          name?: string
+          product_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      menu_items: {
+        Row: {
+          created_at: string
+          is_enabled: boolean
+          item_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          is_enabled?: boolean
+          item_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          is_enabled?: boolean
+          item_key?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

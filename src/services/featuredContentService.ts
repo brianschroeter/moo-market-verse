@@ -24,14 +24,13 @@ export interface Announcement {
 
 export const fetchFeaturedProducts = async (): Promise<FeaturedProduct[]> => {
   try {
-    // Use the generic typed version of from to specify the return type
     const { data, error } = await supabase
       .from('featured_products')
       .select('*')
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data as FeaturedProduct[] || [];
+    return data || [];
   } catch (error) {
     console.error("Error fetching featured products:", error);
     throw error;
@@ -47,7 +46,7 @@ export const fetchActiveProducts = async (): Promise<FeaturedProduct[]> => {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data as FeaturedProduct[] || [];
+    return data || [];
   } catch (error) {
     console.error("Error fetching active products:", error);
     throw error;
@@ -69,7 +68,7 @@ export const createProduct = async (product: Omit<FeaturedProduct, 'id' | 'creat
       .single();
     
     if (error) throw error;
-    return data as FeaturedProduct;
+    return data;
   } catch (error) {
     console.error("Error creating product:", error);
     throw error;

@@ -3,15 +3,23 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Link, useParams } from "react-router-dom";
-import { FileUp, List } from "lucide-react";
-import { Ticket, TicketMessage, TicketAttachment, fetchTicketById, addReplyToTicket, closeTicket } from "@/services/ticketService";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { FileUp, List, User } from "lucide-react";
+import { 
+  Ticket, 
+  TicketMessage, 
+  TicketAttachment, 
+  fetchTicketById, 
+  addReplyToTicket, 
+  closeTicket 
+} from "@/services/ticket";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Profile } from "@/services/types/auth-types";
+import { Profile } from "@/services/ticket";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 
 // Helper to get public URL for Supabase Storage
 const getAttachmentUrl = (filePath: string): string => {
@@ -23,6 +31,7 @@ const TicketDetail: React.FC = () => {
   const { ticketId } = useParams<{ ticketId: string }>();
   const { toast } = useToast();
   const { user, isAdmin, profile: currentUserProfile } = useAuth();
+  const navigate = useNavigate();
   const [ticketData, setTicketData] = useState<{
     ticket: Ticket;
     messages: TicketMessage[];
@@ -243,13 +252,42 @@ const TicketDetail: React.FC = () => {
   };
   
   const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + ' bytes';
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    else return (bytes / 1048576).toFixed(1) + ' MB';
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const formatStatusText = (status: string): string => {
-    return status.replace('_', ' ').replace(/\\b\\w/g, l => l.toUpperCase());
+    switch (status) {
+      case 'open': return 'Open';
+      case 'awaiting_support': return 'Awaiting Support Reply';
+      case 'awaiting_user': return 'Awaiting Your Reply';
+      case 'in_progress': return 'In Progress';
+      case 'closed': return 'Closed';
+      default: return status;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'open':
+        // Use default variant with custom green background/text for success
+        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30">Open</Badge>;
+      case 'awaiting_support':
+        // Use secondary variant for info-like status
+        return <Badge variant="secondary">Awaiting Support</Badge>;
+      case 'awaiting_user':
+        // Use default variant with custom yellow background/text for warning
+        return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30">Awaiting User</Badge>;
+      case 'in_progress':
+        return <Badge variant="secondary">In Progress</Badge>;
+      case 'closed':
+        return <Badge variant="destructive">Closed</Badge>;
+      default:
+        return <Badge>{status}</Badge>;
+    }
   };
 
   if (loading) {
@@ -343,6 +381,59 @@ const TicketDetail: React.FC = () => {
               </span>
             </div>
           </div>
+
+          {/* Ticket Header */}
+          <div className="mb-6 p-6 lolcow-card rounded-lg">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+              <h1 className="text-2xl sm:text-3xl font-fredoka text-white mb-2 sm:mb-0 truncate mr-4">
+                {ticket.subject}
+              </h1>
+              {getStatusBadge(ticket.status)}
+            </div>
+            <div className="flex flex-wrap text-sm text-gray-400 gap-x-4 gap-y-1">
+              <span>Ticket ID: <span className="font-mono">{ticket.id}</span></span>
+              <span>Created: {format(new Date(ticket.created_at), 'PPP p')}</span>
+              <span>Last Update: {format(new Date(ticket.updated_at), 'PPP p')}</span>
+              {userProfile && (
+                 <span>
+                   User: {userProfile.discord_username || userProfile.id}
+                   {isAdmin && <span className="font-mono text-xs ml-1">({userProfile.id})</span>}
+                 </span>
+              )}
+            </div>
+          </div>
+
+          {/* Admin User Info Box */}
+          {isAdmin && userProfile && (
+            <div className="mb-6 p-4 lolcow-card rounded-lg border border-lolcow-blue/30">
+               <h2 className="text-lg font-semibold text-lolcow-yellow mb-3 flex items-center">
+                 <User className="w-5 h-5 mr-2"/> User Information
+               </h2>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                 <div>
+                   <span className="text-gray-400">Discord Name: </span>
+                   <span className="text-white">{userProfile.discord_username || 'N/A'}</span>
+                 </div>
+                 <div>
+                   <span className="text-gray-400">Discord ID: </span>
+                   <span className="text-white font-mono">{userProfile.discord_id || 'N/A'}</span>
+                 </div>
+                 <div>
+                   <span className="text-gray-400">User Profile ID: </span>
+                   <span className="text-white font-mono">{userProfile.id}</span>
+                 </div>
+                 <div className="md:col-span-2 mt-2">
+                   <Button
+                     variant="link"
+                     className="p-0 h-auto text-lolcow-blue hover:text-lolcow-yellow"
+                     onClick={() => navigate(`/admin/users?userId=${userProfile?.id}`)}
+                   >
+                     View Full Profile (Connections, Guilds, etc.)
+                   </Button>
+                 </div>
+               </div>
+            </div>
+          )}
 
           <div className="space-y-6 mb-8">
             {messages.map((message, index) => {

@@ -2,12 +2,13 @@ import React, { useState, useEffect, ReactNode } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Loader2, Server, Search, Trash2 } from "lucide-react";
+import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { assignRole, removeRole } from "@/services/roleService";
 import { Input } from "@/components/ui/input";
+import { useSearchParams } from 'react-router-dom';
 
 interface UserData {
   id: string;
@@ -41,6 +42,7 @@ const AdminUsers: React.FC = (): ReactNode => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // State for Guilds Dialog
   const [showGuildsDialog, setShowGuildsDialog] = useState(false);
@@ -55,13 +57,25 @@ const AdminUsers: React.FC = (): ReactNode => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+    // Clear search term if a specific userId is requested via URL
+    const userIdFromUrl = searchParams.get('userId');
+    if (userIdFromUrl) {
+      setSearchTerm(""); // Clear any manual search
+    }
+  }, [searchParams]);
 
   useEffect(() => {
-    // Filter users based on search term
-    if (!searchTerm.trim()) {
+    const userIdFromUrl = searchParams.get('userId');
+
+    // Filter users based on URL param OR search term
+    if (userIdFromUrl) {
+      // If userId is in URL, filter ONLY by that ID
+      setFilteredUsers(users.filter(user => user.id === userIdFromUrl));
+    } else if (!searchTerm.trim()) {
+      // If no URL param and no search term, show all
       setFilteredUsers(users);
     } else {
+      // If no URL param, filter by search term
       const lowercaseSearch = searchTerm.toLowerCase();
       setFilteredUsers(users.filter(user => 
         user.username.toLowerCase().includes(lowercaseSearch) || 
@@ -71,7 +85,7 @@ const AdminUsers: React.FC = (): ReactNode => {
         )
       ));
     }
-  }, [searchTerm, users]);
+  }, [searchTerm, users, searchParams]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -480,8 +494,8 @@ const AdminUsers: React.FC = (): ReactNode => {
               <TableRow className="border-b border-lolcow-lightgray">
                 <TableHead className="text-gray-300">User</TableHead>
                 <TableHead className="text-gray-300">Connections</TableHead>
-                <TableHead className="text-gray-300">Role</TableHead>
                 <TableHead className="text-gray-300">Guilds</TableHead>
+                <TableHead className="text-gray-300">Roles</TableHead>
                 <TableHead className="text-gray-300">Joined</TableHead>
                 <TableHead className="text-gray-300 text-right">Actions</TableHead>
               </TableRow>
@@ -526,6 +540,20 @@ const AdminUsers: React.FC = (): ReactNode => {
                     </div>
                   </TableCell>
                   <TableCell>
+                    {/* Display Guild Count - Make it clickable */}
+                    {(user.guild_count ?? 0) > 0 ? (
+                      <Button 
+                        variant="link"
+                        className="text-lolcow-blue p-0 h-auto hover:underline"
+                        onClick={() => handleShowGuilds(user)}
+                      >
+                         {user.guild_count}
+                      </Button>
+                    ) : (
+                      <div className="text-gray-400">0</div>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <div className="space-x-1">
                       {user.roles.length > 0 ? (
                         user.roles.map((role, index) => {
@@ -543,20 +571,6 @@ const AdminUsers: React.FC = (): ReactNode => {
                         <span className="text-gray-400">No roles</span>
                       )}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    {/* Display Guild Count - Make it clickable */}
-                    {(user.guild_count ?? 0) > 0 ? (
-                      <Button 
-                        variant="link"
-                        className="text-lolcow-blue p-0 h-auto hover:underline"
-                        onClick={() => handleShowGuilds(user)}
-                      >
-                         {user.guild_count}
-                      </Button>
-                    ) : (
-                      <div className="text-gray-400">0</div>
-                    )}
                   </TableCell>
                   <TableCell className="text-gray-300">{user.joined}</TableCell>
                   <TableCell className="text-right">
