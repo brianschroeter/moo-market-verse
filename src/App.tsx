@@ -16,6 +16,8 @@ import TicketList from "./pages/TicketList";
 import TicketDetail from "./pages/TicketDetail";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminFeaturedContent from "./pages/admin/AdminFeaturedContent";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // Create a new client for every render - this ensures proper React hooks context
 const App = () => {
@@ -33,23 +35,49 @@ const App = () => {
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/support" element={<Support />} />
-              <Route path="/schedule" element={<Schedule />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/tickets" element={<TicketList />} />
-              <Route path="/tickets/:ticketId" element={<TicketDetail />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/products" element={<AdminFeaturedContent />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+          <AuthProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/support" element={
+                  <ProtectedRoute>
+                    <Support />
+                  </ProtectedRoute>
+                } />
+                <Route path="/schedule" element={<Schedule />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/tickets" element={
+                  <ProtectedRoute>
+                    <TicketList />
+                  </ProtectedRoute>
+                } />
+                <Route path="/tickets/:ticketId" element={
+                  <ProtectedRoute>
+                    <TicketDetail />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/users" element={
+                  <ProtectedRoute>
+                    <AdminUsers />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/products" element={
+                  <ProtectedRoute>
+                    <AdminFeaturedContent />
+                  </ProtectedRoute>
+                } />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </React.StrictMode>

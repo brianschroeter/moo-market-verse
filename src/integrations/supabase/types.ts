@@ -9,7 +9,153 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      discord_guilds: {
+        Row: {
+          guild_id: string
+          guild_name: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          guild_id: string
+          guild_name: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          guild_id?: string
+          guild_name?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discord_guilds_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          discord_avatar: string | null
+          discord_id: string
+          discord_username: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discord_avatar?: string | null
+          discord_id: string
+          discord_username: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discord_avatar?: string | null
+          discord_id?: string
+          discord_username?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      youtube_connections: {
+        Row: {
+          created_at: string
+          id: string
+          is_verified: boolean | null
+          updated_at: string
+          user_id: string
+          youtube_avatar: string | null
+          youtube_channel_id: string
+          youtube_channel_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_verified?: boolean | null
+          updated_at?: string
+          user_id: string
+          youtube_avatar?: string | null
+          youtube_channel_id: string
+          youtube_channel_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_verified?: boolean | null
+          updated_at?: string
+          user_id?: string
+          youtube_avatar?: string | null
+          youtube_channel_id?: string
+          youtube_channel_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      youtube_memberships: {
+        Row: {
+          created_at: string
+          creator_channel_id: string
+          creator_channel_name: string
+          expires_at: string | null
+          id: string
+          joined_at: string | null
+          membership_level: string
+          status: string
+          updated_at: string
+          youtube_connection_id: string
+        }
+        Insert: {
+          created_at?: string
+          creator_channel_id: string
+          creator_channel_name: string
+          expires_at?: string | null
+          id?: string
+          joined_at?: string | null
+          membership_level: string
+          status: string
+          updated_at?: string
+          youtube_connection_id: string
+        }
+        Update: {
+          created_at?: string
+          creator_channel_id?: string
+          creator_channel_name?: string
+          expires_at?: string | null
+          id?: string
+          joined_at?: string | null
+          membership_level?: string
+          status?: string
+          updated_at?: string
+          youtube_connection_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_memberships_youtube_connection_id_fkey"
+            columns: ["youtube_connection_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,35 +1,42 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  YouTubeConnection, 
+  YouTubeMembership,
+  getYouTubeConnections, 
+  getYouTubeMemberships 
+} from "@/services/authService";
 
-// Mock data - in a real app, this would come from your Supabase database
-interface YouTubeAccount {
-  id: string;
-  channelName: string;
-  avatar: string;
-  isConnected: boolean;
-}
-
-interface MembershipRole {
-  channelId: string;
-  channelName: string;
-  role: "crown" | "pay pig" | "cash cow" | "ban world";
-  icon: string;
-}
-
-interface YouTubeConnectionsProps {
-  accounts?: YouTubeAccount[];
-  memberships?: MembershipRole[];
-}
-
-const YouTubeConnections: React.FC<YouTubeConnectionsProps> = ({ 
-  accounts = [], 
-  memberships = []
-}) => {
+const YouTubeConnections: React.FC = () => {
   const { toast } = useToast();
+  const [accounts, setAccounts] = useState<YouTubeConnection[]>([]);
+  const [memberships, setMemberships] = useState<YouTubeMembership[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const connections = await getYouTubeConnections();
+        setAccounts(connections);
+        
+        if (connections.length > 0) {
+          const membershipData = await getYouTubeMemberships();
+          setMemberships(membershipData);
+        }
+      } catch (error) {
+        console.error("Error fetching YouTube data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
   
   const handleConnectYouTube = () => {
     toast({
@@ -41,7 +48,7 @@ const YouTubeConnections: React.FC<YouTubeConnectionsProps> = ({
   const hasNoYouTubeConnections = accounts.length === 0;
   const hasOnlyBanWorldRole = !hasNoYouTubeConnections && 
     memberships.length > 0 && 
-    memberships.every(m => m.role === "ban world");
+    memberships.every(m => m.membership_level === "ban world");
   const hasYouTubeButNoMemberships = !hasNoYouTubeConnections && memberships.length === 0;
   
   const renderAlert = () => {
@@ -83,6 +90,23 @@ const YouTubeConnections: React.FC<YouTubeConnectionsProps> = ({
     return null;
   };
 
+  if (loading) {
+    return (
+      <Card className="lolcow-card w-full">
+        <CardHeader>
+          <CardTitle className="text-xl font-fredoka text-white flex items-center">
+            <i className="fa-brands fa-youtube text-red-500 mr-2"></i> YouTube Connections
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <p className="text-gray-300">Loading YouTube connections...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="lolcow-card w-full">
       <CardHeader>
@@ -101,12 +125,16 @@ const YouTubeConnections: React.FC<YouTubeConnectionsProps> = ({
               {accounts.map((account) => (
                 <div key={account.id} className="flex items-center p-3 bg-lolcow-lightgray rounded-lg">
                   <img 
-                    src={account.avatar} 
-                    alt={account.channelName} 
+                    src={account.youtube_avatar || "https://via.placeholder.com/40"} 
+                    alt={account.youtube_channel_name} 
                     className="w-10 h-10 rounded-full mr-3"
                   />
                   <div className="flex-grow">
-                    <p className="text-white">{account.channelName}</p>
+                    <p className="text-white">{account.youtube_channel_name}</p>
+                    <p className="text-sm text-gray-400">{account.youtube_channel_id}</p>
+                    {!account.is_verified && (
+                      <span className="text-xs text-yellow-500">Verification pending</span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -132,22 +160,22 @@ const YouTubeConnections: React.FC<YouTubeConnectionsProps> = ({
           <div className="mt-6 space-y-4">
             <h3 className="text-white text-lg">Your Memberships</h3>
             <div className="space-y-3">
-              {memberships.map((membership, index) => (
+              {memberships.map((membership) => (
                 <div 
-                  key={index} 
+                  key={membership.id} 
                   className={`flex items-center p-3 rounded-lg ${
-                    membership.role === "ban world" 
+                    membership.membership_level === "ban world" 
                       ? "bg-lolcow-lightgray/50 border border-lolcow-red" 
                       : "bg-lolcow-lightgray"
                   }`}
                 >
                   <div className="w-10 h-10 rounded-full bg-lolcow-darkgray flex items-center justify-center mr-3">
-                    <i className={membership.icon}></i>
+                    <i className={getIconForRole(membership.membership_level)}></i>
                   </div>
                   <div className="flex-grow">
-                    <p className="text-white">{membership.channelName}</p>
-                    <p className={`text-sm ${getRoleColor(membership.role)}`}>
-                      {formatRoleName(membership.role)}
+                    <p className="text-white">{membership.creator_channel_name}</p>
+                    <p className={`text-sm ${getRoleColor(membership.membership_level)}`}>
+                      {formatRoleName(membership.membership_level)}
                     </p>
                   </div>
                 </div>
@@ -178,6 +206,16 @@ function getRoleColor(role: string): string {
     case "cash cow": return "text-green-400";
     case "ban world": return "text-red-500";
     default: return "text-gray-300";
+  }
+}
+
+function getIconForRole(role: string): string {
+  switch (role) {
+    case "crown": return "fa-solid fa-crown text-yellow-400";
+    case "pay pig": return "fa-solid fa-piggy-bank text-purple-400";
+    case "cash cow": return "fa-solid fa-cow text-green-400";
+    case "ban world": return "fa-solid fa-ban text-red-500";
+    default: return "fa-solid fa-user text-gray-400";
   }
 }
 
