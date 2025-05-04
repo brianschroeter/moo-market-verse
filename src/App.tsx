@@ -16,6 +16,7 @@ import TicketList from "./pages/TicketList";
 import TicketDetail from "./pages/TicketDetail";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminFeaturedContent from "./pages/admin/AdminFeaturedContent";
+import AdminTickets from "./pages/admin/AdminTickets";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -67,6 +68,11 @@ const App = () => {
                 <Route path="/admin/users" element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminUsers />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/tickets" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminTickets />
                   </ProtectedRoute>
                 } />
                 <Route path="/admin/products" element={

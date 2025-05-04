@@ -1,117 +1,232 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-// Mock data for featured products and announcements
-const mockProducts = [
-  {
-    id: "p1",
-    name: "LolCow T-Shirt",
-    description: "Limited edition LolCow mascot t-shirt. Available in multiple sizes.",
-    imageUrl: "https://via.placeholder.com/300x200",
-    url: "#",
-    featured: true
-  },
-  {
-    id: "p2",
-    name: "LolCow Mug",
-    description: "Start your day with the official LolCow coffee mug.",
-    imageUrl: "https://via.placeholder.com/300x200",
-    url: "#",
-    featured: true
-  },
-  {
-    id: "p3",
-    name: "LolCow Hoodie",
-    description: "Stay warm with this premium LolCow hoodie.",
-    imageUrl: "https://via.placeholder.com/300x200",
-    url: "#",
-    featured: false
-  }
-];
-
-const mockAnnouncements = [
-  {
-    id: "a1",
-    title: "New Discord Server Rules",
-    content: "We've updated our Discord server rules. Please review them before participating in discussions.",
-    date: "May 1, 2025",
-    isImportant: true,
-    active: true
-  },
-  {
-    id: "a2",
-    title: "Upcoming Live Stream",
-    content: "Join us this Friday at 8PM EST for a special live stream event!",
-    date: "Apr 30, 2025",
-    isImportant: false,
-    active: true
-  },
-  {
-    id: "a3",
-    title: "Website Maintenance",
-    content: "The website will be down for maintenance on Sunday from 2AM to 4AM EST.",
-    date: "Apr 25, 2025",
-    isImportant: true,
-    active: false
-  }
-];
+import { Loader2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  FeaturedProduct, 
+  Announcement,
+  fetchFeaturedProducts, 
+  fetchAnnouncements,
+  createProduct,
+  updateProduct,
+  toggleProductFeatured,
+  createAnnouncement,
+  updateAnnouncement,
+  toggleAnnouncementActive
+} from "@/services/featuredContentService";
+import { format } from "date-fns";
 
 const AdminFeaturedContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState("products");
   const [showProductDialog, setShowProductDialog] = useState(false);
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
-  const [currentProduct, setCurrentProduct] = useState<any>(null);
-  const [currentAnnouncement, setCurrentAnnouncement] = useState<any>(null);
+  const [currentProduct, setCurrentProduct] = useState<Partial<FeaturedProduct> | null>(null);
+  const [currentAnnouncement, setCurrentAnnouncement] = useState<Partial<Announcement> | null>(null);
+  const [products, setProducts] = useState<FeaturedProduct[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [savingAnnouncement, setSavingAnnouncement] = useState(false);
   const { toast } = useToast();
 
-  const handleEditProduct = (product: any) => {
+  useEffect(() => {
+    if (activeTab === "products") {
+      loadProducts();
+    } else if (activeTab === "announcements") {
+      loadAnnouncements();
+    }
+  }, [activeTab]);
+
+  const loadProducts = async () => {
+    try {
+      setLoadingProducts(true);
+      const data = await fetchFeaturedProducts();
+      setProducts(data);
+    } catch (error) {
+      console.error("Error loading products:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load products",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const loadAnnouncements = async () => {
+    try {
+      setLoadingAnnouncements(true);
+      const data = await fetchAnnouncements();
+      setAnnouncements(data);
+    } catch (error) {
+      console.error("Error loading announcements:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load announcements",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAnnouncements(false);
+    }
+  };
+
+  const handleEditProduct = (product: FeaturedProduct) => {
     setCurrentProduct({...product});
     setShowProductDialog(true);
   };
 
-  const handleEditAnnouncement = (announcement: any) => {
+  const handleEditAnnouncement = (announcement: Announcement) => {
     setCurrentAnnouncement({...announcement});
     setShowAnnouncementDialog(true);
   };
 
-  const handleSaveProduct = () => {
-    // In a real app, we would send this to the API
-    toast({
-      title: "Product Updated",
-      description: `Updated ${currentProduct.name} details`,
-    });
-    setShowProductDialog(false);
+  const handleSaveProduct = async () => {
+    if (!currentProduct) return;
+    
+    try {
+      setSavingProduct(true);
+      
+      if (currentProduct.id) {
+        // Update existing product
+        await updateProduct(currentProduct.id, currentProduct);
+        
+        // Update local state
+        setProducts(products.map(p => 
+          p.id === currentProduct.id ? {...p, ...currentProduct} : p
+        ));
+        
+        toast({
+          title: "Product Updated",
+          description: `Updated ${currentProduct.name} details`,
+        });
+      } else {
+        // Create new product
+        const newProduct = await createProduct(currentProduct as Omit<FeaturedProduct, 'id' | 'created_at' | 'updated_at'>);
+        
+        // Add to local state
+        setProducts([newProduct, ...products]);
+        
+        toast({
+          title: "Product Created",
+          description: `Created new product: ${newProduct.name}`,
+        });
+      }
+      
+      setShowProductDialog(false);
+    } catch (error) {
+      console.error("Error saving product:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save product",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingProduct(false);
+    }
   };
 
-  const handleSaveAnnouncement = () => {
-    // In a real app, we would send this to the API
-    toast({
-      title: "Announcement Updated",
-      description: `Updated ${currentAnnouncement.title} details`,
-    });
-    setShowAnnouncementDialog(false);
+  const handleSaveAnnouncement = async () => {
+    if (!currentAnnouncement) return;
+    
+    try {
+      setSavingAnnouncement(true);
+      
+      if (currentAnnouncement.id) {
+        // Update existing announcement
+        await updateAnnouncement(currentAnnouncement.id, currentAnnouncement);
+        
+        // Update local state
+        setAnnouncements(announcements.map(a => 
+          a.id === currentAnnouncement.id ? {...a, ...currentAnnouncement} : a
+        ));
+        
+        toast({
+          title: "Announcement Updated",
+          description: `Updated ${currentAnnouncement.title} details`,
+        });
+      } else {
+        // Create new announcement
+        const newAnnouncement = await createAnnouncement(currentAnnouncement as Omit<Announcement, 'id' | 'created_at' | 'updated_at'>);
+        
+        // Add to local state
+        setAnnouncements([newAnnouncement, ...announcements]);
+        
+        toast({
+          title: "Announcement Created",
+          description: `Created new announcement: ${newAnnouncement.title}`,
+        });
+      }
+      
+      setShowAnnouncementDialog(false);
+    } catch (error) {
+      console.error("Error saving announcement:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save announcement",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingAnnouncement(false);
+    }
   };
 
-  const handleToggleFeatured = (product: any) => {
-    // In a real app, we would send this to the API
-    toast({
-      title: product.featured ? "Product Unfeatured" : "Product Featured",
-      description: `${product.name} has been ${product.featured ? "removed from" : "added to"} featured products`,
-    });
+  const handleToggleFeatured = async (product: FeaturedProduct) => {
+    try {
+      const newFeaturedState = !product.featured;
+      
+      await toggleProductFeatured(product.id, newFeaturedState);
+      
+      // Update local state
+      setProducts(products.map(p => 
+        p.id === product.id ? {...p, featured: newFeaturedState} : p
+      ));
+      
+      toast({
+        title: newFeaturedState ? "Product Featured" : "Product Unfeatured",
+        description: `${product.name} has been ${newFeaturedState ? "added to" : "removed from"} featured products`,
+      });
+    } catch (error) {
+      console.error("Error toggling featured status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update product status",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleToggleActive = (announcement: any) => {
-    // In a real app, we would send this to the API
-    toast({
-      title: announcement.active ? "Announcement Deactivated" : "Announcement Activated",
-      description: `${announcement.title} has been ${announcement.active ? "deactivated" : "activated"}`,
-    });
+  const handleToggleActive = async (announcement: Announcement) => {
+    try {
+      const newActiveState = !announcement.active;
+      
+      await toggleAnnouncementActive(announcement.id, newActiveState);
+      
+      // Update local state
+      setAnnouncements(announcements.map(a => 
+        a.id === announcement.id ? {...a, active: newActiveState} : a
+      ));
+      
+      toast({
+        title: newActiveState ? "Announcement Activated" : "Announcement Deactivated",
+        description: `${announcement.title} has been ${newActiveState ? "activated" : "deactivated"}`,
+      });
+    } catch (error) {
+      console.error("Error toggling active status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update announcement status",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -143,11 +258,10 @@ const AdminFeaturedContent: React.FC = () => {
               className="bg-lolcow-blue hover:bg-lolcow-blue/80"
               onClick={() => {
                 setCurrentProduct({
-                  id: "", 
                   name: "", 
                   description: "", 
-                  imageUrl: "", 
-                  url: "",
+                  image_url: "", 
+                  product_url: "",
                   featured: true
                 });
                 setShowProductDialog(true);
@@ -158,68 +272,84 @@ const AdminFeaturedContent: React.FC = () => {
           </div>
           
           <div className="lolcow-card overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-b border-lolcow-lightgray">
-                  <TableHead className="text-gray-300">Product</TableHead>
-                  <TableHead className="text-gray-300">Description</TableHead>
-                  <TableHead className="text-gray-300">Status</TableHead>
-                  <TableHead className="text-gray-300 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mockProducts.map((product) => (
-                  <TableRow 
-                    key={product.id}
-                    className="border-b border-lolcow-lightgray hover:bg-lolcow-lightgray/10"
-                  >
-                    <TableCell className="py-4">
-                      <div className="flex items-center">
-                        <img 
-                          src={product.imageUrl} 
-                          alt={product.name} 
-                          className="w-12 h-12 object-cover rounded mr-3"
-                        />
-                        <div className="font-medium text-white">{product.name}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-gray-300 max-w-xs truncate">
-                      {product.description}
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${product.featured ? 'bg-green-500' : 'bg-gray-500'}`}>
-                        {product.featured ? 'Featured' : 'Not Featured'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="border-lolcow-blue text-lolcow-blue hover:bg-lolcow-blue hover:text-white"
-                          onClick={() => handleEditProduct(product)}
-                        >
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleToggleFeatured({...product, featured: !product.featured})}
-                          className={`
-                            ${product.featured 
-                              ? 'border-red-500 text-red-500 hover:bg-red-500' 
-                              : 'border-green-500 text-green-500 hover:bg-green-500'} 
-                            hover:text-white
-                          `}
-                        >
-                          {product.featured ? 'Unfeature' : 'Feature'}
-                        </Button>
-                      </div>
-                    </TableCell>
+            {loadingProducts ? (
+              <div className="flex justify-center items-center p-12">
+                <Loader2 className="h-8 w-8 animate-spin text-lolcow-blue" />
+                <span className="ml-2 text-white">Loading products...</span>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-lolcow-lightgray">
+                    <TableHead className="text-gray-300">Product</TableHead>
+                    <TableHead className="text-gray-300">Description</TableHead>
+                    <TableHead className="text-gray-300">Status</TableHead>
+                    <TableHead className="text-gray-300 text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {products.length > 0 ? products.map((product) => (
+                    <TableRow 
+                      key={product.id}
+                      className="border-b border-lolcow-lightgray hover:bg-lolcow-lightgray/10"
+                    >
+                      <TableCell className="py-4">
+                        <div className="flex items-center">
+                          <img 
+                            src={product.image_url || "https://via.placeholder.com/300x200"} 
+                            alt={product.name} 
+                            className="w-12 h-12 object-cover rounded mr-3"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "https://via.placeholder.com/300x200";
+                            }}
+                          />
+                          <div className="font-medium text-white">{product.name}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-300 max-w-xs truncate">
+                        {product.description}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs ${product.featured ? 'bg-green-500' : 'bg-gray-500'}`}>
+                          {product.featured ? 'Featured' : 'Not Featured'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="border-lolcow-blue text-lolcow-blue hover:bg-lolcow-blue hover:text-white"
+                            onClick={() => handleEditProduct(product)}
+                          >
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleToggleFeatured(product)}
+                            className={`
+                              ${product.featured 
+                                ? 'border-red-500 text-red-500 hover:bg-red-500' 
+                                : 'border-green-500 text-green-500 hover:bg-green-500'} 
+                              hover:text-white
+                            `}
+                          >
+                            {product.featured ? 'Unfeature' : 'Feature'}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-32 text-center text-gray-400">
+                        No products available. Add your first product using the button above.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </TabsContent>
         
@@ -229,11 +359,9 @@ const AdminFeaturedContent: React.FC = () => {
               className="bg-lolcow-blue hover:bg-lolcow-blue/80"
               onClick={() => {
                 setCurrentAnnouncement({
-                  id: "", 
                   title: "", 
                   content: "", 
-                  date: new Date().toISOString().split('T')[0],
-                  isImportant: false,
+                  is_important: false,
                   active: true
                 });
                 setShowAnnouncementDialog(true);
@@ -244,70 +372,85 @@ const AdminFeaturedContent: React.FC = () => {
           </div>
           
           <div className="lolcow-card overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-b border-lolcow-lightgray">
-                  <TableHead className="text-gray-300">Title</TableHead>
-                  <TableHead className="text-gray-300">Content</TableHead>
-                  <TableHead className="text-gray-300">Date</TableHead>
-                  <TableHead className="text-gray-300">Status</TableHead>
-                  <TableHead className="text-gray-300 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mockAnnouncements.map((announcement) => (
-                  <TableRow 
-                    key={announcement.id}
-                    className="border-b border-lolcow-lightgray hover:bg-lolcow-lightgray/10"
-                  >
-                    <TableCell className="py-4">
-                      <div className="font-medium text-white flex items-center">
-                        {announcement.isImportant && (
-                          <span className="mr-2 text-lolcow-red">
-                            <i className="fa-solid fa-exclamation-circle"></i>
-                          </span>
-                        )}
-                        {announcement.title}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-gray-300 max-w-xs truncate">
-                      {announcement.content}
-                    </TableCell>
-                    <TableCell className="text-gray-300">{announcement.date}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${announcement.active ? 'bg-green-500' : 'bg-gray-500'}`}>
-                        {announcement.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="border-lolcow-blue text-lolcow-blue hover:bg-lolcow-blue hover:text-white"
-                          onClick={() => handleEditAnnouncement(announcement)}
-                        >
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleToggleActive({...announcement, active: !announcement.active})}
-                          className={`
-                            ${announcement.active 
-                              ? 'border-red-500 text-red-500 hover:bg-red-500' 
-                              : 'border-green-500 text-green-500 hover:bg-green-500'} 
-                            hover:text-white
-                          `}
-                        >
-                          {announcement.active ? 'Deactivate' : 'Activate'}
-                        </Button>
-                      </div>
-                    </TableCell>
+            {loadingAnnouncements ? (
+              <div className="flex justify-center items-center p-12">
+                <Loader2 className="h-8 w-8 animate-spin text-lolcow-blue" />
+                <span className="ml-2 text-white">Loading announcements...</span>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-lolcow-lightgray">
+                    <TableHead className="text-gray-300">Title</TableHead>
+                    <TableHead className="text-gray-300">Content</TableHead>
+                    <TableHead className="text-gray-300">Date</TableHead>
+                    <TableHead className="text-gray-300">Status</TableHead>
+                    <TableHead className="text-gray-300 text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {announcements.length > 0 ? announcements.map((announcement) => (
+                    <TableRow 
+                      key={announcement.id}
+                      className="border-b border-lolcow-lightgray hover:bg-lolcow-lightgray/10"
+                    >
+                      <TableCell className="py-4">
+                        <div className="font-medium text-white flex items-center">
+                          {announcement.is_important && (
+                            <span className="mr-2 text-lolcow-red">
+                              <i className="fa-solid fa-exclamation-circle"></i>
+                            </span>
+                          )}
+                          {announcement.title}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-300 max-w-xs truncate">
+                        {announcement.content}
+                      </TableCell>
+                      <TableCell className="text-gray-300">
+                        {format(new Date(announcement.created_at), 'MMM d, yyyy')}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs ${announcement.active ? 'bg-green-500' : 'bg-gray-500'}`}>
+                          {announcement.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="border-lolcow-blue text-lolcow-blue hover:bg-lolcow-blue hover:text-white"
+                            onClick={() => handleEditAnnouncement(announcement)}
+                          >
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleToggleActive(announcement)}
+                            className={`
+                              ${announcement.active 
+                                ? 'border-red-500 text-red-500 hover:bg-red-500' 
+                                : 'border-green-500 text-green-500 hover:bg-green-500'} 
+                              hover:text-white
+                            `}
+                          >
+                            {announcement.active ? 'Deactivate' : 'Activate'}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-32 text-center text-gray-400">
+                        No announcements available. Add your first announcement using the button above.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </TabsContent>
       </Tabs>
@@ -328,8 +471,7 @@ const AdminFeaturedContent: React.FC = () => {
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-gray-300 mb-1">Product Name</label>
-                <input 
-                  type="text" 
+                <Input 
                   className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
                   value={currentProduct?.name || ''}
                   onChange={(e) => setCurrentProduct({...currentProduct, name: e.target.value})}
@@ -339,7 +481,7 @@ const AdminFeaturedContent: React.FC = () => {
               
               <div>
                 <label className="block text-gray-300 mb-1">Description</label>
-                <textarea
+                <Textarea
                   className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray min-h-[100px]"
                   value={currentProduct?.description || ''}
                   onChange={(e) => setCurrentProduct({...currentProduct, description: e.target.value})}
@@ -349,22 +491,20 @@ const AdminFeaturedContent: React.FC = () => {
               
               <div>
                 <label className="block text-gray-300 mb-1">Image URL</label>
-                <input 
-                  type="text" 
+                <Input 
                   className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
-                  value={currentProduct?.imageUrl || ''}
-                  onChange={(e) => setCurrentProduct({...currentProduct, imageUrl: e.target.value})}
+                  value={currentProduct?.image_url || ''}
+                  onChange={(e) => setCurrentProduct({...currentProduct, image_url: e.target.value})}
                   placeholder="Image URL"
                 />
               </div>
               
               <div>
                 <label className="block text-gray-300 mb-1">Product URL</label>
-                <input 
-                  type="text" 
+                <Input 
                   className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
-                  value={currentProduct?.url || ''}
-                  onChange={(e) => setCurrentProduct({...currentProduct, url: e.target.value})}
+                  value={currentProduct?.product_url || ''}
+                  onChange={(e) => setCurrentProduct({...currentProduct, product_url: e.target.value})}
                   placeholder="Product URL"
                 />
               </div>
@@ -386,12 +526,15 @@ const AdminFeaturedContent: React.FC = () => {
             <Button
               className="mr-2 bg-lolcow-blue hover:bg-lolcow-blue/80"
               onClick={handleSaveProduct}
+              disabled={savingProduct}
             >
+              {savingProduct ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {currentProduct?.id ? 'Save Changes' : 'Add Product'}
             </Button>
             <Button 
               variant="outline" 
               onClick={() => setShowProductDialog(false)}
+              disabled={savingProduct}
             >
               Cancel
             </Button>
@@ -415,8 +558,7 @@ const AdminFeaturedContent: React.FC = () => {
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-gray-300 mb-1">Title</label>
-                <input 
-                  type="text" 
+                <Input 
                   className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
                   value={currentAnnouncement?.title || ''}
                   onChange={(e) => setCurrentAnnouncement({...currentAnnouncement, title: e.target.value})}
@@ -426,21 +568,11 @@ const AdminFeaturedContent: React.FC = () => {
               
               <div>
                 <label className="block text-gray-300 mb-1">Content</label>
-                <textarea
+                <Textarea
                   className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray min-h-[100px]"
                   value={currentAnnouncement?.content || ''}
                   onChange={(e) => setCurrentAnnouncement({...currentAnnouncement, content: e.target.value})}
                   placeholder="Announcement Content"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-gray-300 mb-1">Date</label>
-                <input 
-                  type="date" 
-                  className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
-                  value={currentAnnouncement?.date || ''}
-                  onChange={(e) => setCurrentAnnouncement({...currentAnnouncement, date: e.target.value})}
                 />
               </div>
               
@@ -449,8 +581,8 @@ const AdminFeaturedContent: React.FC = () => {
                   <input
                     type="checkbox"
                     id="important"
-                    checked={currentAnnouncement?.isImportant || false}
-                    onChange={(e) => setCurrentAnnouncement({...currentAnnouncement, isImportant: e.target.checked})}
+                    checked={currentAnnouncement?.is_important || false}
+                    onChange={(e) => setCurrentAnnouncement({...currentAnnouncement, is_important: e.target.checked})}
                     className="mr-2 h-4 w-4"
                   />
                   <label htmlFor="important" className="text-gray-300">Mark as important</label>
@@ -474,12 +606,15 @@ const AdminFeaturedContent: React.FC = () => {
             <Button
               className="mr-2 bg-lolcow-blue hover:bg-lolcow-blue/80"
               onClick={handleSaveAnnouncement}
+              disabled={savingAnnouncement}
             >
+              {savingAnnouncement ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {currentAnnouncement?.id ? 'Save Changes' : 'Add Announcement'}
             </Button>
             <Button 
               variant="outline" 
               onClick={() => setShowAnnouncementDialog(false)}
+              disabled={savingAnnouncement}
             >
               Cancel
             </Button>

@@ -2,11 +2,12 @@ import React, { useState, useEffect, ReactNode } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Loader2, Server } from "lucide-react";
+import { User, Shield, Loader2, Server, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { assignRole, removeRole } from "@/services/roleService";
+import { Input } from "@/components/ui/input";
 
 interface UserData {
   id: string;
@@ -38,6 +39,8 @@ const AdminUsers: React.FC = (): ReactNode => {
   const [loading, setLoading] = useState(true);
   const [isAddingConnection, setIsAddingConnection] = useState(false);
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
 
   // State for Guilds Dialog
   const [showGuildsDialog, setShowGuildsDialog] = useState(false);
@@ -48,6 +51,22 @@ const AdminUsers: React.FC = (): ReactNode => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    // Filter users based on search term
+    if (!searchTerm.trim()) {
+      setFilteredUsers(users);
+    } else {
+      const lowercaseSearch = searchTerm.toLowerCase();
+      setFilteredUsers(users.filter(user => 
+        user.username.toLowerCase().includes(lowercaseSearch) || 
+        user.id.toLowerCase().includes(lowercaseSearch) ||
+        user.connections.some(conn => 
+          conn.username.toLowerCase().includes(lowercaseSearch)
+        )
+      ));
+    }
+  }, [searchTerm, users]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -412,6 +431,19 @@ const AdminUsers: React.FC = (): ReactNode => {
         <p className="text-gray-400">Manage user accounts and their connections</p>
       </div>
 
+      <div className="mb-6">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Search by username, ID or connection..."
+            className="pl-9 bg-lolcow-lightgray text-white"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
       <div className="lolcow-card overflow-hidden">
         {loading ? (
           <div className="flex justify-center items-center p-12">
@@ -431,7 +463,7 @@ const AdminUsers: React.FC = (): ReactNode => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <TableRow 
                   key={user.id}
                   className="border-b border-lolcow-lightgray hover:bg-lolcow-lightgray/10"
@@ -540,10 +572,10 @@ const AdminUsers: React.FC = (): ReactNode => {
                   </TableCell>
                 </TableRow>
               ))}
-              {users.length === 0 && (
+              {filteredUsers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-400">
-                    No users found
+                    {users.length === 0 ? "No users found" : "No users match your search"}
                   </TableCell>
                 </TableRow>
               )}
