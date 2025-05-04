@@ -1,15 +1,18 @@
+-- Drop the existing function if it exists (to allow return type change)
+DROP FUNCTION IF EXISTS public.get_all_users();
 
 -- Create function to get all users (for admin purposes)
 CREATE OR REPLACE FUNCTION public.get_all_users()
 RETURNS TABLE (
   id uuid,
-  email text,
+  email character varying(255),
   created_at timestamptz,
   updated_at timestamptz,
   user_metadata jsonb
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
   -- Check if the current user is an admin
+  -- Force update
   IF NOT (SELECT is_admin()) THEN
     RAISE EXCEPTION 'Only administrators can access user data';
   END IF;
