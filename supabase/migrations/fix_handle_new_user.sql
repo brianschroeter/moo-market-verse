@@ -17,7 +17,7 @@ BEGIN
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'discord_id', NEW.raw_user_meta_data->>'provider_id', ''),
     COALESCE(NEW.raw_user_meta_data->>'discord_username', NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', ''),
-    COALESCE(NEW.raw_user_meta_data->>'discord_avatar', NEW.raw_user_meta_data->>'avatar_url', '')
+    COALESCE(NEW.raw_user_meta_data->>'avatar', NEW.raw_user_meta_data->>'avatar_url', '')
   );
   RETURN NEW;
 EXCEPTION

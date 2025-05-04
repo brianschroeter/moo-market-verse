@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,19 +52,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
+      async (event, currentSession) => {
         console.log("Auth state changed:", event, currentSession?.user?.id);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
         // Defer Supabase calls with setTimeout to avoid deadlocks
         if (currentSession?.user) {
-          setTimeout(() => {
-            fetchProfile(currentSession.user.id);
+          setTimeout(async () => {
+            await fetchProfile(currentSession.user.id);
             
-            // If just signed in, try to sync Discord connections
+            // If just signed in, try to sync Discord connections and profile
             if (event === 'SIGNED_IN' && currentSession.provider_token) {
-              syncDiscordConnections();
+              await syncDiscordConnections();
+              
+              // After syncing, fetch the profile again to get updated data
+              await fetchProfile(currentSession.user.id);
             }
           }, 0);
         } else {
@@ -96,7 +100,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           // If we have a provider token, sync Discord connections
           if (currentSession.provider_token) {
-            syncDiscordConnections();
+            await syncDiscordConnections();
+            
+            // After syncing, fetch the profile again to get updated data
+            await fetchProfile(currentSession.user.id);
           }
         }
       } catch (error) {

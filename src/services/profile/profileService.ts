@@ -22,3 +22,25 @@ export const getProfile = async (): Promise<Profile | null> => {
   
   return data as Profile;
 };
+
+export const updateProfile = async (profileData: Partial<Profile>): Promise<Profile | null> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.user) {
+    return null;
+  }
+  
+  const { data, error } = await supabase
+    .from("profiles")
+    .update(profileData)
+    .eq("id", session.user.id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error updating profile:", error);
+    return null;
+  }
+  
+  return data as Profile;
+};

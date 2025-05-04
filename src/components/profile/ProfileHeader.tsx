@@ -12,7 +12,7 @@ const ProfileHeader: React.FC = () => {
   }
 
   const getDiscordAvatarUrl = () => {
-    if (profile.discord_avatar) {
+    if (profile.discord_id && profile.discord_avatar) {
       return `https://cdn.discordapp.com/avatars/${profile.discord_id}/${profile.discord_avatar}.png?size=128`;
     }
     return "https://via.placeholder.com/128";

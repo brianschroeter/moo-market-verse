@@ -11,6 +11,33 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
       return null;
     }
 
+    // Call Discord API to get user profile information (for avatar)
+    const userResponse = await fetch('https://discord.com/api/v10/users/@me', {
+      headers: {
+        Authorization: `Bearer ${session.provider_token}`
+      }
+    });
+
+    if (userResponse.ok) {
+      const userData = await userResponse.json();
+      console.log("Discord user data:", userData);
+      
+      // Update the user's profile with the latest Discord avatar
+      if (userData.id && userData.avatar) {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ 
+            discord_avatar: userData.avatar,
+            discord_username: userData.username
+          })
+          .eq('id', session.user.id);
+          
+        if (updateError) {
+          console.error("Error updating user profile with Discord avatar:", updateError);
+        }
+      }
+    }
+
     // Call Discord API to get connections
     const response = await fetch('https://discord.com/api/v10/users/@me/connections', {
       headers: {

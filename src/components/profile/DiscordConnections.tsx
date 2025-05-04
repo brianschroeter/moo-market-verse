@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -10,12 +11,14 @@ import {
   YouTubeConnection, 
   getYouTubeConnections 
 } from "@/services/authService";
+import { useAuth } from "@/context/AuthContext";
 
 const DiscordConnections: React.FC = () => {
   const [connections, setConnections] = useState<StoredDiscordConnection[]>([]);
   const [youtubeConnections, setYoutubeConnections] = useState<Record<string, YouTubeConnection>>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { profile } = useAuth();
   
   useEffect(() => {
     const fetchConnections = async () => {
@@ -50,6 +53,13 @@ const DiscordConnections: React.FC = () => {
     fetchConnections();
   }, [toast]);
 
+  const getDiscordAvatarUrl = () => {
+    if (profile?.discord_id && profile?.discord_avatar) {
+      return `https://cdn.discordapp.com/avatars/${profile.discord_id}/${profile.discord_avatar}.png?size=128`;
+    }
+    return null;
+  };
+
   return (
     <Card className="lolcow-card">
       <CardHeader>
@@ -61,8 +71,18 @@ const DiscordConnections: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between py-2 border-b border-lolcow-lightgray last:border-0">
             <div className="flex items-center">
-              <i className="fa-brands fa-discord text-lg mr-3 text-gray-400"></i>
-              <span className="text-gray-300">Connected</span>
+              {profile && (
+                <Avatar className="h-8 w-8 mr-3">
+                  <AvatarImage
+                    src={getDiscordAvatarUrl() || undefined}
+                    alt={profile.discord_username}
+                  />
+                  <AvatarFallback className="bg-lolcow-darkgray text-white">
+                    {profile.discord_username?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <span className="text-gray-300">{profile?.discord_username || 'Connected'}</span>
             </div>
             <span className="text-green-500">
               <i className="fa-solid fa-check-circle mr-1"></i>
