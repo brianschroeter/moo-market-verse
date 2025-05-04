@@ -333,6 +333,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_admin_role: {
+        Args: {
+          target_user_id: string
+          target_role: Database["public"]["Enums"]["user_role"]
+        }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _user_id: string

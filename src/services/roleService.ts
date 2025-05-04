@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface UserRole {
@@ -62,30 +61,26 @@ export const getUserRoles = async (): Promise<UserRole[]> => {
 };
 
 /**
- * Assign a role to a user
+ * Assign a role to a user by calling the secure RPC function
  */
 export const assignRole = async (userId: string, role: 'admin' | 'user'): Promise<boolean> => {
   try {
-    const { error } = await supabase
-      .from('user_roles')
-      .insert({
-        user_id: userId,
-        role: role
-      });
-      
+    // Call the RPC function instead of direct insert
+    const { error } = await supabase.rpc('assign_admin_role', {
+      target_user_id: userId,
+      target_role: role
+    });
+
     if (error) {
-      // If the error is about unique constraint, the user already has this role
-      if (error.code === '23505') {
-        console.log('User already has this role');
-        return true;
-      }
-      console.error('Error assigning role:', error);
+      // Log the specific RPC error
+      console.error(`Error calling assign_admin_role RPC for user ${userId}, role ${role}:`, error);
       return false;
     }
-    
+
+    console.log(`Successfully called assign_admin_role for user ${userId}, role ${role}`);
     return true;
   } catch (error) {
-    console.error('Error in assignRole:', error);
+    console.error('Error in assignRole (RPC call):', error);
     return false;
   }
 };
