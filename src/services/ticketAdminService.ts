@@ -42,20 +42,24 @@ export const getTicketsWithProfile = async (filter?: TicketFilter): Promise<Tick
     }
     
     // Transform the data to match the expected Ticket interface
-    return data.map(ticket => ({
-      id: ticket.id,
-      subject: ticket.subject,
-      status: ticket.status as "open" | "awaiting_support" | "awaiting_user" | "closed",
-      created_at: ticket.created_at,
-      updated_at: ticket.updated_at,
-      user_id: ticket.user_id,
-      profile: {
-        discord_username: ticket.profiles.discord_username
-      },
-      // Add default values for potentially missing properties
-      description: ticket.description || "",
-      priority: (ticket.priority as "low" | "medium" | "high") || "medium"
-    })) || [];
+    return data.map(ticket => {
+      // Using type assertion to handle ticket properties
+      const ticketData = ticket as any;
+      
+      return {
+        id: ticketData.id,
+        subject: ticketData.subject,
+        status: ticketData.status as "open" | "awaiting_support" | "awaiting_user" | "closed",
+        created_at: ticketData.created_at,
+        updated_at: ticketData.updated_at,
+        user_id: ticketData.user_id,
+        profile: {
+          discord_username: ticketData.profiles.discord_username
+        },
+        description: ticketData.description || "",
+        priority: (ticketData.priority as "low" | "medium" | "high") || "medium"
+      };
+    }) || [];
     
   } catch (error) {
     console.error("Error in getTicketsWithProfile:", error);
@@ -85,20 +89,24 @@ export const getTickets = async (filter?: TicketFilter): Promise<Ticket[]> => {
     }
     
     // Transform the data to match the expected Ticket interface
-    return data.map(ticket => ({
-      id: ticket.id,
-      subject: ticket.subject,
-      status: ticket.status as "open" | "awaiting_support" | "awaiting_user" | "closed",
-      created_at: ticket.created_at,
-      updated_at: ticket.updated_at,
-      user_id: ticket.user_id,
-      profile: {
-        discord_username: ticket.profiles.discord_username
-      },
-      // Add default values for potentially missing properties
-      description: ticket.description || "",
-      priority: (ticket.priority as "low" | "medium" | "high") || "medium"
-    })) || [];
+    return data.map(ticket => {
+      // Using type assertion to handle ticket properties
+      const ticketData = ticket as any;
+      
+      return {
+        id: ticketData.id,
+        subject: ticketData.subject,
+        status: ticketData.status as "open" | "awaiting_support" | "awaiting_user" | "closed",
+        created_at: ticketData.created_at,
+        updated_at: ticketData.updated_at,
+        user_id: ticketData.user_id,
+        profile: {
+          discord_username: ticketData.profiles.discord_username
+        },
+        description: ticketData.description || "",
+        priority: (ticketData.priority as "low" | "medium" | "high") || "medium"
+      };
+    }) || [];
     
   } catch (error) {
     console.error("Error in getTickets:", error);
