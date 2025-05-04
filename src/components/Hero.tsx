@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 
@@ -16,8 +15,7 @@ const Hero: React.FC = () => {
             </h1>
             
             <p className="text-gray-300 text-lg md:text-xl mb-8">
-              Connect with our Discord community and join the herd of cartoon cow enthusiasts.
-              Login now to access exclusive content!
+              Join the LolCow herd on Discord! Connect with fellow fans, get the latest updates on the show, and unlock exclusive content. Log in now!
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">

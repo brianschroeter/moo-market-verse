@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 
@@ -22,8 +21,7 @@ const Footer: React.FC = () => {
               </div>
             </div>
             <p className="mt-4 text-gray-400 max-w-md">
-              Home of the LolCows - a fun, farm-themed collectible universe with
-              cartoon cow characters. Join us through Discord authentication!
+              Dive into the LolCow Universe! Join our Discord to connect with fans of the worst podcast on the internet, get updates on shows, participate in community events, and access exclusive content.
             </p>
           </div>
 
@@ -37,13 +35,8 @@ const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/shop" className="text-gray-400 hover:text-lolcow-blue transition-colors">
+                <Link to="https://lolcow.co/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-lolcow-blue transition-colors">
                   Shop
-                </Link>
-              </li>
-              <li>
-                <Link to="/cows" className="text-gray-400 hover:text-lolcow-blue transition-colors">
-                  Cows
                 </Link>
               </li>
               <li>
@@ -71,7 +64,7 @@ const Footer: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="https://twitter.com/lolcow"
+                  href="https://x.com/lolcowlive"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-lolcow-blue transition-colors flex items-center space-x-2"
@@ -80,23 +73,12 @@ const Footer: React.FC = () => {
                   <span>Twitter</span>
                 </a>
               </li>
-              <li>
-                <a
-                  href="https://instagram.com/lolcow"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-lolcow-blue transition-colors flex items-center space-x-2"
-                >
-                  <i className="fa-brands fa-instagram"></i>
-                  <span>Instagram</span>
-                </a>
-              </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-lolcow-lightgray mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-gray-500">© 2023 LolCow.co - All rights reserved</p>
+          <p className="text-gray-500">© 2025 LolCow.co - All rights reserved</p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <Link to="/terms" className="text-gray-500 hover:text-gray-400">Terms</Link>
             <Link to="/privacy" className="text-gray-500 hover:text-gray-400">Privacy</Link>

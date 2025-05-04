@@ -13,6 +13,9 @@ import Leaderboard from "./pages/Leaderboard";
 import NotFound from "./pages/NotFound";
 import TicketList from "./pages/TicketList";
 import TicketDetail from "./pages/TicketDetail";
+import Terms from "./pages/Terms";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Faq from "./pages/Faq";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminFeaturedContent from "./pages/admin/AdminFeaturedContent";
 import AdminTickets from "./pages/admin/AdminTickets";
@@ -57,6 +60,9 @@ const App = () => {
                 } />
                 <Route path="/schedule" element={<Schedule />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/faq" element={<Faq />} />
                 <Route path="/tickets" element={
                   <ProtectedRoute>
                     <TicketList />

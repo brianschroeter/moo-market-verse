@@ -1,12 +1,13 @@
-
 import React from "react";
 import { useToast } from "@/hooks/use-toast";
 import { signInWithDiscord } from "@/services/authService";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const LoginCard: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const message = location.state?.message as string | undefined;
   
   const handleLoginWithDiscord = async () => {
     try {
@@ -38,6 +39,13 @@ const LoginCard: React.FC = () => {
             className="w-24" 
           />
         </div>
+        
+        {message && (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
+            <p className="font-bold">Attention</p>
+            <p>{message}</p>
+          </div>
+        )}
         
         <h2 className="text-2xl font-fredoka text-white text-center mb-6">
           Join the LolCow Community
