@@ -85,6 +85,39 @@ export type Database = {
           },
         ]
       }
+      featured_products: {
+        Row: {
+          created_at: string
+          description: string
+          featured: boolean | null
+          id: string
+          image_url: string
+          name: string
+          product_url: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          featured?: boolean | null
+          id?: string
+          image_url: string
+          name: string
+          product_url: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          featured?: boolean | null
+          id?: string
+          image_url?: string
+          name?: string
+          product_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       menu_items: {
         Row: {
           created_at: string
