@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -97,17 +96,6 @@ const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }
             <span className="text-xs text-yellow-500">Verification pending</span>
           )}
         </div>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={handleRefreshAvatar}
-          disabled={isRefreshing}
-          className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
-          title="Refresh avatar from YouTube"
-        >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span className="sr-only">Refresh Avatar</span>
-        </Button>
       </div>
       
       {debugInfo && (
