@@ -2,8 +2,8 @@
 import React from 'react';
 import { ShoppingCart } from 'lucide-react';
 
-interface ProductCardProps {
-  id: number;
+export interface ProductCardProps {
+  id: string;  // Changed from number to string to match UUID from database
   name: string;
   price: number;
   description: string;
