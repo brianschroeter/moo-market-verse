@@ -1,68 +1,105 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Ticket } from "@/pages/admin/AdminTickets";
 
-export interface FetchTicketsOptions {
-  page: number;
-  itemsPerPage: number;
-  searchTerm?: string;
-  statusFilter?: string;
+export interface Ticket {
+  id: string;
+  subject: string;
+  status: "open" | "awaiting_support" | "awaiting_user" | "closed";
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  profile?: {
+    discord_username: string;
+  };
+  description?: string;
+  priority?: "low" | "medium" | "high";
 }
 
-export interface TicketsResponse {
-  data: Ticket[];
-  count: number;
+export interface TicketFilter {
+  status?: string;
+  priority?: string;
 }
 
-export const fetchAdminTickets = async (options: FetchTicketsOptions): Promise<TicketsResponse> => {
-  const { page, itemsPerPage, searchTerm, statusFilter } = options;
-  
-  // Calculate pagination range
-  const from = (page - 1) * itemsPerPage;
-  const to = from + itemsPerPage - 1;
-  
-  // Build query
-  let query = supabase
-    .from('support_tickets')
-    .select(`
-      *,
-      profile:profiles(discord_username)
-    `, { count: 'exact' });
-  
-  // Add search filter if provided
-  if (searchTerm) {
-    query = query.ilike('subject', `%${searchTerm}%`);
-  }
-
-  // Add status filter if not "all"
-  if (statusFilter !== "all") {
-    query = query.eq('status', statusFilter);
-  }
-  
-  // Complete the query with ordering and pagination
-  const { data, count, error } = await query
-    .order('created_at', { ascending: false })
-    .range(from, to);
-  
-  if (error) {
-    console.error("Error fetching tickets:", error);
+export const getTicketsWithProfile = async (filter?: TicketFilter): Promise<Ticket[]> => {
+  try {
+    let query = supabase
+      .from('support_tickets')
+      .select(`
+        *,
+        profiles:profiles!inner(discord_username)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (filter?.status) {
+      query = query.eq('status', filter.status);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error("Error fetching tickets with profile:", error);
+      throw error;
+    }
+    
+    // Transform the data to match the expected Ticket interface
+    return data.map(ticket => ({
+      id: ticket.id,
+      subject: ticket.subject,
+      status: ticket.status as "open" | "awaiting_support" | "awaiting_user" | "closed",
+      created_at: ticket.created_at,
+      updated_at: ticket.updated_at,
+      user_id: ticket.user_id,
+      profile: {
+        discord_username: ticket.profiles.discord_username
+      },
+      description: ticket.description || "",
+      priority: (ticket.priority as "low" | "medium" | "high") || "medium"
+    })) || [];
+    
+  } catch (error) {
+    console.error("Error in getTicketsWithProfile:", error);
     throw error;
   }
-
-  return {
-    data: data || [],
-    count: count || 0
-  };
 };
 
-export const updateTicketStatus = async (ticketId: string, newStatus: string): Promise<void> => {
-  const { error } = await supabase
-    .from('support_tickets')
-    .update({ status: newStatus, updated_at: new Date().toISOString() })
-    .eq('id', ticketId);
-
-  if (error) {
-    console.error("Error updating status:", error);
+export const getTickets = async (filter?: TicketFilter): Promise<Ticket[]> => {
+  try {
+    let query = supabase
+      .from('support_tickets')
+      .select(`
+        *,
+        profiles:profiles!inner(discord_username)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (filter?.status) {
+      query = query.eq('status', filter.status);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error("Error fetching tickets:", error);
+      throw error;
+    }
+    
+    // Transform the data to match the expected Ticket interface
+    return data.map(ticket => ({
+      id: ticket.id,
+      subject: ticket.subject,
+      status: ticket.status as "open" | "awaiting_support" | "awaiting_user" | "closed",
+      created_at: ticket.created_at,
+      updated_at: ticket.updated_at,
+      user_id: ticket.user_id,
+      profile: {
+        discord_username: ticket.profiles.discord_username
+      },
+      description: ticket.description || "",
+      priority: (ticket.priority as "low" | "medium" | "high") || "medium"
+    })) || [];
+    
+  } catch (error) {
+    console.error("Error in getTickets:", error);
     throw error;
   }
 };

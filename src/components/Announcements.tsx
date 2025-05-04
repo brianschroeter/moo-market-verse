@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { fetchActiveAnnouncements, fetchActiveProducts, Announcement, FeaturedProduct } from "@/services/featuredContentService";
+import { fetchActiveAnnouncements, fetchActiveProducts } from "@/services/featuredContentService";
+import { Announcement, FeaturedProduct } from "@/services/types/featuredContent-types";
 import { format } from "date-fns";
 
 interface AnnouncementsProps {
@@ -116,7 +117,7 @@ const Announcements: React.FC<AnnouncementsProps> = ({
                       asChild
                       className="mt-3 bg-lolcow-blue hover:bg-lolcow-blue/80 text-white w-full"
                     >
-                      <a href={product.product_url} target="_blank" rel="noopener noreferrer">View Product</a>
+                      <a href={product.product_url || product.link} target="_blank" rel="noopener noreferrer">View Product</a>
                     </Button>
                   </div>
                 </div>

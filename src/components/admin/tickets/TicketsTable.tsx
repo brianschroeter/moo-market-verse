@@ -78,7 +78,7 @@ const TicketsTable: React.FC<TicketsTableProps> = ({
                 {ticket.subject}
               </TableCell>
               <TableCell className="text-gray-300">
-                {ticket.profile?.discord_username || 'Unknown User'}
+                {ticket.profiles?.discord_username || 'Unknown User'}
               </TableCell>
               <TableCell>{getStatusBadge(ticket.status)}</TableCell>
               <TableCell className="text-gray-300">

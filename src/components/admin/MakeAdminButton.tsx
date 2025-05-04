@@ -1,74 +1,62 @@
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Shield, Loader2 } from "lucide-react";
-import { assignRole } from "@/services/roleService";
-import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
-/**
- * This component provides a way for the first user to make themselves an admin
- * Only meant to be used temporarily when setting up the application
- */
-const MakeAdminButton: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-  const { user, isAdmin } = useAuth();
+interface MakeAdminButtonProps {
+  userId: string;
+}
+
+const MakeAdminButton: React.FC<MakeAdminButtonProps> = ({ userId }) => {
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleMakeAdmin = async () => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to perform this action",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setLoading(true);
+  const makeUserAdmin = async (userId: string) => {
+    setIsLoading(true);
     try {
-      const success = await assignRole(user.id, 'admin');
-      if (success) {
-        toast({
-          title: "Success",
-          description: "You are now an admin! Please refresh the page to see admin features.",
-        });
-      } else {
-        throw new Error("Failed to assign admin role");
-      }
-    } catch (error) {
-      console.error("Error making admin:", error);
+      const { data, error } = await supabase.rpc('assign_admin_role', {
+        target_user_id: userId,
+        target_role: 'admin'
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "User has been made an admin",
+      });
+      
+      return data;
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to assign admin role",
-        variant: "destructive"
+        description: `Failed to assign admin role: ${error.message}`,
+        variant: "destructive",
       });
+      throw error;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
-
-  if (isAdmin) {
-    return null; // Don't show this button if already an admin
-  }
+  
+  const makeAdminMutation = useMutation({
+    mutationFn: makeUserAdmin,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    }
+  });
 
   return (
-    <Button
-      onClick={handleMakeAdmin}
-      disabled={loading || !user}
-      className="bg-yellow-500 hover:bg-yellow-600 text-white"
+    <Button 
+      variant="default" 
+      size="sm" 
+      onClick={() => makeAdminMutation.mutate(userId)}
+      disabled={isLoading || makeAdminMutation.isPending}
     >
-      {loading ? (
-        <>
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          Processing...
-        </>
-      ) : (
-        <>
-          <Shield className="h-4 w-4 mr-2" />
-          Make Myself Admin
-        </>
-      )}
+      {isLoading || makeAdminMutation.isPending ? "Assigning..." : "Make Admin"}
     </Button>
   );
 };
