@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -20,7 +19,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Profile } from "@/services/ticket";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 
 // Helper to get public URL for Supabase Storage
 const getAttachmentUrl = (filePath: string): string => {
