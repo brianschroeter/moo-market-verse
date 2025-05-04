@@ -70,6 +70,8 @@ const leaderboardData = {
 const chartConfig = {
   amount: { label: "Amount ($)", theme: { light: "#3b82f6", dark: "#3b82f6" } },
   count: { label: "Count", theme: { light: "#ef4444", dark: "#ef4444" } },
+  average: { label: "Average Viewers", theme: { light: "#0ea5e9", dark: "#0ea5e9" } },
+  peak: { label: "Peak Viewers", theme: { light: "#f97316", dark: "#f97316" } },
 };
 
 // Format currency
@@ -77,9 +79,18 @@ const formatCurrency = (value: number): string => {
   return `$${value.toLocaleString()}`;
 };
 
+// Define chart data type that supports all our different chart data shapes
+type ChartDataItem = {
+  name: string;
+  amount?: number;
+  count?: number;
+  average?: number;
+  peak?: number;
+};
+
 const Leaderboard: React.FC = () => {
   const [tabValue, setTabValue] = useState("superchats");
-  const [chartData, setChartData] = useState(
+  const [chartData, setChartData] = useState<ChartDataItem[]>(
     leaderboardData.superchats.slice(0, 5).map(item => ({
       name: item.show,
       amount: item.amount,
@@ -100,12 +111,17 @@ const Leaderboard: React.FC = () => {
       setChartData(leaderboardData.memberships.slice(0, 5).map(item => ({
         name: item.show,
         amount: item.amount,
+        // Add a default count of 0 to match the type
+        count: 0,
       })));
     } else {
       setChartData(leaderboardData.viewership.slice(0, 5).map(item => ({
         name: item.show,
         average: item.average,
         peak: item.peak,
+        // Add defaults for amount and count to match the type
+        amount: 0,
+        count: 0,
       })));
     }
   };
