@@ -2,8 +2,8 @@ import React, { useState, useEffect, ReactNode } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Loader2, Server } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { User, Shield, Loader2, Server, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { assignRole, removeRole } from "@/services/roleService";
@@ -44,6 +44,11 @@ const AdminUsers: React.FC = (): ReactNode => {
   const [selectedUserForGuilds, setSelectedUserForGuilds] = useState<UserData | null>(null);
   const [loadingGuilds, setLoadingGuilds] = useState(false);
   const [userGuilds, setUserGuilds] = useState<Guild[]>([]);
+
+  // State for Delete Confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -258,115 +263,78 @@ const AdminUsers: React.FC = (): ReactNode => {
   const handleRemoveConnection = async (connectionId: string) => {
     if (!currentUser) return;
 
-    // Add loading state if needed
+    // Use the actual connection identifier from the database table
+    // In fetchUsers, we stored the connection_id which should be unique per user+connection
+    const connectionToRemove = currentUser.connections.find(c => c.connection_id === connectionId);
+
+    if (!connectionToRemove) {
+        toast({ title: "Error", description: "Connection details not found for removal.", variant: "destructive"});
+        return;
+    }
+
+    // Display confirmation toast or dialog if preferred
+    if (!window.confirm(`Are you sure you want to remove the ${connectionToRemove.platform} connection (${connectionToRemove.username})?`)) {
+        return;
+    }
 
     try {
-      // Use connectionId for matching
-      const { error } = await supabase
-        .from('discord_connections')
-        .delete()
-        .match({ 
-          user_id: currentUser.id, 
-          connection_id: connectionId // Match by user_id and connection_id
+        // Target the correct table and use the correct identifier (connection_id)
+        const { error } = await supabase
+            .from('discord_connections') // Using the table assumed to hold all connections
+            .delete()
+            .match({ user_id: currentUser.id, connection_id: connectionId }); // Match user and connection_id
+
+        if (error) {
+            throw error;
+        }
+
+        // Update local state optimistically
+        const updatedConnections = currentUser.connections.filter(c => c.connection_id !== connectionId);
+        setUsers(users.map(u => (u.id === currentUser.id ? { ...u, connections: updatedConnections } : u)));
+        setCurrentUser({ ...currentUser, connections: updatedConnections });
+
+        toast({
+            title: "Connection Removed",
+            description: `Removed ${connectionToRemove.platform} connection.`
         });
 
-      if (error) {
-        // Log the error for debugging
-        console.error("Supabase delete error:", error);
-        throw error;
-      }
-
-      // Optimistically update local state using connectionId
-      setUsers(users.map(u => {
-        if (u.id === currentUser.id) {
-          return {
-            ...u,
-            // Filter using connectionId
-            connections: u.connections.filter(c => c.connection_id !== connectionId)
-          };
-        }
-        return u;
-      }));
-      setCurrentUser(prevUser => {
-        if (!prevUser) return null;
-        return {
-            ...prevUser,
-            // Filter using connectionId
-            connections: prevUser.connections.filter(c => c.connection_id !== connectionId)
-        };
-      });
-
-
-      toast({
-        title: "Connection Removed",
-        // Update description if needed, platform/username are not directly available here anymore
-        description: `Connection removed for ${currentUser.username}.` 
-      });
-
     } catch (error) {
-      console.error("Error removing connection:", error);
-      toast({
-        title: "Error",
-        description: `Failed to remove connection. ${error instanceof Error ? error.message : ''}`,
-        variant: "destructive"
-      });
-    } finally {
-      // Stop loading state
+        console.error("Error removing connection:", error);
+        toast({
+            title: "Error",
+            description: `Failed to remove connection. ${error instanceof Error ? error.message : ''}`,
+            variant: "destructive"
+        });
     }
   };
 
   const handleToggleAdminRole = async (user: UserData) => {
+    const isAdmin = user.roles.includes("admin");
+    const roleToToggle: 'admin' | 'user' = 'admin'; // We are only toggling admin here
+    const action = isAdmin ? removeRole : assignRole;
+    const actionText = isAdmin ? "Removing admin role" : "Assigning admin role";
+    const successText = isAdmin ? "Admin role removed" : "Admin role assigned";
+
+    toast({ title: "Processing", description: `${actionText} for ${user.username}` });
+
     try {
-      const isAdmin = user.roles.includes('admin');
-      
-      if (isAdmin) {
-        const success = await removeRole(user.id, 'admin');
-        if (success) {
-          // Update local state
-          setUsers(users.map(u => {
-            if (u.id === user.id) {
-              return {
-                ...u,
-                roles: u.roles.filter(role => role !== 'admin')
-              };
-            }
-            return u;
-          }));
-          
-          toast({
-            title: "Role Updated",
-            description: `Admin role removed from ${user.username}`
-          });
-        } else {
-          throw new Error("Failed to remove admin role");
-        }
-      } else {
-        const success = await assignRole(user.id, 'admin');
-        if (success) {
-          // Update local state
-          setUsers(users.map(u => {
-            if (u.id === user.id) {
-              return {
-                ...u,
-                roles: [...u.roles, 'admin']
-              };
-            }
-            return u;
-          }));
-          
-          toast({
-            title: "Role Updated",
-            description: `Admin role granted to ${user.username}`
-          });
-        } else {
-          throw new Error("Failed to assign admin role");
-        }
+      // Pass both userId and the role to the action function
+      const success = await action(user.id, roleToToggle);
+
+      if (!success) {
+        // The roleService functions return false on error, throw to catch below
+        throw new Error(`Failed to ${isAdmin ? 'remove' : 'assign'} admin role via roleService.`);
       }
-    } catch (error) {
-      console.error("Error updating role:", error);
+
+      // Refetch users to update roles accurately
+      await fetchUsers();
+
+      toast({ title: "Success", description: `${successText} for ${user.username}.` });
+    } catch (error: any) {
+      console.error(`Error ${actionText}:`, error);
       toast({
         title: "Error",
-        description: "Failed to update user role",
+        description: `Failed to ${isAdmin ? 'remove' : 'assign'} admin role. ${error.message || ''}`,
         variant: "destructive"
       });
     }
@@ -404,6 +372,62 @@ const AdminUsers: React.FC = (): ReactNode => {
       setLoadingGuilds(false);
     }
   };
+
+  // --- Delete User Logic ---
+  const handleDeleteUser = (user: UserData) => {
+    setUserToDelete(user);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      // Call the Supabase Edge function
+      const { error } = await supabase.functions.invoke('delete-user', {
+        body: { target_user_id: userToDelete.id },
+      });
+
+      if (error) {
+        // Check if the error object has more details, e.g., from the function's response
+         let errorMessage = "Failed to delete user.";
+         if (error.context && typeof error.context.error === 'string') {
+             errorMessage = error.context.error; // Use error message from function if available
+         } else if (error instanceof Error) {
+             errorMessage = error.message; // Fallback to generic error message
+         }
+         console.error("Function invocation error:", error);
+         throw new Error(errorMessage); // Throw a new error with the specific message
+      }
+
+      // Remove user from local state
+      setUsers(prevUsers => prevUsers.filter(u => u.id !== userToDelete.id));
+
+      toast({
+        title: "User Deleted",
+        description: `Successfully deleted user ${userToDelete.username}.`,
+      });
+
+      // Close dialog and reset state
+      setShowDeleteConfirm(false);
+      setUserToDelete(null);
+
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An unknown error occurred during deletion.",
+        variant: "destructive",
+      });
+      // Keep dialog open on error? Optional.
+      // setShowDeleteConfirm(false);
+      // setUserToDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  // --- End Delete User Logic ---
 
   return (
     <AdminLayout>
@@ -535,6 +559,14 @@ const AdminUsers: React.FC = (): ReactNode => {
                       >
                         <User className="h-4 w-4 mr-1" />
                         Login As
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteUser(user)}
+                        title="Delete User"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
@@ -684,6 +716,28 @@ const AdminUsers: React.FC = (): ReactNode => {
               Close
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete user <span className="font-semibold">{userToDelete?.username}</span>?
+              This action cannot be undone. All associated data (profile, connections, etc.) will be removed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete} disabled={isDeleting}>
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Confirm Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

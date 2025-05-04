@@ -85,6 +85,27 @@ export type Database = {
           },
         ]
       }
+      menu_items: {
+        Row: {
+          created_at: string
+          is_enabled: boolean
+          item_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          is_enabled?: boolean
+          item_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          is_enabled?: boolean
+          item_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -137,7 +158,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_attachments: {
         Row: {
@@ -238,7 +267,15 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       youtube_connections: {
         Row: {
@@ -359,6 +396,10 @@ export type Database = {
           _user_id: string
           _role: Database["public"]["Enums"]["user_role"]
         }
+        Returns: boolean
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
     }
