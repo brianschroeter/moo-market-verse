@@ -22,7 +22,7 @@ const getAttachmentUrl = (filePath: string): string => {
 const TicketDetail: React.FC = () => {
   const { ticketId } = useParams<{ ticketId: string }>();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin, profile: currentUserProfile } = useAuth();
   const [ticketData, setTicketData] = useState<{
     ticket: Ticket;
     messages: TicketMessage[];
@@ -132,26 +132,56 @@ const TicketDetail: React.FC = () => {
     
     setIsSubmitting(true);
     
+    // Determine if this is a support reply (admin sending)
+    const isSupportReply = isAdmin === true;
+
     try {
-      await addReplyToTicket(ticketId, reply, files);
+      // This still handles the actual backend operations
+      await addReplyToTicket(ticketId, reply, isSupportReply, files);
       
+      // --- Optimistic UI Update --- 
+      const tempMessageId = `temp-message-${Date.now()}`;
       const newMessage: TicketMessage = {
-          id: `temp-${Date.now()}`,
+          id: tempMessageId, // Use temporary ID
           ticket_id: ticketId,
           content: reply,
-          from_user: true,
-          created_at: new Date().toISOString(),
+          from_user: !isSupportReply, 
+          created_at: new Date().toISOString(), // Use current time
       };
-
+      
+      let newAttachments: TicketAttachment[] = [];
+      if (files.length > 0) {
+          newAttachments = files.map((file, index) => ({
+              id: `temp-attach-${Date.now()}-${index}`, // Temporary attachment ID
+              ticket_id: ticketId,
+              message_id: tempMessageId, // Link to temporary message ID
+              file_name: file.name,
+              file_type: file.type,
+              file_size: file.size,
+              file_path: '', // Placeholder - real path comes on refresh
+              created_at: new Date().toISOString(), // Placeholder
+          }));
+      }
+      
       setTicketData(prevData => {
         if (!prevData) return null;
+        const nextStatus = isSupportReply ? 'awaiting_user' : 'awaiting_support';
         const updatedMessages = [...prevData.messages, newMessage];
+        // Add new temporary attachments to the existing attachments array
+        const updatedAttachments = [...prevData.attachments, ...newAttachments]; 
+        
         return { 
           ...prevData, 
           messages: updatedMessages,
-          ticket: { ...prevData.ticket, status: 'awaiting_support', updated_at: new Date().toISOString() } 
+          attachments: updatedAttachments, // Update attachments state
+          ticket: { 
+            ...prevData.ticket, 
+            status: prevData.ticket.status === 'closed' ? 'closed' : nextStatus, 
+            updated_at: new Date().toISOString() 
+          } 
         };
       });
+      // --- End Optimistic UI Update ---
 
       setReply("");
       setFiles([]);
@@ -279,7 +309,9 @@ const TicketDetail: React.FC = () => {
 
   // Destructure after the checks and hook calls
   const { ticket, messages, userProfile } = ticketData; 
-  const userAvatar = userProfile?.discord_id && userProfile?.discord_avatar 
+
+  // Avatar URL for the ticket creator
+  const ticketCreatorAvatar = userProfile?.discord_id && userProfile?.discord_avatar 
     ? `https://cdn.discordapp.com/avatars/${userProfile.discord_id}/${userProfile.discord_avatar}.png`
     : "https://via.placeholder.com/40";
 
@@ -314,27 +346,35 @@ const TicketDetail: React.FC = () => {
 
           <div className="space-y-6 mb-8">
             {messages.map((message, index) => {
+              // Determine profile and avatar based on who sent the message
+              const isFromTicketCreator = message.from_user;
+              const displayProfile = isFromTicketCreator ? userProfile : currentUserProfile;
+              const displayAvatar = isFromTicketCreator 
+                ? ticketCreatorAvatar 
+                : (displayProfile?.discord_id && displayProfile?.discord_avatar 
+                    ? `https://cdn.discordapp.com/avatars/${displayProfile.discord_id}/${displayProfile.discord_avatar}.png`
+                    : "https://via.placeholder.com/40"); // Fallback for admin avatar if needed
+              const displayName = displayProfile?.discord_username || (isFromTicketCreator ? "User" : "Support Staff");
+              
               // Get attachments for this message from the pre-processed map
               const messageAttachments = attachmentsByMessageId.get(message.id) || [];
 
               return (
                 <div 
                   key={message.id} 
-                  className={`lolcow-card ${
-                    !message.from_user ? "border-l-4 border-l-lolcow-blue" : ""
-                  }`}
+                  className={`lolcow-card ${!isFromTicketCreator ? "border-l-4 border-l-lolcow-blue" : ""}`}
                 >
                   <div className="flex items-start space-x-4">
                     <img 
-                      src={message.from_user ? userAvatar : "https://via.placeholder.com/40"} 
-                      alt={message.from_user ? (userProfile?.discord_username || "User") : "Support Team"} 
+                      src={displayAvatar}
+                      alt={displayName} 
                       className="w-10 h-10 rounded-full"
                     />
                     <div className="flex-1">
                       <div className="flex justify-between">
                         <h3 className="font-medium text-white">
-                          {message.from_user ? (userProfile?.discord_username || "User") : "Support Team"}
-                          {!message.from_user && (
+                          {displayName}
+                          {!isFromTicketCreator && (
                             <span className="ml-2 bg-lolcow-blue text-xs px-2 py-0.5 rounded text-white">
                               Staff
                             </span>

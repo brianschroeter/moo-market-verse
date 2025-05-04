@@ -167,7 +167,7 @@ export async function createTicket(subject: string, message: string, attachments
   }
 }
 
-export async function addReplyToTicket(ticketId: string, message: string, attachments: File[] = []): Promise<void> {
+export async function addReplyToTicket(ticketId: string, message: string, isSupportReply: boolean, attachments: File[] = []): Promise<void> {
   try {
     // Create the reply message
     const { data: messageData, error: messageError } = await supabase
@@ -175,7 +175,7 @@ export async function addReplyToTicket(ticketId: string, message: string, attach
       .insert({
         ticket_id: ticketId,
         content: message,
-        from_user: true
+        from_user: !isSupportReply
       })
       .select()
       .single();
