@@ -12,7 +12,7 @@ export interface Ticket {
     discord_username: string;
   };
   description?: string;
-  priority?: string;
+  priority?: "low" | "medium" | "high";
 }
 
 export interface TicketFilter {
@@ -52,8 +52,8 @@ export const getTicketsWithProfile = async (filter?: TicketFilter): Promise<Tick
       profile: {
         discord_username: ticket.profiles.discord_username
       },
-      description: "",  // Default value
-      priority: "medium"  // Default value
+      description: ticket.description || "",
+      priority: (ticket.priority as "low" | "medium" | "high") || "medium"
     })) || [];
     
   } catch (error) {
@@ -94,8 +94,8 @@ export const getTickets = async (filter?: TicketFilter): Promise<Ticket[]> => {
       profile: {
         discord_username: ticket.profiles.discord_username
       },
-      description: "",  // Default value
-      priority: "medium"  // Default value
+      description: ticket.description || "",
+      priority: (ticket.priority as "low" | "medium" | "high") || "medium"
     })) || [];
     
   } catch (error) {

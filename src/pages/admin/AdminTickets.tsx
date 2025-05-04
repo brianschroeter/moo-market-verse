@@ -3,25 +3,10 @@ import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { getTickets } from "@/services/ticketAdminService";
+import { getTickets, Ticket } from "@/services/ticketAdminService";
 import TicketsTable from "@/components/admin/tickets/TicketsTable";
 import TicketFilters from "@/components/admin/tickets/TicketFilters";
 import TicketPagination from "@/components/admin/tickets/TicketPagination";
-
-// Define the Ticket type
-export type Ticket = {
-  id: string;
-  created_at: string;
-  updated_at: string;
-  user_id: string;
-  subject: string;
-  description?: string;
-  status: "open" | "awaiting_support" | "awaiting_user" | "closed";
-  priority?: "low" | "medium" | "high";
-  profiles?: {
-    discord_username: string;
-  };
-};
 
 const AdminTickets: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");

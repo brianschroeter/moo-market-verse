@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { fetchActiveAnnouncements, fetchActiveProducts, Announcement, FeaturedProduct } from "@/services/featuredContentService";
+import { fetchActiveAnnouncements, fetchActiveProducts } from "@/services/featuredContentService";
+import { Announcement, FeaturedProduct } from "@/services/types/featuredContent-types";
 import { format } from "date-fns";
 
 interface AnnouncementsProps {

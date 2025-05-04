@@ -1,7 +1,8 @@
 
 import React, { useEffect, useState } from "react";
 import ProductCard from "./ProductCard";
-import { fetchActiveProducts, FeaturedProduct } from "@/services/featuredContentService";
+import { fetchActiveProducts } from "@/services/featuredContentService";
+import { FeaturedProduct } from "@/services/types/featuredContent-types";
 import { Loader2 } from "lucide-react";
 
 const FeaturedProducts: React.FC = () => {

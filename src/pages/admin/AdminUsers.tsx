@@ -5,9 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import MakeAdminButton from "@/components/admin/MakeAdminButton";
-import { DataTable } from "@/components/ui/data-table";
-import { ColumnDef } from "@tanstack/react-table";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface User {
   id: string;
@@ -28,43 +34,24 @@ const getAllUsers = async (): Promise<User[]> => {
     throw error;
   }
   
-  return data || [];
+  return data as User[] || [];
 };
 
 const AdminUsers: React.FC = () => {
   const { toast } = useToast();
-  const columns: ColumnDef<User>[] = [
-    {
-      accessorKey: "user_metadata.full_name",
-      header: "Full Name",
-    },
-    {
-      accessorKey: "email",
-      header: "Email",
-    },
-    {
-      accessorKey: "created_at",
-      header: "Created At",
-    },
-    {
-      id: "actions",
-      cell: ({ row }) => {
-        const user = row.original;
-        return <MakeAdminButton userId={user.id} />;
-      },
-    },
-  ];
-
+  
   const { data: users = [], isLoading, isError, error } = useQuery({
     queryKey: ["users"],
     queryFn: getAllUsers,
     meta: {
-      onError: (err: Error) => {
-        toast({
-          title: "Error fetching users",
-          description: `Failed to fetch users: ${err.message}`,
-          variant: "destructive",
-        });
+      onSettled: (data: any, err: Error | null) => {
+        if (err) {
+          toast({
+            title: "Error fetching users",
+            description: `Failed to fetch users: ${err.message}`,
+            variant: "destructive",
+          });
+        }
       }
     }
   });
@@ -109,7 +96,35 @@ const AdminUsers: React.FC = () => {
             <CardTitle>All Users</CardTitle>
           </CardHeader>
           <CardContent>
-            <DataTable columns={columns} data={users} />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-gray-300">Full Name</TableHead>
+                  <TableHead className="text-gray-300">Email</TableHead>
+                  <TableHead className="text-gray-300">Created At</TableHead>
+                  <TableHead className="text-gray-300">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.user_metadata?.full_name || 'N/A'}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <MakeAdminButton userId={user.id} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {users.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-6">
+                      No users found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>
