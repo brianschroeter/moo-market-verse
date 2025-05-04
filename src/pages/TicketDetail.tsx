@@ -11,6 +11,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Profile } from "@/services/types/auth-types";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+
+// Helper to get public URL for Supabase Storage
+const getAttachmentUrl = (filePath: string): string => {
+  const { data } = supabase.storage.from('attachments').getPublicUrl(filePath);
+  return data?.publicUrl || '#'; // Return '#' as fallback
+};
 
 const TicketDetail: React.FC = () => {
   const { ticketId } = useParams<{ ticketId: string }>();
@@ -42,6 +49,7 @@ const TicketDetail: React.FC = () => {
         setLoading(true);
         setError(null);
         const fetchedData = await fetchTicketById(ticketId);
+        console.log('Fetched Ticket Data:', fetchedData);
         if (!fetchedData || !fetchedData.ticket) {
             throw new Error("Ticket not found.");
         }
@@ -218,10 +226,12 @@ const TicketDetail: React.FC = () => {
     );
   }
 
-  const { ticket, messages, userProfile } = ticketData;
+  const { ticket, messages, attachments, userProfile } = ticketData;
   const userAvatar = userProfile?.discord_id && userProfile?.discord_avatar 
     ? `https://cdn.discordapp.com/avatars/${userProfile.discord_id}/${userProfile.discord_avatar}.png`
     : "https://via.placeholder.com/40";
+  
+  console.log('Data for Render:', { messages, attachments });
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -253,38 +263,70 @@ const TicketDetail: React.FC = () => {
           </div>
 
           <div className="space-y-6 mb-8">
-            {messages.map((message) => (
-              <div 
-                key={message.id} 
-                className={`lolcow-card ${
-                  !message.from_user ? "border-l-4 border-l-lolcow-blue" : ""
-                }`}
-              >
-                <div className="flex items-start space-x-4">
-                  <img 
-                    src={message.from_user ? userAvatar : "https://via.placeholder.com/40"} 
-                    alt={message.from_user ? (userProfile?.discord_username || "User") : "Support Team"} 
-                    className="w-10 h-10 rounded-full"
-                  />
-                  <div className="flex-1">
-                    <div className="flex justify-between">
-                      <h3 className="font-medium text-white">
-                        {message.from_user ? (userProfile?.discord_username || "User") : "Support Team"}
-                        {!message.from_user && (
-                          <span className="ml-2 bg-lolcow-blue text-xs px-2 py-0.5 rounded text-white">
-                            Staff
-                          </span>
-                        )}
-                      </h3>
-                      <span className="text-gray-400 text-sm">{format(new Date(message.created_at), "PPpp")}</span>
-                    </div>
-                    <div className="mt-2 text-gray-300 whitespace-pre-wrap">
-                      {message.content}
+            {messages.map((message, index) => {
+              const messageAttachments = attachments.filter(att => 
+                att.message_id === message.id || (index === 0 && att.message_id === null)
+              );
+              
+              console.log(`Message ${index} (ID: ${message.id}): Found ${messageAttachments.length} attachments`, messageAttachments);
+
+              return (
+                <div 
+                  key={message.id} 
+                  className={`lolcow-card ${
+                    !message.from_user ? "border-l-4 border-l-lolcow-blue" : ""
+                  }`}
+                >
+                  <div className="flex items-start space-x-4">
+                    <img 
+                      src={message.from_user ? userAvatar : "https://via.placeholder.com/40"} 
+                      alt={message.from_user ? (userProfile?.discord_username || "User") : "Support Team"} 
+                      className="w-10 h-10 rounded-full"
+                    />
+                    <div className="flex-1">
+                      <div className="flex justify-between">
+                        <h3 className="font-medium text-white">
+                          {message.from_user ? (userProfile?.discord_username || "User") : "Support Team"}
+                          {!message.from_user && (
+                            <span className="ml-2 bg-lolcow-blue text-xs px-2 py-0.5 rounded text-white">
+                              Staff
+                            </span>
+                          )}
+                        </h3>
+                        <span className="text-gray-400 text-sm">{format(new Date(message.created_at), "PPpp")}</span>
+                      </div>
+                      <div className="mt-2 text-gray-300 whitespace-pre-wrap">
+                        {message.content}
+                      </div>
+                      
+                      {/* Render attachments for this message */}
+                      {messageAttachments.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-lolcow-lightgray/30">
+                          <h4 className="text-sm font-medium text-gray-400 mb-2">Attachments:</h4>
+                          <ul className="space-y-2">
+                            {messageAttachments.map(att => (
+                              <li key={att.id} className="flex items-center space-x-2">
+                                <i className="fa-solid fa-paperclip text-gray-400"></i>
+                                <a 
+                                  href={getAttachmentUrl(att.file_path)} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-lolcow-blue hover:underline text-sm truncate"
+                                  download={att.file_name} // Suggest original filename for download
+                                >
+                                  {att.file_name}
+                                </a>
+                                <span className="text-gray-500 text-xs">({formatFileSize(att.file_size)})</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {ticket.status !== 'closed' && (
