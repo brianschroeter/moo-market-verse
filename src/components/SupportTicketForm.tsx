@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileUp } from "lucide-react";
+import { createTicket } from "@/services/ticketService";
+import { useNavigate } from "react-router-dom";
 
 interface FileInfo {
   name: string;
@@ -16,36 +18,57 @@ interface FileInfo {
 const SupportTicketForm: React.FC = () => {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-  const [files, setFiles] = useState<FileInfo[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!subject.trim() || !message.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide both a subject and message for your ticket.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     
-    // This would be replaced with actual API call to submit ticket with file uploads
-    setTimeout(() => {
+    try {
+      // Submit the ticket using the ticketService
+      const ticketId = await createTicket(subject, message, files);
+      
       toast({
         title: "Ticket Submitted",
         description: `We'll get back to you as soon as possible. ${files.length ? `${files.length} file(s) attached.` : ''}`,
       });
+      
+      // Clear the form
       setSubject("");
       setMessage("");
       setFiles([]);
+      
+      // Navigate to the ticket detail page
+      navigate(`/tickets/${ticketId}`);
+    } catch (error) {
+      console.error("Error submitting ticket:", error);
+      toast({
+        title: "Error Submitting Ticket",
+        description: "There was an error submitting your ticket. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles: FileInfo[] = Array.from(e.target.files).map(file => ({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        data: file
-      }));
+      const newFiles = Array.from(e.target.files);
       setFiles([...files, ...newFiles]);
     }
   };

@@ -112,6 +112,113 @@ export type Database = {
         }
         Relationships: []
       }
+      support_tickets: {
+        Row: {
+          created_at: string
+          id: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ticket_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          message_id: string | null
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          message_id?: string | null
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          message_id?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_attachments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_messages: {
+        Row: {
+          content: string
+          created_at: string
+          from_user: boolean
+          id: string
+          ticket_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          from_user?: boolean
+          id?: string
+          ticket_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          from_user?: boolean
+          id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       youtube_connections: {
         Row: {
           created_at: string
