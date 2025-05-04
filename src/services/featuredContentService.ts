@@ -1,21 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { FeaturedContent } from "./types/featuredContent-types";
-
-export interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  is_important: boolean;
-  active: boolean;
-}
-
-export interface FeaturedProduct extends FeaturedContent {
-  product_url?: string;
-  featured?: boolean;
-}
+import { FeaturedContent, FeaturedProduct, Announcement } from "./types/featuredContent-types";
 
 export const getFeaturedContent = async (): Promise<FeaturedContent[]> => {
   const { data, error } = await supabase
@@ -51,7 +36,17 @@ export const fetchActiveProducts = async (): Promise<FeaturedProduct[]> => {
     throw error;
   }
   
-  return data || [];
+  // Transform the data to match the FeaturedProduct interface
+  return data.map(product => ({
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    image_url: product.image_url,
+    product_url: product.product_url,
+    featured: product.featured,
+    created_at: product.created_at,
+    updated_at: product.updated_at
+  })) || [];
 };
 
 export const fetchActiveAnnouncements = async (): Promise<Announcement[]> => {
@@ -69,7 +64,14 @@ export const fetchActiveAnnouncements = async (): Promise<Announcement[]> => {
   return data || [];
 };
 
-export const createFeaturedContent = async (content: Omit<FeaturedContent, 'id' | 'created_at' | 'updated_at'>): Promise<FeaturedContent> => {
+export interface CreateFeaturedContentParams {
+  name: string;
+  description: string;
+  image_url: string;
+  link: string;
+}
+
+export const createFeaturedContent = async (content: CreateFeaturedContentParams): Promise<FeaturedContent> => {
   const { data, error } = await supabase
     .from('featured_products')
     .insert({

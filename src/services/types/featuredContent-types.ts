@@ -8,3 +8,18 @@ export interface FeaturedContent {
   created_at: string;
   updated_at: string;
 }
+
+export interface FeaturedProduct extends Omit<FeaturedContent, 'link'> {
+  product_url: string;
+  featured?: boolean;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  is_important: boolean;
+  active: boolean;
+}
