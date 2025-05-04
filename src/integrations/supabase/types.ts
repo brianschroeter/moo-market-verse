@@ -340,11 +340,29 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_guilds_for_user: {
+        Args: { user_uuid: string }
+        Returns: {
+          guild_id: string
+          guild_name: string
+        }[]
+      }
+      get_user_guild_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          guild_count: number
+        }[]
+      }
       has_role: {
         Args: {
           _user_id: string
           _role: Database["public"]["Enums"]["user_role"]
         }
+        Returns: boolean
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
     }
