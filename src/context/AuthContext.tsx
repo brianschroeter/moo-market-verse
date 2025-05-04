@@ -1,8 +1,7 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { Profile, getProfile, fetchAndSyncDiscordConnections } from "@/services/authService";
+import { Profile, getProfile, fetchAndSyncDiscordConnections, signOut as authSignOut } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -141,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      await authSignOut();
     } catch (error) {
       console.error("Error signing out:", error);
       throw error;

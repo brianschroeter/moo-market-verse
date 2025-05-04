@@ -1,18 +1,22 @@
 
 import React from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { YouTubeConnection } from "@/services/authService";
+import { YouTubeConnection } from "@/services/types/auth-types";
 
 interface YouTubeConnectionCardProps {
   account: YouTubeConnection;
 }
 
 const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }) => {
+  // Get YouTube avatar or use fallback
+  const avatarUrl = account.youtube_avatar || 
+    `https://i.pravatar.cc/40?u=${account.youtube_channel_id}`;
+
   return (
     <div className="flex items-center p-3 bg-lolcow-lightgray rounded-lg">
       <Avatar className="h-10 w-10 mr-3">
         <AvatarImage 
-          src={account.youtube_avatar || `https://i.pravatar.cc/40?u=${account.youtube_channel_id}`} 
+          src={avatarUrl} 
           alt={account.youtube_channel_name} 
         />
         <AvatarFallback className="bg-gray-700 text-white">
