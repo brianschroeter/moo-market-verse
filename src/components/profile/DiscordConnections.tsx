@@ -70,67 +70,6 @@ const DiscordConnections: React.FC = () => {
             </span>
           </div>
           
-          {loading ? (
-            <div className="text-center py-4">
-              <p className="text-gray-400">Loading connections...</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <h3 className="text-white font-semibold">Connected Accounts</h3>
-              
-              {connections.length === 0 ? (
-                <p className="text-gray-400">No external accounts connected</p>
-              ) : (
-                connections.map((connection) => {
-                  // Check if there's specific YouTube data for this connection
-                  const isYouTube = connection.connection_type === 'youtube';
-                  const youtubeData = isYouTube ? youtubeConnections[connection.connection_id] : undefined;
-                  
-                  // Determine the avatar URL
-                  let avatarSrc = connection.avatar_url; // Default to the generic one (likely null)
-                  if (isYouTube && youtubeData?.youtube_avatar) {
-                    avatarSrc = youtubeData.youtube_avatar;
-                  } else if (!avatarSrc) {
-                    // Fallback if generic is null and no specific YouTube avatar found
-                    avatarSrc = `https://i.pravatar.cc/40?u=${connection.connection_id}`;
-                  }
-
-                  return (
-                    <div 
-                      key={connection.id} 
-                      className="flex items-center space-x-3 p-3 bg-lolcow-lightgray rounded-lg"
-                    >
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage 
-                          src={avatarSrc} 
-                          alt={connection.connection_name} 
-                        />
-                        <AvatarFallback className="bg-gray-700">
-                          {connection.connection_name.substring(0, 1).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-grow">
-                        <p className="text-white">{connection.connection_name}</p>
-                        <div className="flex items-center">
-                          <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded-full">
-                            {connection.connection_type}
-                          </span>
-                          {connection.connection_verified ? (
-                            <span className="text-xs text-green-500 ml-2 flex items-center">
-                              <i className="fa-solid fa-check-circle mr-1"></i> Verified
-                            </span>
-                          ) : (
-                            <span className="text-xs text-yellow-500 ml-2">Unverified</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
-          
           <div className="bg-lolcow-lightgray p-4 rounded-lg">
             <h3 className="text-white text-lg mb-2">Server Access</h3>
             <p className="text-gray-300">
