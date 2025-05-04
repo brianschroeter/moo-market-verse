@@ -2,7 +2,7 @@ import React, { useState, useEffect, ReactNode } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Loader2 } from "lucide-react";
+import { User, Shield, Loader2, Server } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,13 @@ interface UserData {
     connection_id: string;
   }[];
   roles: string[];
+  guild_count?: number;
+}
+
+// Define type for a single guild
+interface Guild {
+  guild_id: string;
+  guild_name: string;
 }
 
 const AdminUsers: React.FC = (): ReactNode => {
@@ -31,6 +38,12 @@ const AdminUsers: React.FC = (): ReactNode => {
   const [loading, setLoading] = useState(true);
   const [isAddingConnection, setIsAddingConnection] = useState(false);
   const { toast } = useToast();
+
+  // State for Guilds Dialog
+  const [showGuildsDialog, setShowGuildsDialog] = useState(false);
+  const [selectedUserForGuilds, setSelectedUserForGuilds] = useState<UserData | null>(null);
+  const [loadingGuilds, setLoadingGuilds] = useState(false);
+  const [userGuilds, setUserGuilds] = useState<Guild[]>([]);
 
   useEffect(() => {
     fetchUsers();
@@ -66,6 +79,31 @@ const AdminUsers: React.FC = (): ReactNode => {
         throw connectionsError; // Changed error variable
       }
 
+      // Fetch guild counts using the RPC function
+      const { data: guildCountsData, error: guildCountsError } = await supabase
+        .rpc('get_user_guild_counts'); // Call the RPC function
+
+      if (guildCountsError) {
+        // Don't throw, maybe just log, as guilds might be optional
+        console.error("Error fetching guild counts:", guildCountsError);
+        // Potentially show a toast, but maybe not critical?
+      }
+
+      // Process guild counts from RPC into a map
+      const guildCountMap = new Map<string, number>();
+      if (Array.isArray(guildCountsData)) {
+        guildCountsData.forEach((row: { user_id: string; guild_count: bigint | number | null }) => {
+          // Ensure guild_count is treated as a number, handle potential nulls/undefined
+          const count = typeof row.guild_count === 'bigint' 
+                          ? Number(row.guild_count) 
+                          : (typeof row.guild_count === 'number' ? row.guild_count : 0);
+          guildCountMap.set(row.user_id, count);
+        });
+      } else {
+        // Log if RPC data is unexpectedly null/undefined
+        console.warn("Received null/undefined data from get_user_guild_counts RPC.");
+      }
+
       // Process and combine the data
       const userMap = new Map<string, UserData>();
 
@@ -85,7 +123,8 @@ const AdminUsers: React.FC = (): ReactNode => {
           avatar: avatarUrl, // Use the correctly constructed URL
           joined: new Date(profile.created_at).toLocaleDateString(),
           connections: [],
-          roles: []
+          roles: [],
+          guild_count: guildCountMap.get(profile.id) || 0 // Get count from map
         });
       });
 
@@ -333,6 +372,40 @@ const AdminUsers: React.FC = (): ReactNode => {
     }
   };
 
+  // Function to fetch and show guilds for a user
+  const handleShowGuilds = async (user: UserData) => {
+    if (!user || (user.guild_count ?? 0) === 0) return; // Don't open if no guilds
+
+    setSelectedUserForGuilds(user);
+    setShowGuildsDialog(true);
+    setLoadingGuilds(true);
+    setUserGuilds([]); // Clear previous guilds
+
+    try {
+      const { data, error } = await supabase
+        .rpc<'get_guilds_for_user', { user_uuid: string }, Guild[]>('get_guilds_for_user', { user_uuid: user.id });
+
+      if (error) {
+        throw error;
+      }
+
+      // Ensure data is an array before setting state
+      setUserGuilds(Array.isArray(data) ? data : []);
+
+    } catch (error) {
+      console.error("Error fetching user guilds:", error);
+      toast({
+        title: "Error",
+        description: `Failed to load guilds for ${user.username}. ${error instanceof Error ? error.message : ''}`,
+        variant: "destructive",
+      });
+      // Close dialog on error?
+      // setShowGuildsDialog(false);
+    } finally {
+      setLoadingGuilds(false);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="mb-6">
@@ -353,6 +426,7 @@ const AdminUsers: React.FC = (): ReactNode => {
                 <TableHead className="text-gray-300">User</TableHead>
                 <TableHead className="text-gray-300">Connections</TableHead>
                 <TableHead className="text-gray-300">Role</TableHead>
+                <TableHead className="text-gray-300">Guilds</TableHead>
                 <TableHead className="text-gray-300">Joined</TableHead>
                 <TableHead className="text-gray-300 text-right">Actions</TableHead>
               </TableRow>
@@ -415,6 +489,20 @@ const AdminUsers: React.FC = (): ReactNode => {
                       )}
                     </div>
                   </TableCell>
+                  <TableCell>
+                    {/* Display Guild Count - Make it clickable */}
+                    {(user.guild_count ?? 0) > 0 ? (
+                      <Button 
+                        variant="link"
+                        className="text-lolcow-blue p-0 h-auto hover:underline"
+                        onClick={() => handleShowGuilds(user)}
+                      >
+                         {user.guild_count}
+                      </Button>
+                    ) : (
+                      <div className="text-gray-400">0</div>
+                    )}
+                  </TableCell>
                   <TableCell className="text-gray-300">{user.joined}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end space-x-2">
@@ -455,7 +543,7 @@ const AdminUsers: React.FC = (): ReactNode => {
               ))}
               {users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-gray-400">
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-400">
                     No users found
                   </TableCell>
                 </TableRow>
@@ -550,6 +638,56 @@ const AdminUsers: React.FC = (): ReactNode => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Show Guilds Dialog */}
+      <Dialog open={showGuildsDialog} onOpenChange={setShowGuildsDialog}>
+        <DialogContent className="bg-lolcow-darkgray text-white border-lolcow-lightgray max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-fredoka flex items-center">
+              <Server className="w-5 h-5 mr-2" />
+              Guilds for {selectedUserForGuilds?.username}
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              List of Discord servers the user is in.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 max-h-[60vh] overflow-y-auto">
+            {loadingGuilds ? (
+              <div className="flex justify-center items-center p-8">
+                <Loader2 className="h-6 w-6 animate-spin text-lolcow-blue" />
+                <span className="ml-2 text-white">Loading guilds...</span>
+              </div>
+            ) : userGuilds.length > 0 ? (
+              <ul className="space-y-2">
+                {userGuilds.map((guild) => (
+                  <li 
+                    key={guild.guild_id} 
+                    className="flex items-center bg-lolcow-lightgray/20 p-3 rounded text-sm"
+                  >
+                    <span className="truncate" title={guild.guild_name}>{guild.guild_name}</span>
+                    <span className="ml-auto text-xs text-gray-500" title={guild.guild_id}>({guild.guild_id})</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-center text-gray-400 py-4">
+                No guilds found or unable to load guilds.
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-end mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowGuildsDialog(false)}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </AdminLayout>
   );
 };
