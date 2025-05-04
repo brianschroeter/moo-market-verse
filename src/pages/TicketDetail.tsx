@@ -5,15 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useParams } from "react-router-dom";
 import { FileUp, List } from "lucide-react";
-import { Ticket, TicketMessage, TicketAttachment, fetchTicketById } from "@/services/ticketService";
+import { Ticket, TicketMessage, TicketAttachment, fetchTicketById, addReplyToTicket } from "@/services/ticketService";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Profile } from "@/services/types/auth-types";
+import { useAuth } from "@/context/AuthContext";
 
 const TicketDetail: React.FC = () => {
   const { ticketId } = useParams<{ ticketId: string }>();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [ticketData, setTicketData] = useState<{
     ticket: Ticket;
     messages: TicketMessage[];
@@ -60,15 +62,58 @@ const TicketDetail: React.FC = () => {
     loadTicket();
   }, [ticketId, toast]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!ticketId || !reply.trim()) return;
+    if (!user) {
+      toast({ title: "Error", description: "You must be logged in to reply.", variant: "destructive" });
+      return;
+    }
+    
     setIsSubmitting(true);
     
-    setTimeout(() => {
+    try {
+      await addReplyToTicket(ticketId, reply, files);
+      
+      const newMessage: TicketMessage = {
+          id: `temp-${Date.now()}`,
+          ticket_id: ticketId,
+          content: reply,
+          from_user: true,
+          created_at: new Date().toISOString(),
+      };
+
+      setTicketData(prevData => {
+        if (!prevData) return null;
+        const updatedMessages = [...prevData.messages, newMessage];
+        return { 
+          ...prevData, 
+          messages: updatedMessages,
+          ticket: { ...prevData.ticket, status: 'replied', updated_at: new Date().toISOString() } 
+        };
+      });
+
       setReply("");
       setFiles([]);
+      
+      toast({
+        title: "Success",
+        description: "Your reply has been sent.",
+        variant: "default",
+      });
+      
+    } catch (err) {
+      console.error("Error submitting reply:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to send reply.";
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
