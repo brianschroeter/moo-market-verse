@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { FeaturedContent, FeaturedProduct, Announcement } from "./types/featuredContent-types";
+import { PostgrestError } from '@supabase/supabase-js';
 
 export const getFeaturedContent = async (): Promise<FeaturedContent[]> => {
   const { data, error } = await supabase
@@ -12,42 +13,51 @@ export const getFeaturedContent = async (): Promise<FeaturedContent[]> => {
     throw error;
   }
   
-  return data.map(product => ({
+  if (!data) {
+    return [];
+  }
+  
+  return data.map((product: any): FeaturedContent => ({
     id: product.id,
     name: product.name,
     description: product.description,
     image_url: product.image_url,
     link: product.product_url,
     featured: product.featured ?? false,
+    price: product.price,
     created_at: product.created_at,
     updated_at: product.updated_at
-  })) || [];
+  }));
 };
 
 export const fetchActiveProducts = async (): Promise<FeaturedProduct[]> => {
   const { data, error } = await supabase
     .from('featured_products')
-    .select('*')
+    .select('id, name, description, image_url, product_url, featured, price, created_at, updated_at')
     .eq('featured', true)
     .order('created_at', { ascending: false });
-    
+
   if (error) {
     console.error("Error fetching featured products:", error);
     throw error;
   }
-  
-  // Transform the data to match the FeaturedProduct interface
-  return data.map(product => ({
+
+  if (!data) {
+    return [];
+  }
+
+  return data.map((product: any): FeaturedProduct => ({
     id: product.id,
     name: product.name,
     description: product.description,
     image_url: product.image_url,
     product_url: product.product_url,
-    link: product.product_url, // Adding for backward compatibility
+    link: product.product_url,
     featured: product.featured,
+    price: product.price ?? undefined,
     created_at: product.created_at,
     updated_at: product.updated_at
-  })) || [];
+  }));
 };
 
 export const fetchActiveAnnouncements = async (): Promise<Announcement[]> => {
@@ -71,6 +81,7 @@ export interface CreateFeaturedContentParams {
   image_url: string;
   link: string;
   featured?: boolean;
+  price?: number;
 }
 
 export const createFeaturedContent = async (content: CreateFeaturedContentParams): Promise<FeaturedContent> => {
@@ -81,7 +92,8 @@ export const createFeaturedContent = async (content: CreateFeaturedContentParams
       description: content.description,
       image_url: content.image_url,
       product_url: content.link,
-      featured: content.featured ?? false
+      featured: content.featured ?? false,
+      price: content.price
     })
     .select()
     .single();
@@ -99,7 +111,7 @@ export const createFeaturedContent = async (content: CreateFeaturedContentParams
     link: data.product_url,
     featured: data.featured,
     created_at: data.created_at,
-    updated_at: data.updated_at
+    updated_at: data.updated_at,
   };
 };
 
@@ -110,6 +122,7 @@ export interface UpdateFeaturedContentParams {
   image_url?: string;
   link?: string;
   featured?: boolean;
+  price?: number;
 }
 
 export const updateFeaturedContent = async (content: UpdateFeaturedContentParams): Promise<FeaturedContent> => {
@@ -119,6 +132,9 @@ export const updateFeaturedContent = async (content: UpdateFeaturedContentParams
   if (updateData.link !== undefined) {
       dbUpdateData.product_url = updateData.link;
       delete dbUpdateData.link;
+  }
+  if (updateData.price !== undefined) {
+      dbUpdateData.price = updateData.price;
   }
 
   const { data, error } = await supabase
@@ -141,7 +157,7 @@ export const updateFeaturedContent = async (content: UpdateFeaturedContentParams
     link: data.product_url,
     featured: data.featured,
     created_at: data.created_at,
-    updated_at: data.updated_at
+    updated_at: data.updated_at,
   };
 };
 
@@ -157,7 +173,6 @@ export const deleteFeaturedContent = async (id: string): Promise<void> => {
   }
 };
 
-// Add these two functions for managing announcements
 export const createAnnouncement = async (data: Omit<Announcement, 'id' | 'created_at' | 'updated_at'>): Promise<Announcement> => {
   const { data: result, error } = await supabase
     .from('announcements')
@@ -185,9 +200,6 @@ export const updateFeaturedProductStatus = async (id: string, featured: boolean)
   }
 };
 
-// --- Announcement Functions --- 
-
-// Get ALL announcements (for admin)
 export const getAnnouncements = async (): Promise<Announcement[]> => {
   const { data, error } = await supabase
     .from('announcements')
@@ -202,12 +214,10 @@ export const getAnnouncements = async (): Promise<Announcement[]> => {
   return data || [];
 };
 
-// Type for Update Payload
 export interface UpdateAnnouncementParams extends Partial<Omit<Announcement, 'id' | 'created_at' | 'updated_at'>> {
-  id: string; // ID is required to know which one to update
+  id: string;
 }
 
-// Update announcement function
 export const updateAnnouncement = async (params: UpdateAnnouncementParams): Promise<Announcement> => {
   const { id, ...updateData } = params;
   
@@ -226,7 +236,6 @@ export const updateAnnouncement = async (params: UpdateAnnouncementParams): Prom
   return data;
 };
 
-// Delete announcement function
 export const deleteAnnouncement = async (id: string): Promise<void> => {
   const { error } = await supabase
     .from('announcements')

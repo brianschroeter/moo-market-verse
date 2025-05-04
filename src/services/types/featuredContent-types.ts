@@ -5,6 +5,7 @@ export interface FeaturedContent {
   image_url: string;
   link: string;
   featured: boolean;
+  price?: number;
   created_at: string;
   updated_at: string;
 }
@@ -12,6 +13,7 @@ export interface FeaturedContent {
 export interface FeaturedProduct extends Omit<FeaturedContent, 'link'> {
   product_url: string;
   featured: boolean;
+  price?: number;
   link?: string;
 }
 

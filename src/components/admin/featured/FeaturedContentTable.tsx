@@ -14,7 +14,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash, Edit } from "lucide-react";
+import { Trash, Edit, Check } from "lucide-react";
+
+// Helper to format price
+const formatPrice = (price: number | undefined | null): string => {
+  if (price === undefined || price === null) {
+    return "-"; // Or return empty string: ""
+  }
+  return `$${price.toFixed(2)}`;
+};
 
 interface FeaturedContentTableProps {
   products: FeaturedContent[];
@@ -44,12 +52,13 @@ const FeaturedContentTable: React.FC<FeaturedContentTableProps> = ({ products, i
               <TableHead className="w-[100px] text-gray-300">Image</TableHead>
               <TableHead className="text-gray-300">Name</TableHead>
               <TableHead className="text-gray-300">Description</TableHead>
-              <TableHead className="text-gray-300">Link</TableHead>
+              <TableHead className="text-gray-300">Price</TableHead>
+              <TableHead className="text-gray-300">Featured</TableHead>
               <TableHead className="text-right text-gray-300">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.map((product: FeaturedContent) => (
+            {products.map((product: FeaturedContent & { price?: number }) => (
               <TableRow key={product.id} className="border-b border-lolcow-lightgray hover:bg-lolcow-lightgray/10">
                 <TableCell className="py-4">
                   <img
@@ -59,26 +68,14 @@ const FeaturedContentTable: React.FC<FeaturedContentTableProps> = ({ products, i
                   />
                 </TableCell>
                 <TableCell className="font-medium text-white">
-                  <div className="flex items-center space-x-2">
-                    {product.featured && (
-                      <span 
-                        className="inline-block h-2 w-2 rounded-full bg-green-500" 
-                        title="Featured"
-                      ></span>
-                    )}
-                    <span>{product.name}</span>
-                  </div>
+                  <span>{product.name}</span>
                 </TableCell>
                 <TableCell className="text-gray-300">{product.description}</TableCell>
-                <TableCell>
-                  <a
-                    href={product.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-lolcow-blue hover:underline"
-                  >
-                    {product.link}
-                  </a>
+                <TableCell className="text-gray-300">
+                  {formatPrice(product.price)}
+                </TableCell>
+                <TableCell className="text-center">
+                  {product.featured ? <Check className="h-5 w-5 text-green-500 mx-auto" /> : '-'}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end space-x-2">
@@ -110,14 +107,15 @@ const FeaturedContentTable: React.FC<FeaturedContentTableProps> = ({ products, i
               <TableHead className="w-[100px] text-gray-300">Image</TableHead>
               <TableHead className="text-gray-300">Name</TableHead>
               <TableHead className="text-gray-300">Description</TableHead>
-              <TableHead className="text-gray-300">Link</TableHead>
+              <TableHead className="text-gray-300">Price</TableHead>
+              <TableHead className="text-gray-300">Featured</TableHead>
               <TableHead className="text-right text-gray-300">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-8 text-gray-400">
-                No products found.
+              <TableCell colSpan={6} className="text-center py-8 text-gray-400">
+                No featured content found.
               </TableCell>
             </TableRow>
           </TableBody>

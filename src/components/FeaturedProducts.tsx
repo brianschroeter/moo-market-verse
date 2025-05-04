@@ -98,7 +98,7 @@ const FeaturedProducts: React.FC = () => {
               key={product.id}
               id={product.id}
               name={product.name}
-              price={19.99} // Default price if not in the data model
+              price={product.price}
               description={product.description}
               imageUrl={product.imageUrl}
             />
@@ -112,9 +112,10 @@ const FeaturedProducts: React.FC = () => {
         key={product.id}
         id={product.id}
         name={product.name}
-        price={19.99} // Default price if not in the data model
+        price={product.price}
         description={product.description}
         imageUrl={product.image_url}
+        productUrl={product.product_url}
       />
     ));
   };

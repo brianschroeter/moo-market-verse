@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 export interface ProductCardProps {
   id: string;  // Changed from number to string to match UUID from database
@@ -8,9 +7,10 @@ export interface ProductCardProps {
   price: number;
   description: string;
   imageUrl: string;
+  productUrl?: string; // Add optional product URL prop
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ id, name, price, description, imageUrl }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ id, name, price, description, imageUrl, productUrl }) => {
   return (
     <div className="product-card">
       <div className="product-card-image-container">
@@ -24,10 +24,19 @@ const ProductCard: React.FC<ProductCardProps> = ({ id, name, price, description,
       
       <div className="flex items-center justify-between mt-4">
         <span className="product-card-price">${price.toFixed(2)}</span>
-        <button className="btn-primary flex items-center space-x-2 py-2">
-          <ShoppingCart className="h-4 w-4" />
-          <span>Add to Cart</span>
-        </button>
+        {productUrl ? (
+          <a 
+            href={productUrl} 
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary flex items-center space-x-2 py-2"
+          >
+            <ArrowRight className="h-4 w-4" />
+            <span>Learn More</span>
+          </a>
+        ) : (
+          <span className="text-sm text-gray-500">Details unavailable</span>
+        )}
       </div>
     </div>
   );

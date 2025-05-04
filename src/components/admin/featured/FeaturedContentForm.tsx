@@ -16,7 +16,7 @@ import { Loader2, Upload } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface FeaturedContentFormProps {
-  initialData?: FeaturedContent | null;
+  initialData?: FeaturedContent & { price?: number };
   onSubmit: (data: CreateFeaturedContentParams) => void;
   isSubmitting: boolean;
   onCancel: () => void;
@@ -33,6 +33,7 @@ const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({
   const [imageUrl, setImageUrl] = useState("");
   const [link, setLink] = useState("");
   const [featured, setFeatured] = useState(false);
+  const [price, setPrice] = useState<number | string>("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
@@ -46,6 +47,7 @@ const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({
       setImageUrl(initialData.image_url);
       setLink(initialData.link);
       setFeatured(initialData.featured);
+      setPrice(initialData.price !== undefined ? initialData.price : "");
       setImageFile(null);
     } else {
       setName("");
@@ -53,6 +55,7 @@ const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({
       setImageUrl("");
       setLink("");
       setFeatured(false);
+      setPrice("");
       setImageFile(null);
     }
   }, [initialData]);
@@ -100,10 +103,20 @@ const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const numericPrice = price === "" ? undefined : parseFloat(String(price));
+    if (price !== "" && (isNaN(numericPrice) || numericPrice < 0)) {
+        toast({
+            title: "Error",
+            description: "Please enter a valid positive price.",
+            variant: "destructive",
+        });
+        return;
+    }
+
     if (!name || !description || !imageUrl || !link) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please fill in Name, Description, Image, and Link fields.",
         variant: "destructive",
       });
       return;
@@ -115,6 +128,7 @@ const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({
       image_url: imageUrl,
       link,
       featured,
+      price: numericPrice,
     });
   };
 
@@ -222,6 +236,19 @@ const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({
           required
         />
       </div>
+      <div className="grid w-full items-center gap-1.5">
+        <Label htmlFor="price" className="text-gray-300">Price (Optional)</Label>
+        <Input
+          type="number"
+          id="price"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          placeholder="e.g., 19.99"
+          step="0.01"
+          min="0"
+          className="bg-lolcow-lightgray/30 text-white border-lolcow-lightgray focus:ring-lolcow-blue"
+        />
+      </div>
       <div className="flex items-center space-x-2 pt-2">
         <Checkbox 
           id="featured"
@@ -251,7 +278,7 @@ const FeaturedContentForm: React.FC<FeaturedContentFormProps> = ({
           className="bg-lolcow-blue hover:bg-lolcow-blue/90"
         >
           {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {isSubmitting ? (initialData ? 'Updating...' : 'Adding...') : (initialData ? 'Update Product' : 'Add Product')}
+          {isSubmitting ? (initialData ? 'Updating...' : 'Adding...') : (initialData ? 'Update Content' : 'Add Content')}
         </Button>
       </div>
     </form>
