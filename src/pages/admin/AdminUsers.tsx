@@ -597,15 +597,6 @@ const AdminUsers: React.FC = (): ReactNode => {
                       >
                         Edit
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleLoginAs(user)}
-                        className="border-lolcow-green text-lolcow-green hover:bg-lolcow-green hover:text-white"
-                      >
-                        <User className="h-4 w-4 mr-1" />
-                        Login As
-                      </Button>
                       <Button
                         variant="destructive"
                         size="sm"

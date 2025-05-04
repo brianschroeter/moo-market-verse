@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,11 +99,11 @@ const Announcements: React.FC<AnnouncementsProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {featuredProducts.map((product) => (
                 <div key={product.id} className="bg-lolcow-lightgray rounded-lg overflow-hidden">
-                  <div className="h-40 overflow-hidden">
+                  <div>
                     <img 
                       src={product.image_url} 
                       alt={product.name} 
-                      className="w-full h-full object-cover"
+                      className="w-full"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = "https://via.placeholder.com/300x200";
                       }}
