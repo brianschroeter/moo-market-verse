@@ -1,4 +1,3 @@
-
 // Follow this setup guide to integrate the Deno runtime into your application:
 // https://deno.com/manual/getting_started/javascript_and_typescript
 
@@ -229,14 +228,17 @@ serve(async (req) => {
 
     // If this is just a refresh avatar request, update the existing connection
     if (refreshAvatar) {
-      console.log("Processing avatar refresh request");
-      
+      console.log("Processing avatar refresh request for channel ID:", youtubeChannelId);
+
       const { data: existingConnection, error: connectionError } = await supabaseClient
         .from('youtube_connections')
         .select('*')
         .eq('user_id', user.id)
         .eq('youtube_channel_id', youtubeChannelId)
         .single();
+
+      console.log("Existing connection fetch result - data:", JSON.stringify(existingConnection));
+      console.log("Existing connection fetch result - error:", JSON.stringify(connectionError));
 
       if (connectionError) {
         console.error("Error finding existing YouTube connection:", connectionError);
@@ -269,19 +271,26 @@ serve(async (req) => {
         );
       }
 
-      console.log("Found existing connection:", existingConnection);
-      console.log("Updating with new avatar URL:", youtubeAvatar);
+      console.log("Found existing connection with ID:", existingConnection.id);
+      console.log("Avatar URL fetched from YouTube API:", youtubeAvatar);
+
+      // Prepare update payload
+      const updatePayload = {
+        youtube_avatar: youtubeAvatar,
+        updated_at: new Date().toISOString()
+      };
+      console.log("Update payload for youtube_connections:", JSON.stringify(updatePayload));
 
       // Update the existing connection with the new avatar
       const { data: updatedConnection, error: updateError } = await supabaseClient
         .from('youtube_connections')
-        .update({
-          youtube_avatar: youtubeAvatar,
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('id', existingConnection.id)
         .select()
         .single();
+      
+      console.log("Update operation result - data:", JSON.stringify(updatedConnection));
+      console.log("Update operation result - error:", JSON.stringify(updateError));
 
       if (updateError) {
         console.error("Error updating YouTube connection:", updateError);
@@ -317,24 +326,27 @@ serve(async (req) => {
     }
 
     // Create or update YouTube connection with the fetched data
-    const { data: connection, error: connectionError } = await supabaseClient
+    const upsertPayload = {
+      user_id: user.id,
+      youtube_channel_id: youtubeChannelId,
+      youtube_channel_name: youtubeChannelName || fetchedChannelName,
+      youtube_avatar: youtubeAvatar,
+      is_verified: false, // Set to false initially, will be verified through an admin process
+      updated_at: new Date().toISOString()
+    };
+    console.log("Upsert payload for youtube_connections:", JSON.stringify(upsertPayload));
+
+    const { data: connection, error: connectionErrorUpsert } = await supabaseClient
       .from('youtube_connections')
-      .upsert({
-        user_id: user.id,
-        youtube_channel_id: youtubeChannelId,
-        youtube_channel_name: youtubeChannelName || fetchedChannelName,
-        youtube_avatar: youtubeAvatar,
-        is_verified: false, // Set to false initially, will be verified through an admin process
-        updated_at: new Date().toISOString()
-      }, {
+      .upsert(upsertPayload, {
         onConflict: 'user_id,youtube_channel_id',
         returning: 'representation'
       });
 
-    if (connectionError) {
-      console.error("Error saving YouTube connection:", connectionError);
+    if (connectionErrorUpsert) {
+      console.error("Error saving YouTube connection:", connectionErrorUpsert);
       return new Response(
-        JSON.stringify({ error: "Failed to save YouTube connection", details: connectionError }),
+        JSON.stringify({ error: "Failed to save YouTube connection", details: connectionErrorUpsert }),
         { 
           status: 500, 
           headers: { 
@@ -346,7 +358,9 @@ serve(async (req) => {
     }
     
     console.log("YouTube connection created/updated successfully");
-    
+    console.log("Upsert operation result - data:", JSON.stringify(connection));
+    console.log("Upsert operation result - error:", JSON.stringify(connectionErrorUpsert));
+
     return new Response(
       JSON.stringify({ 
         message: "YouTube connection saved. Verification pending.", 

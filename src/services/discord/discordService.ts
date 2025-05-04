@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { DiscordConnection, DiscordGuild, StoredDiscordConnection, YouTubeConnection } from "../types/auth-types";
 
@@ -75,45 +74,87 @@ export const fetchAndSyncDiscordConnections = async (): Promise<YouTubeConnectio
       }
     }
     
-    // Filter for YouTube connections and store them in the youtube_connections table
-    const youtubeConnections = connections.filter(conn => conn.type === 'youtube');
-    
-    if (youtubeConnections.length === 0) {
-      console.log("No YouTube connections found");
-      return [];
+    // Filter for YouTube connections from the Discord API response
+    const youtubeConnectionsFromDiscord = connections.filter(conn => conn.type === 'youtube');
+    const youtubeConnectionIdsFromDiscord = new Set(youtubeConnectionsFromDiscord.map(conn => conn.id)); // Use a Set for efficient lookup
+
+    // Get current YouTube connection IDs from the database for this user
+    const { data: existingDbConnections, error: fetchDbError } = await supabase
+      .from('youtube_connections')
+      .select('youtube_channel_id')
+      .eq('user_id', session.user.id);
+
+    if (fetchDbError) {
+      console.error("Error fetching existing YouTube connections from DB:", fetchDbError);
+      // Decide how to handle this error - maybe return null or proceed cautiously?
+      // For now, we'll log and continue, but this might leave stale data.
+    }
+
+    // Identify connections to delete (in DB but not in Discord response)
+    const connectionsToDelete: string[] = [];
+    if (existingDbConnections) {
+      existingDbConnections.forEach(dbConn => {
+        if (!youtubeConnectionIdsFromDiscord.has(dbConn.youtube_channel_id)) {
+          connectionsToDelete.push(dbConn.youtube_channel_id);
+        }
+      });
+    }
+
+    // Perform deletions if necessary
+    if (connectionsToDelete.length > 0) {
+      console.log("Deleting stale YouTube connections:", connectionsToDelete);
+      const { error: deleteError } = await supabase
+        .from('youtube_connections')
+        .delete()
+        .eq('user_id', session.user.id)
+        .in('youtube_channel_id', connectionsToDelete);
+
+      if (deleteError) {
+        console.error("Error deleting stale YouTube connections:", deleteError);
+        // Handle deletion error if needed
+      }
     }
     
-    // For each YouTube connection, store in database
-    for (const conn of youtubeConnections) {
-      // Upsert the connection data
-      const { error: upsertError } = await supabase
-        .from('youtube_connections')
-        .upsert({
-          user_id: session.user.id,
-          youtube_channel_id: conn.id,
-          youtube_channel_name: conn.name,
-          is_verified: conn.verified
-        }, {
-          onConflict: 'user_id, youtube_channel_id'
-        });
-        
-      if (upsertError) {
-        console.error("Error upserting YouTube connection:", upsertError);
+    // Upsert the YouTube connections fetched from Discord
+    if (youtubeConnectionsFromDiscord.length === 0) {
+      console.log("No YouTube connections found in Discord response to upsert.");
+      // If no connections from Discord AND we deleted connections, the final result should be empty
+      if (connectionsToDelete.length > 0 && !existingDbConnections?.some(dbConn => youtubeConnectionIdsFromDiscord.has(dbConn.youtube_channel_id))) {
+         return [];
+      }
+    } else {
+      console.log("Upserting YouTube connections from Discord:", youtubeConnectionsFromDiscord.map(c => c.id));
+      for (const conn of youtubeConnectionsFromDiscord) {
+        const { error: upsertError } = await supabase
+          .from('youtube_connections')
+          .upsert({
+            user_id: session.user.id,
+            youtube_channel_id: conn.id,
+            youtube_channel_name: conn.name,
+            is_verified: conn.verified
+            // Note: youtube_avatar is handled separately by refreshYouTubeAvatar
+          }, {
+            onConflict: 'user_id, youtube_channel_id'
+          });
+          
+        if (upsertError) {
+          console.error(`Error upserting YouTube connection ${conn.id}:`, upsertError);
+        }
       }
     }
 
-    // After attempting to upsert all connections, fetch the definitive list from the database
-    const { data: updatedConnections, error: fetchError } = await supabase
+    // After upserts and deletes, fetch the definitive list from the database
+    const { data: finalConnections, error: fetchFinalError } = await supabase
       .from('youtube_connections')
       .select('*')
       .eq('user_id', session.user.id);
 
-    if (fetchError) {
-      console.error("Error fetching updated YouTube connections after sync:", fetchError);
+    if (fetchFinalError) {
+      console.error("Error fetching updated YouTube connections after sync:", fetchFinalError);
       return null;
     }
 
-    return updatedConnections || [];
+    return finalConnections || [];
 
   } catch (error) {
     console.error("Error syncing Discord connections:", error);
