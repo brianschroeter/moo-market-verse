@@ -1,5 +1,5 @@
 import React from "react";
-import { YouTubeMembership } from "@/services/authService";
+import { YouTubeMembership } from "@/services/types/auth-types";
 import YouTubeMembershipCard from "./YouTubeMembershipCard";
 
 interface YouTubeMembershipsListProps {

@@ -3,6 +3,7 @@ import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import Footer from "../components/Footer";
 import FeaturedProducts from "../components/FeaturedProducts";
+import { subscribeToNewsletter } from "../pages/api/newsletter/subscribe";
 
 const Index: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -15,31 +16,10 @@ const Index: React.FC = () => {
     setMessage("");
 
     try {
-      // Construct the Supabase Function URL
-      const supabaseProjectRef = import.meta.env.VITE_SUPABASE_PROJECT_REF;
-      if (!supabaseProjectRef) {
-        throw new Error('Supabase project reference is not configured in environment variables (VITE_SUPABASE_PROJECT_REF).');
-      }
-      const functionUrl = `https://${supabaseProjectRef}.supabase.co/functions/v1/newsletter-subscribe`;
+      const result = await subscribeToNewsletter(email);
       
-      const response = await fetch(functionUrl, { // Use the function URL
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add Anon key for potential RLS checks within the function if needed
-          // 'apikey': process.env.VITE_SUPABASE_ANON_KEY || '' 
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Something went wrong');
-      }
-
       setStatus("success");
-      setMessage("Thanks for subscribing!");
+      setMessage(result.message || "Thanks for subscribing!");
       setEmail(""); // Clear input on success
     } catch (error: any) {
       setStatus("error");

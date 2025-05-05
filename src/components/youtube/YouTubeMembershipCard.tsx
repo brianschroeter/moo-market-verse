@@ -1,5 +1,7 @@
+
 import React from "react";
 import { YouTubeMembership } from "@/services/types/auth-types";
+import { Crown, DollarSign, Ban } from "lucide-react"; // Import icons from lucide-react
 
 interface YouTubeMembershipCardProps {
   membership: YouTubeMembership;
