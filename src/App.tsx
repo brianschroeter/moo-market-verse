@@ -21,7 +21,7 @@ import AdminFeaturedContent from "./pages/admin/AdminFeaturedContent";
 import AdminTickets from "./pages/admin/AdminTickets";
 import AdminNavigation from "./pages/admin/AdminNavigation";
 import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
-import AdminNewsletterSignups from "./pages/admin/newsletter-signups";
+import AdminNewsletterSignups from "./pages/admin/newsletter-signups.tsx";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 

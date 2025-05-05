@@ -3,7 +3,6 @@ import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import Footer from "../components/Footer";
 import FeaturedProducts from "../components/FeaturedProducts";
-import { subscribeToNewsletter } from "../pages/api/newsletter/subscribe";
 
 const Index: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -16,7 +15,21 @@ const Index: React.FC = () => {
     setMessage("");
 
     try {
-      const result = await subscribeToNewsletter(email);
+      // Use fetch to call the Supabase Edge Function
+      const response = await fetch('https://dlmbqojnhjsecajxltzj.supabase.co/functions/v1/newsletter-subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        // Use the error message from the function response if available
+        throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      }
       
       setStatus("success");
       setMessage(result.message || "Thanks for subscribing!");
