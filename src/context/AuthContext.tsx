@@ -6,6 +6,7 @@ import { fetchAndSyncDiscordConnections } from "@/services/discord/discordServic
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getUserRoles } from "@/services/roleService";
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
 
 interface AuthContextType {
   session: Session | null;
@@ -32,6 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const profileFetchInProgress = useRef<boolean>(false);
   const adminCheckInProgress = useRef<boolean>(false);
   const discordSyncInProgress = useRef<boolean>(false);
+  const fingerprintInProgress = useRef<boolean>(false);
 
   useEffect(() => {
     // Check for auth errors in URL
@@ -92,6 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
              await fetchProfile(currentSession.user.id);
              await checkAdminRole();
              await syncDiscordConnections(currentSession);
+             await upsertDeviceFingerprint();
              console.log("[onAuthStateChange] Async operations complete.");
            }, 0);
         } else {
@@ -101,6 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           profileFetchInProgress.current = false;
           adminCheckInProgress.current = false;
           discordSyncInProgress.current = false;
+          fingerprintInProgress.current = false;
         }
 
         if (event === 'SIGNED_IN') {
@@ -176,6 +180,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error syncing Discord connections:", error);
     } finally {
       discordSyncInProgress.current = false;
+    }
+  };
+
+  const upsertDeviceFingerprint = async () => {
+    if (fingerprintInProgress.current) {
+      console.log("Device fingerprinting already in progress, skipping.");
+      return;
+    }
+    console.log("Upserting device fingerprint...");
+    fingerprintInProgress.current = true;
+    try {
+      const fp = await FingerprintJS.load();
+      const result = await fp.get();
+      const visitorId = result.visitorId;
+      const userAgent = navigator.userAgent;
+
+      console.log("Fingerprint obtained:", visitorId);
+
+      const { data, error } = await supabase.functions.invoke('upsert-device', {
+        body: { fingerprint: visitorId, userAgent: userAgent },
+      });
+
+      if (error) {
+        console.error("Error invoking upsert-device function:", error);
+      } else {
+        console.log("Successfully invoked upsert-device function:", data);
+      }
+    } catch (error) {
+      console.error("Error during device fingerprinting:", error);
+    } finally {
+      fingerprintInProgress.current = false;
     }
   };
 

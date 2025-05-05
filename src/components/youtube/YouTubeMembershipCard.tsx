@@ -5,71 +5,145 @@ interface YouTubeMembershipCardProps {
   membership: YouTubeMembership;
 }
 
-// Helper function to strip emojis and non-alphanumeric characters (except spaces)
-const stripEmojis = (str: string): string => {
-  // Remove emojis and various symbols, keep basic alphanumeric and spaces
-  // This regex targets a wide range of emoji and symbol Unicode blocks
-  return str.replace(/([\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}]|[\u{200D}\u{200B}\u{FEFF}])/gu, '').trim();
+// Helper function to get role details (emoji, color, icon, formatted name)
+const getRoleDetails = (role: string) => {
+  const lowerCaseRole = role.toLowerCase();
+  switch (lowerCaseRole) {
+    case "crown": 
+      return { 
+        emoji: "👑", 
+        color: "text-yellow-400", 
+        bgColor: "bg-yellow-900/30", 
+        borderColor: "border-yellow-600",
+        icon: "fa-solid fa-crown", 
+        name: "Crown" 
+      };
+    case "pay pig": 
+      return { 
+        emoji: "🐷", 
+        color: "text-pink-400", 
+        bgColor: "bg-pink-900/30", 
+        borderColor: "border-pink-600",
+        icon: "fa-solid fa-piggy-bank", 
+        name: "Pay Pig" 
+      };
+    case "cash cow": 
+      return { 
+        emoji: "🐮", 
+        color: "text-green-400", 
+        bgColor: "bg-green-900/30", 
+        borderColor: "border-green-600",
+        icon: "fa-solid fa-cow", 
+        name: "Cash Cow" 
+      };
+    case "ban world": 
+      return { 
+        emoji: "🚫", 
+        color: "text-red-500", 
+        bgColor: "bg-red-900/50", 
+        borderColor: "border-red-600",
+        icon: "fa-solid fa-ban", 
+        name: "Ban World" 
+      };
+    default: 
+      return { 
+        emoji: "🧑‍🤝‍🧑", 
+        color: "text-gray-300", 
+        bgColor: "bg-gray-700/30", 
+        borderColor: "border-gray-500",
+        icon: "fa-solid fa-user", 
+        name: role 
+      };
+  }
 };
 
 const YouTubeMembershipCard: React.FC<YouTubeMembershipCardProps> = ({ membership }) => {
-  const cleanChannelName = stripEmojis(membership.channel_name || ''); // Ensure name exists and strip emojis
-  // Format the role name and then strip emojis from it
-  const formattedRole = formatRoleName(membership.membership_level);
-  const cleanRoleName = stripEmojis(formattedRole); 
+  const roleDetails = getRoleDetails(membership.membership_level);
+  
+  // Clean the channel name for checks
+  const cleanChannelName = membership.channel_name?.toLowerCase().replace(/\s+/g, '') || '';
+
+  // Check for specific channels
+  const isLolcowCafe = cleanChannelName === 'lolcowcafe';
+  const isLolcowLive = cleanChannelName === 'lolcowlive';
+  const isLolcowMadhouse = cleanChannelName === 'lolcowmadhouse';
+  const isLolcowTest = cleanChannelName === 'lolcowtest';
+  const isLolcowTechTalk = cleanChannelName === 'lolcowtechtalk';
+  const isLolcowAussy = cleanChannelName === 'lolcowaussy';
+  const isLolcowMilkers = cleanChannelName === 'lolcowmilkers';
+  const isLolcowRewind = cleanChannelName === 'lolcowrewind';
+  const isLolcowQueens = cleanChannelName === 'lolcowqueens';
+  const isSpecialChannel = isLolcowCafe || isLolcowLive || isLolcowMadhouse || isLolcowTest || isLolcowTechTalk || isLolcowAussy || isLolcowMilkers || isLolcowRewind || isLolcowQueens;
+
+  // Determine the image source or icon
+  let imageSrc = null;
+  if (isLolcowCafe) {
+    imageSrc = "/lovable-uploads/cafe-thumb.jpg";
+  } else if (isLolcowLive) {
+    imageSrc = "/lovable-uploads/lcl-thumb.jpg";
+  } else if (isLolcowMadhouse) {
+    imageSrc = "/lovable-uploads/madhouse-thumb.jpg";
+  } else if (isLolcowTest) {
+    imageSrc = "/lovable-uploads/test-thumb.jpg";
+  } else if (isLolcowTechTalk) {
+    imageSrc = "/lovable-uploads/techtalk-thumb.jpg";
+  } else if (isLolcowAussy) {
+    imageSrc = "/lovable-uploads/aussy-thumb.jpg";
+  } else if (isLolcowMilkers) {
+    imageSrc = "/lovable-uploads/milkers-thumb.jpg";
+  } else if (isLolcowRewind) {
+    imageSrc = "/lovable-uploads/rewind-thumb.jpg";
+  } else if (isLolcowQueens) {
+    imageSrc = "/lovable-uploads/queens-thumb.jpg";
+  }
+
+  // Determine the displayed channel name
+  let displayChannelName = membership.channel_name;
+  if (isLolcowCafe) {
+    displayChannelName = "Lolcow Cafe";
+  } else if (isLolcowLive) {
+    displayChannelName = "Lolcow Live";
+  } else if (isLolcowMadhouse) {
+    displayChannelName = "Lolcow Madhouse";
+  } else if (isLolcowTest) {
+    displayChannelName = "Lolcow Test";
+  } else if (isLolcowTechTalk) {
+    displayChannelName = "Lolcow Tech Talk";
+  } else if (isLolcowAussy) {
+    displayChannelName = "Lolcow Aussy";
+  } else if (isLolcowMilkers) {
+    displayChannelName = "Lolcow Milkers";
+  } else if (isLolcowRewind) {
+    displayChannelName = "Lolcow Rewind";
+  } else if (isLolcowQueens) {
+    displayChannelName = "Lolcow Queens";
+  }
 
   return (
     <div 
-      className={`flex items-center p-3 rounded-lg ${
-        membership.membership_level === "ban world" 
-          ? "bg-lolcow-lightgray/50 border border-lolcow-red" 
-          : "bg-lolcow-lightgray"
-      }`}
+      className={`flex items-center p-3 rounded-lg border ${roleDetails.bgColor} ${roleDetails.borderColor} shadow-md hover:shadow-lg transition-shadow duration-200`}
     >
-      <div className="w-10 h-10 rounded-full bg-lolcow-darkgray flex items-center justify-center mr-3">
-        <i className={getIconForRole(membership.membership_level)}></i>
+      <div className={`w-10 h-10 rounded-full ${imageSrc ? '' : roleDetails.bgColor} flex items-center justify-center mr-4 flex-shrink-0 border ${imageSrc ? 'border-transparent' : roleDetails.borderColor} overflow-hidden bg-gray-700`}>
+        {imageSrc ? (
+          <img 
+            src={imageSrc} 
+            alt={`${displayChannelName} Thumb`}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <i className={`${roleDetails.icon} ${roleDetails.color} text-lg`}></i>
+        )}
       </div>
-      <div className="flex-grow">
-        {/* Display cleaned channel name */}
-        <p className="text-white">{cleanChannelName}</p> 
-        <p className={`text-sm ${getRoleColor(membership.membership_level)}`}>
-          {/* Display cleaned role name */}
-          {cleanRoleName}
+      <div className="flex-grow min-w-0"> {/* Added min-w-0 for text truncation */}
+        <p className="text-white font-medium truncate">
+          {displayChannelName}
+        </p> 
+        <p className={`text-sm font-semibold ${roleDetails.color}`}>
+          {roleDetails.emoji} {roleDetails.name}
         </p>
       </div>
     </div>
   );
 };
-
-// Helper functions
-function formatRoleName(role: string): string {
-  switch (role) {
-    case "crown": return "Crown";
-    case "pay pig": return "Pay Pig";
-    case "cash cow": return "Cash Cow";
-    case "ban world": return "Ban World";
-    default: return role;
-  }
-}
-
-function getRoleColor(role: string): string {
-  switch (role) {
-    case "crown": return "text-yellow-400";
-    case "pay pig": return "text-purple-400";
-    case "cash cow": return "text-green-400";
-    case "ban world": return "text-red-500";
-    default: return "text-gray-300";
-  }
-}
-
-function getIconForRole(role: string): string {
-  switch (role) {
-    case "crown": return "fa-solid fa-crown text-yellow-400";
-    case "pay pig": return "fa-solid fa-piggy-bank text-purple-400";
-    case "cash cow": return "fa-solid fa-cow text-green-400";
-    case "ban world": return "fa-solid fa-ban text-red-500";
-    default: return "fa-solid fa-user text-gray-400";
-  }
-}
 
 export default YouTubeMembershipCard;

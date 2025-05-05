@@ -122,7 +122,9 @@ export type Database = {
           featured: boolean | null
           id: string
           image_url: string
+          is_featured: boolean | null
           name: string
+          price: number | null
           product_url: string
           updated_at: string
         }
@@ -132,7 +134,9 @@ export type Database = {
           featured?: boolean | null
           id?: string
           image_url: string
+          is_featured?: boolean | null
           name: string
+          price?: number | null
           product_url: string
           updated_at?: string
         }
@@ -142,9 +146,44 @@ export type Database = {
           featured?: boolean | null
           id?: string
           image_url?: string
+          is_featured?: boolean | null
           name?: string
+          price?: number | null
           product_url?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      membership_changes: {
+        Row: {
+          change_timestamp: string
+          change_type: string
+          channel_name: string
+          discord_id: string | null
+          id: string
+          new_level: string | null
+          old_level: string | null
+          youtube_connection_id: string
+        }
+        Insert: {
+          change_timestamp?: string
+          change_type: string
+          channel_name: string
+          discord_id?: string | null
+          id?: string
+          new_level?: string | null
+          old_level?: string | null
+          youtube_connection_id: string
+        }
+        Update: {
+          change_timestamp?: string
+          change_type?: string
+          channel_name?: string
+          discord_id?: string | null
+          id?: string
+          new_level?: string | null
+          old_level?: string | null
+          youtube_connection_id?: string
         }
         Relationships: []
       }
@@ -166,6 +205,24 @@ export type Database = {
           is_enabled?: boolean
           item_key?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      newsletter_signups: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
         }
         Relationships: []
       }
@@ -311,6 +368,39 @@ export type Database = {
           },
         ]
       }
+      user_devices: {
+        Row: {
+          created_at: string
+          fingerprint: string
+          id: string
+          ip_address: unknown | null
+          last_seen_at: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fingerprint: string
+          id?: string
+          ip_address?: unknown | null
+          last_seen_at?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fingerprint?: string
+          id?: string
+          ip_address?: unknown | null
+          last_seen_at?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -383,56 +473,34 @@ export type Database = {
       }
       youtube_memberships: {
         Row: {
-          created_at: string
-          creator_channel_id: string
-          creator_channel_name: string
-          expires_at: string | null
+          channel_name: string
           id: string
-          joined_at: string | null
           membership_level: string
-          status: string
-          updated_at: string
           youtube_connection_id: string
         }
         Insert: {
-          created_at?: string
-          creator_channel_id: string
-          creator_channel_name: string
-          expires_at?: string | null
+          channel_name: string
           id?: string
-          joined_at?: string | null
           membership_level: string
-          status: string
-          updated_at?: string
           youtube_connection_id: string
         }
         Update: {
-          created_at?: string
-          creator_channel_id?: string
-          creator_channel_name?: string
-          expires_at?: string | null
+          channel_name?: string
           id?: string
-          joined_at?: string | null
           membership_level?: string
-          status?: string
-          updated_at?: string
           youtube_connection_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "youtube_memberships_youtube_connection_id_fkey"
-            columns: ["youtube_connection_id"]
-            isOneToOne: false
-            referencedRelation: "youtube_connections"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      assert_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       assign_admin_role: {
         Args: {
           target_user_id: string
@@ -462,6 +530,13 @@ export type Database = {
         Returns: {
           user_id: string
           guild_count: number
+        }[]
+      }
+      get_users_by_fingerprint: {
+        Args: { p_fingerprint: string }
+        Returns: {
+          user_id: string
+          username: string
         }[]
       }
       has_role: {

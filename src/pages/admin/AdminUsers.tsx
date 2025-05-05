@@ -2,7 +2,7 @@ import React, { useState, useEffect, ReactNode } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon } from "lucide-react";
+import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon, Smartphone } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,21 @@ import { assignRole, removeRole } from "@/services/roleService";
 import { Input } from "@/components/ui/input";
 import { useSearchParams } from 'react-router-dom';
 import { ConfirmationDialog } from '@/components/common/ConfirmationDialog';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from 'date-fns';
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+
+// ---- Added: Interface for User Device ----
+interface UserDevice {
+  id: string; // UUID
+  fingerprint: string;
+  user_agent?: string | null; // Allow null
+  ip_address?: string | null; // Added IP Address (Optional)
+  last_seen_at: string; // Timestamptz
+  created_at: string; // Timestamptz
+}
+// ---- End Added Interface ----
 
 interface UserData {
   id: string;
@@ -25,6 +40,7 @@ interface UserData {
   }[];
   roles: string[];
   guild_count?: number;
+  devices?: UserDevice[]; // Added optional devices array
 }
 
 // Define type for a single guild
@@ -32,6 +48,196 @@ interface Guild {
   guild_id: string;
   guild_name: string;
 }
+
+// ---- Interface for RPC Result ----
+interface FingerprintMatch {
+    user_id: string;
+    username: string | null;
+}
+
+// ---- Updated User Devices Dialog Component ----
+const UserDevicesDialog: React.FC<{ 
+  user: UserData | null; 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void; 
+}> = ({ user, open, onOpenChange }) => {
+  const { toast } = useToast();
+  // ---- Added State for Matching ----
+  const [matchingUsers, setMatchingUsers] = useState<Record<string, FingerprintMatch[]>>({}); // Store matches per fingerprint
+  const [loadingMatches, setLoadingMatches] = useState<Record<string, boolean>>({}); // Loading state per fingerprint
+  // ---- End Added State ----
+
+  if (!user) return null;
+
+  const sortedDevices = user.devices?.sort((a, b) => 
+    new Date(b.last_seen_at).getTime() - new Date(a.last_seen_at).getTime()
+  ) || []; // Sort by last seen, newest first
+
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'N/A';
+    try {
+      return format(new Date(dateString), 'PPpp'); // Format like: Sep 21, 2024, 3:30:15 PM
+    } catch (e) {
+      console.error("Error formatting date:", dateString, e);
+      return 'Invalid Date';
+    }
+  };
+
+  // ---- Added: Copy to Clipboard Helper ----
+  const copyToClipboard = (text: string | null | undefined, fieldName: string) => {
+    if (!text) {
+        toast({ title: "Nothing to copy", description: `${fieldName} is empty.`, variant: "default" });
+        return;
+    }
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        toast({ title: "Copied to Clipboard", description: `Full ${fieldName} copied.` });
+      })
+      .catch(err => {
+        console.error('Failed to copy text: ', err);
+        toast({ title: "Copy Failed", description: `Could not copy ${fieldName}.`, variant: "destructive" });
+      });
+  };
+  // ---- End Added Helper ----
+
+  // ---- Added Handler for Checking Matches ----
+  const handleCheckMatches = async (fingerprint: string) => {
+    if (!fingerprint) return;
+    setLoadingMatches(prev => ({ ...prev, [fingerprint]: true }));
+    setMatchingUsers(prev => ({ ...prev, [fingerprint]: [] })); // Clear previous results for this FP
+
+    try {
+      const { data, error } = await supabase.rpc('get_users_by_fingerprint', {
+        p_fingerprint: fingerprint
+      });
+
+      if (error) {
+        console.error("Error calling get_users_by_fingerprint:", error);
+        throw new Error(error.message || "Failed to check for matching users.");
+      }
+      
+      // Filter out the current user being viewed, if present
+      const otherUsers = (data as FingerprintMatch[] || []).filter(match => match.user_id !== user.id);
+      setMatchingUsers(prev => ({ ...prev, [fingerprint]: otherUsers }));
+
+    } catch (error) {
+      toast({
+        title: "Match Check Failed",
+        description: error instanceof Error ? error.message : "Could not check for fingerprint matches.",
+        variant: "destructive"
+      });
+      setMatchingUsers(prev => ({ ...prev, [fingerprint]: [] })); // Ensure results are cleared on error
+    } finally {
+      setLoadingMatches(prev => ({ ...prev, [fingerprint]: false }));
+    }
+  };
+  // ---- End Added Handler ----
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl"> {/* Made dialog even wider */}
+        <DialogHeader>
+          <DialogTitle>Device History for {user.username}</DialogTitle>
+          <DialogDescription>
+            Showing {sortedDevices.length} device(s) associated with this user account, sorted by last seen.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="h-[60vh] rounded-md border p-4"> {/* Scrollable area */}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fingerprint ID</TableHead>
+                <TableHead>User Agent</TableHead>
+                <TableHead>IP Address</TableHead>
+                <TableHead>Last Seen</TableHead>
+                <TableHead>First Seen</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedDevices.length > 0 ? (
+                sortedDevices.map((device) => {
+                  const isLoading = loadingMatches[device.fingerprint];
+                  const matches = matchingUsers[device.fingerprint] || [];
+                  const hasMatches = matches.length > 0;
+
+                  return (
+                    <TableRow key={device.id}>
+                      <TableCell 
+                        className="font-mono text-xs cursor-pointer hover:text-blue-400" 
+                        title={`Click to copy full fingerprint: ${device.fingerprint}`}
+                        onClick={() => copyToClipboard(device.fingerprint, 'Fingerprint ID')}
+                      >
+                          {device.fingerprint.substring(0, 16)}...
+                      </TableCell> 
+                      <TableCell 
+                        className="text-xs cursor-pointer hover:text-blue-400" 
+                        title={`Click to copy full User Agent: ${device.user_agent || 'N/A'}`}
+                        onClick={() => copyToClipboard(device.user_agent, 'User Agent')}
+                      >
+                          {device.user_agent ? `${device.user_agent.substring(0, 50)}...` : 'N/A'}
+                      </TableCell> 
+                       <TableCell className="font-mono text-xs">{device.ip_address || 'N/A'}</TableCell>
+                      <TableCell className="text-xs">{formatDate(device.last_seen_at)}</TableCell>
+                      <TableCell className="text-xs">{formatDate(device.created_at)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col items-start space-y-1">
+                            <Button 
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleCheckMatches(device.fingerprint)}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Checking...</>
+                                ) : (
+                                    <> <Search className="h-3 w-3 mr-1" /> Check Matches</>
+                                )}
+                           </Button>
+                           {/* Display Matches Result */}
+                           {matches !== undefined && !isLoading && (
+                             <div className="text-xs mt-1">
+                               {hasMatches ? (
+                                 <div className="flex flex-col items-start">
+                                    <Badge variant="destructive" className="mb-1">Matches found!</Badge>
+                                    {matches.map(match => (
+                                        <Link 
+                                            key={match.user_id} 
+                                            to={`/admin/users?userId=${match.user_id}`} 
+                                            className="text-blue-400 hover:underline"
+                                            onClick={() => onOpenChange(false)} // Close current dialog on click
+                                            title={`View profile for ${match.username || match.user_id}`}
+                                        >
+                                            - {match.username || match.user_id}
+                                        </Link>
+                                    ))}
+                                 </div>
+                               ) : (
+                                 <span className="text-gray-500">No other users found.</span>
+                               )}
+                             </div>
+                           )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center">No device history found for this user.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </ScrollArea>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+// ---- End Updated Component ----
 
 const AdminUsers: React.FC = (): ReactNode => {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
@@ -57,6 +263,11 @@ const AdminUsers: React.FC = (): ReactNode => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // ---- Added State for Devices Dialog ----
+  const [showDevicesDialog, setShowDevicesDialog] = useState(false);
+  const [selectedUserForDevices, setSelectedUserForDevices] = useState<UserData | null>(null);
+  // ---- End Added State ----
 
   useEffect(() => {
     fetchUsers();
@@ -145,6 +356,21 @@ const AdminUsers: React.FC = (): ReactNode => {
         // Potentially show a toast, but maybe not critical?
       }
 
+      // Fetch User Devices
+      const { data: allDevices, error: devicesError } = await supabase
+        .from('user_devices')
+        .select('id, user_id, fingerprint, user_agent, ip_address, last_seen_at, created_at'); // Select specific columns
+      
+      if (devicesError) {
+        // Log error but don't necessarily fail the whole user load
+        console.error("Error fetching user devices:", devicesError);
+        toast({
+          title: "Warning",
+          description: "Could not load device information for users.",
+          variant: "default" // Or another appropriate variant
+        });
+      }
+
       // Process guild counts from RPC into a map
       const guildCountMap = new Map<string, number>();
       if (Array.isArray(guildCountsData)) {
@@ -180,7 +406,8 @@ const AdminUsers: React.FC = (): ReactNode => {
           joined: new Date(profile.created_at).toLocaleDateString(),
           connections: [],
           roles: [],
-          guild_count: guildCountMap.get(profile.id) || 0 // Get count from map
+          guild_count: guildCountMap.get(profile.id) || 0, // Get count from map
+          devices: [] // Initialize devices array
         });
       });
 
@@ -209,6 +436,35 @@ const AdminUsers: React.FC = (): ReactNode => {
           });
         }
       });
+
+      // ---- Added: Add Devices to Users ----
+      if (allDevices) {
+        allDevices.forEach(rawDevice => {
+          // Cast the raw device data to the expected structure
+          const device = rawDevice as {
+            id: string;
+            user_id: string;
+            fingerprint: string;
+            user_agent: string | null;
+            ip_address: string | null;
+            last_seen_at: string;
+            created_at: string;
+          };
+          
+          const user = userMap.get(device.user_id);
+          if (user) {
+            user.devices?.push({
+              id: device.id,
+              fingerprint: device.fingerprint,
+              user_agent: device.user_agent ?? null,
+              ip_address: device.ip_address ?? null,
+              last_seen_at: device.last_seen_at,
+              created_at: device.created_at
+            });
+          }
+        });
+      }
+      // ---- End Added Logic ----
 
       setUsers(Array.from(userMap.values()));
     } catch (error) {
@@ -425,6 +681,13 @@ const AdminUsers: React.FC = (): ReactNode => {
     }
   };
 
+  // ---- Added Handler for Showing Devices ----
+  const handleShowDevices = (user: UserData) => {
+    setSelectedUserForDevices(user);
+    setShowDevicesDialog(true);
+  };
+  // ---- End Added Handler ----
+
   // --- Delete User Logic ---
   const handleDeleteUser = (user: UserData) => {
     setUserToDelete(user);
@@ -593,7 +856,7 @@ const AdminUsers: React.FC = (): ReactNode => {
                   </TableCell>
                   <TableCell className="text-gray-300">{user.joined}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
+                    <div className="flex justify-end space-x-2 items-center">
                       <Button
                         variant="outline"
                         size="sm"
@@ -615,6 +878,14 @@ const AdminUsers: React.FC = (): ReactNode => {
                         onClick={() => handleEditConnections(user)}
                       >
                         Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleShowDevices(user)} 
+                        title="View Devices"
+                      >
+                        <Smartphone className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="destructive"
@@ -810,6 +1081,14 @@ const AdminUsers: React.FC = (): ReactNode => {
         confirmText="Confirm Delete"
         confirmVariant="destructive"
       />
+
+      {/* ---- Added Devices Dialog Render ---- */}
+      <UserDevicesDialog 
+        user={selectedUserForDevices}
+        open={showDevicesDialog}
+        onOpenChange={setShowDevicesDialog}
+      />
+      {/* ---- End Added Dialog Render ---- */}
 
     </AdminLayout>
   );
