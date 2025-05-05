@@ -23,5 +23,11 @@ export default defineConfig(({ mode }) => ({
   },
   vercel: {
     // Config options here
+    rewrites: [
+      {
+        source: '/(.*)',
+        destination: '/index.html',
+      },
+    ],
   }
 }));

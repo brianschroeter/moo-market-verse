@@ -14,6 +14,14 @@
         "Location": "/$1"
       },
       "status": 308
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "^(?:/(.*))$",
+      "dest": "/index.html",
+      "check": true
     }
   ],
   "overrides": {}
