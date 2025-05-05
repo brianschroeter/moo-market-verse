@@ -1,5 +1,5 @@
 
-import { fetchNewsletterSignups, deleteNewsletterSignup } from '../pages/api/admin/newsletter-signups';
+import { fetchNewsletterSignups, deleteNewsletterSignup as deleteSignupApi } from '../pages/api/admin/newsletter-signups';
 
 export interface NewsletterSignup {
   id: string;
@@ -20,7 +20,7 @@ export const getNewsletterSignups = async (): Promise<NewsletterSignup[]> => {
 // Delete a newsletter signup by ID using the updated function
 export const deleteNewsletterSignup = async (id: string): Promise<{ message: string }> => {
   try {
-    return await deleteNewsletterSignup(id);
+    return await deleteSignupApi(id);
   } catch (error: any) {
     console.error('Error in deleteNewsletterSignup:', error);
     throw new Error(error.message || 'Failed to delete signup');
