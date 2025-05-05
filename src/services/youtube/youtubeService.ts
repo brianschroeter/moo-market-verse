@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { YouTubeConnection, YouTubeMembership } from "../types/auth-types";
 
@@ -26,32 +25,57 @@ export const getYouTubeMemberships = async (): Promise<YouTubeMembership[]> => {
   const { data: { session } } = await supabase.auth.getSession();
   
   if (!session?.user) {
+    console.log("[getYouTubeMemberships] No user session found.");
     return [];
   }
   
   // Get user's YouTube connections
-  const { data: userConnections } = await supabase
+  console.log("[getYouTubeMemberships] Fetching connections for user:", session.user.id);
+  const { data: userConnections, error: connectionsError } = await supabase
     .from('youtube_connections')
-    .select('id')
+    .select('youtube_channel_id') // Select the correct ID for joining
     .eq('user_id', session.user.id);
   
-  if (!userConnections || userConnections.length === 0) {
+  if (connectionsError) {
+    // Log the error if fetching connections fails
+    console.error("[getYouTubeMemberships] Error fetching user connections:", connectionsError);
     return [];
   }
   
-  // Get all memberships for all of the user's YouTube connections
-  const connectionIds = userConnections.map(conn => conn.id);
+  console.log("[getYouTubeMemberships] Fetched user connections (channel IDs):", userConnections);
+
+  if (!userConnections || userConnections.length === 0) {
+    console.log("[getYouTubeMemberships] No connections found for this user.");
+    return [];
+  }
   
-  const { data, error } = await supabase
+  // Get all memberships using the youtube_channel_id from connections
+  const channelIds = userConnections.map(conn => conn.youtube_channel_id).filter(id => id); // Filter out any null/undefined IDs
+  
+  if (channelIds.length === 0) {
+    console.log("[getYouTubeMemberships] No valid YouTube channel IDs found in user connections.");
+    return [];
+  }
+  
+  console.log("[getYouTubeMemberships] Extracted YouTube Channel IDs:", channelIds);
+  
+  // Build the query using the correct column name in youtube_memberships
+  const query = supabase
     .from("youtube_memberships")
-    .select("*")
-    .in("youtube_connection_id", connectionIds);
+    .select("*") // Select all columns from memberships
+    .in("youtube_connection_id", channelIds); // Match against the youtube_connection_id column
+
+  console.log("[getYouTubeMemberships] Built memberships query object:", query);
+
+  // Execute the query
+  const { data, error } = await query;
   
   if (error) {
-    console.error("Error fetching YouTube memberships:", error);
+    console.error("[getYouTubeMemberships] Error fetching YouTube memberships:", error);
     return [];
   }
   
+  console.log("[getYouTubeMemberships] Fetched memberships data:", data);
   return data as YouTubeMembership[];
 };
 

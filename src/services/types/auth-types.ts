@@ -1,4 +1,3 @@
-
 import { User, Session } from "@supabase/supabase-js";
 
 export interface Profile {
@@ -26,6 +25,7 @@ export interface YouTubeMembership {
   youtube_connection_id: string;
   creator_channel_id: string;
   creator_channel_name: string;
+  channel_name: string;
   membership_level: string;
   status: string;
   joined_at: string | null;

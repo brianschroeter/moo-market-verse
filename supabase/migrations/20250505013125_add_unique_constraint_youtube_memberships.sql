@@ -1,0 +1,3 @@
+ALTER TABLE public.youtube_memberships
+ADD CONSTRAINT youtube_memberships_connection_channel_unique
+UNIQUE (youtube_connection_id, channel_name);
