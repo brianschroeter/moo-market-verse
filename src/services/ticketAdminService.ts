@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Ticket {
@@ -110,6 +109,23 @@ export const getTickets = async (filter?: TicketFilter): Promise<Ticket[]> => {
     
   } catch (error) {
     console.error("Error in getTickets:", error);
+    throw error;
+  }
+};
+
+export const updateTicketStatus = async ({ ticketId, newStatus }: { ticketId: string, newStatus: string }): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('support_tickets')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', ticketId);
+
+    if (error) {
+      console.error("Error updating ticket status:", error);
+      throw error;
+    }
+  } catch (error) {
+    console.error("Error in updateTicketStatus:", error);
     throw error;
   }
 };

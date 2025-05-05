@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
-import { getTickets, Ticket } from "@/services/ticketAdminService";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getTickets, updateTicketStatus, Ticket } from "@/services/ticketAdminService";
 import TicketsTable from "@/components/admin/tickets/TicketsTable";
 import TicketFilters from "@/components/admin/tickets/TicketFilters";
 import TicketPagination from "@/components/admin/tickets/TicketPagination";
@@ -14,11 +13,25 @@ const AdminTickets: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalTickets, setTotalTickets] = useState(0);
   const itemsPerPage = 10;
+  const queryClient = useQueryClient();
 
   // Fetch tickets with updated query structure
   const { data: tickets, isLoading, error } = useQuery({
     queryKey: ["tickets", statusFilter, currentPage, searchTerm],
     queryFn: () => getTickets({ status: statusFilter !== "all" ? statusFilter : null })
+  });
+
+  // Mutation for updating ticket status
+  const mutation = useMutation({ 
+    mutationFn: updateTicketStatus,
+    onSuccess: () => {
+      // Invalidate and refetch tickets query after successful update
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+    },
+    onError: (error) => {
+      // TODO: Add proper error handling (e.g., show toast notification)
+      console.error("Failed to update ticket status:", error);
+    }
   });
 
   const handleStatusFilterChange = (status: string) => {
@@ -36,8 +49,7 @@ const AdminTickets: React.FC = () => {
   };
 
   const handleStatusChange = async (ticketId: string, newStatus: string) => {
-    // Implement status change logic here
-    console.log(`Changing ticket ${ticketId} status to ${newStatus}`);
+    mutation.mutate({ ticketId, newStatus });
   };
 
   // Calculate total pages
