@@ -2,7 +2,7 @@ import React, { useState, useEffect, ReactNode } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon, Smartphone } from "lucide-react";
+import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon, Smartphone, PlaySquare } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,22 @@ interface UserDevice {
 }
 // ---- End Added Interface ----
 
+// ---- Added: Interface for YouTube Membership ----
+// Copied from src/services/types/auth-types.ts and modified for admin context if necessary
+interface YouTubeMembership {
+  id: string;
+  youtube_connection_id: string; // This ID links to a specific YouTube connection (channel) of the user
+  creator_channel_id: string; // The ID of the channel they are a member of
+  channel_name: string; // User's channel name - THIS IS THE SHOW NAME for the membership
+  membership_level: string;
+  status: string; // e.g., "active", "expired"
+  joined_at: string | null;
+  expires_at: string | null;
+  created_at: string; // Timestamp of when the membership record was created
+  updated_at: string; // Timestamp of when the membership record was last updated
+}
+// ---- End Added Interface ----
+
 interface UserData {
   id: string;
   email: string;
@@ -41,6 +57,7 @@ interface UserData {
   roles: string[];
   guild_count?: number;
   devices?: UserDevice[]; // Added optional devices array
+  youtubeMemberships?: YouTubeMembership[]; // Added optional YouTube memberships array
 }
 
 // Define type for a single guild
@@ -239,6 +256,82 @@ const UserDevicesDialog: React.FC<{
 };
 // ---- End Updated Component ----
 
+// ---- Component for YouTube Memberships Dialog ----
+const UserYouTubeMembershipsDialog: React.FC<{
+  user: UserData | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}> = ({ user, open, onOpenChange }) => {
+  if (!user) return null;
+
+  // Sort memberships - using a predefined order similar to YouTubeMembershipsList
+  const membershipOrder: { [key: string]: number } = {
+    "Crown": 1,
+    "Pay Pig": 2,
+    "Cash Cow": 3,
+    "Ban World": 4,
+    // Add other levels if they exist and need specific ordering
+  };
+
+  // If all memberships passed are considered active, no explicit client-side filter by status is needed here.
+  const sortedMemberships = [...(user.youtubeMemberships || [])].sort((a, b) => {
+    const orderA = membershipOrder[a.membership_level] || 99;
+    const orderB = membershipOrder[b.membership_level] || 99;
+    return orderA - orderB;
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg bg-lolcow-darkgray text-white border-lolcow-lightgray"> {/* Adjusted width slightly */}
+        <DialogHeader>
+          <DialogTitle className="text-xl font-fredoka flex items-center">
+            <PlaySquare className="w-5 h-5 mr-2 text-red-500" />
+            YouTube Memberships for {user.username}
+          </DialogTitle>
+          <DialogDescription className="text-gray-400">
+            Showing {sortedMemberships.length} YouTube Memberships.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="h-[auto] max-h-[60vh] rounded-md border border-lolcow-lightgray p-4 my-4">
+          {sortedMemberships.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-lolcow-lightgray">
+                  <TableHead className="text-gray-300">Channel Name</TableHead>
+                  <TableHead className="text-gray-300">Level</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedMemberships.map((membership) => {
+                  // Format channel name: add space after "Lolcow" if followed by an uppercase letter
+                  const formattedChannelName = membership.channel_name.replace(/(Lolcow)([A-Z])/g, '$1 $2');
+
+                  return (
+                    <TableRow key={membership.id} className="border-b border-lolcow-lightgray/50 hover:bg-lolcow-lightgray/10">
+                      <TableCell className="text-white font-medium" title={membership.creator_channel_id}> {/* Title might still use creator_channel_id if that's the ID for the channel */}
+                        {formattedChannelName}
+                      </TableCell>
+                      <TableCell className="text-gray-300">{membership.membership_level}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center text-gray-400 py-8">
+              No active YouTube memberships found for this user.
+            </div>
+          )}
+        </ScrollArea>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+// ---- End YouTube Memberships Dialog ----
+
 const AdminUsers: React.FC = (): ReactNode => {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
@@ -272,6 +365,11 @@ const AdminUsers: React.FC = (): ReactNode => {
   // ---- Added State for Devices Dialog ----
   const [showDevicesDialog, setShowDevicesDialog] = useState(false);
   const [selectedUserForDevices, setSelectedUserForDevices] = useState<UserData | null>(null);
+  // ---- End Added State ----
+
+  // ---- Added State for YouTube Memberships Dialog ----
+  const [showYouTubeMembershipsDialog, setShowYouTubeMembershipsDialog] = useState(false);
+  const [selectedUserForYouTubeMemberships, setSelectedUserForYouTubeMemberships] = useState<UserData | null>(null);
   // ---- End Added State ----
 
   useEffect(() => {
@@ -488,7 +586,8 @@ const AdminUsers: React.FC = (): ReactNode => {
           connections: [],
           roles: [],
           guild_count: guildCountMap.get(profile.id) || 0, // Get count from map
-          devices: [] // Initialize devices array
+          devices: [], // Initialize devices array
+          youtubeMemberships: [] // Initialize YouTube memberships array
         });
       });
 
@@ -546,6 +645,66 @@ const AdminUsers: React.FC = (): ReactNode => {
         });
       }
       // ---- End Added Logic ----
+
+      // ---- Added: Fetch and process YouTube Memberships ----
+      if (profileIds.length > 0) {
+        // 1. Fetch all YouTube connections for the current page's users
+        const { data: userYouTubeConnections, error: ytConnectionsError } = await supabase
+          .from('youtube_connections')
+          .select('user_id, youtube_channel_id') // Select user_id to map back and channel_id for memberships
+          .in('user_id', profileIds);
+
+        if (ytConnectionsError) {
+          console.error("Error fetching YouTube connections for users:", ytConnectionsError);
+          // Decide if this should be a toast/hard error or just a warning
+        } else if (userYouTubeConnections && userYouTubeConnections.length > 0) {
+          const userConnectionMap = new Map<string, string[]>(); // user_id -> [youtube_channel_id, ...]
+          userYouTubeConnections.forEach(conn => {
+            if (!userConnectionMap.has(conn.user_id)) {
+              userConnectionMap.set(conn.user_id, []);
+            }
+            if (conn.youtube_channel_id) {
+              userConnectionMap.get(conn.user_id)!.push(conn.youtube_channel_id);
+            }
+          });
+
+          const allYouTubeChannelIds = userYouTubeConnections
+            .map(conn => conn.youtube_channel_id)
+            .filter((id): id is string => !!id); // Filter out null/undefined and ensure type is string
+          
+          if (allYouTubeChannelIds.length > 0) {
+            // 2. Fetch all YouTube memberships linked to these connection IDs
+            const { data: allMembershipsData, error: ytMembershipsError } = await supabase
+              .from('youtube_memberships')
+              .select('*') // Select all fields from YouTubeMembership interface
+              .in('youtube_connection_id', allYouTubeChannelIds);
+            
+            if (ytMembershipsError) {
+              console.error("Error fetching YouTube memberships:", ytMembershipsError);
+              toast({
+                title: "Warning",
+                description: "Could not load YouTube membership information for users.",
+                variant: "default"
+              });
+            } else if (allMembershipsData) {
+              // 3. Map memberships back to users
+              allMembershipsData.forEach(membership => {
+                // Find which user this membership belongs to by checking their youtube_channel_ids
+                for (const [userId, channelIds] of userConnectionMap.entries()) {
+                  if (channelIds.includes(membership.youtube_connection_id)) {
+                    const user = userMap.get(userId);
+                    if (user) {
+                      user.youtubeMemberships?.push(membership as YouTubeMembership);
+                    }
+                    break; // Found the user, no need to check other users for this membership
+                  }
+                }
+              });
+            }
+          }
+        }
+      }
+      // ---- End Added: Fetch and process YouTube Memberships ----
 
       setUsers(Array.from(userMap.values()));
     } catch (error) {
@@ -769,6 +928,13 @@ const AdminUsers: React.FC = (): ReactNode => {
   };
   // ---- End Added Handler ----
 
+  // ---- Added Handler for Showing YouTube Memberships ----
+  const handleShowYouTubeMemberships = (user: UserData) => {
+    setSelectedUserForYouTubeMemberships(user);
+    setShowYouTubeMembershipsDialog(true);
+  };
+  // ---- End Added Handler ----
+
   // --- Delete User Logic ---
   const handleDeleteUser = (user: UserData) => {
     setUserToDelete(user);
@@ -874,6 +1040,7 @@ const AdminUsers: React.FC = (): ReactNode => {
                 <TableHead className="text-gray-300">User</TableHead>
                 <TableHead className="text-gray-300">Connections</TableHead>
                 <TableHead className="text-gray-300">Guilds</TableHead>
+                <TableHead className="text-gray-300">Memberships</TableHead>
                 <TableHead className="text-gray-300">Roles</TableHead>
                 <TableHead className="text-gray-300">Joined</TableHead>
                 <TableHead className="text-gray-300 text-right">Actions</TableHead>
@@ -932,6 +1099,19 @@ const AdminUsers: React.FC = (): ReactNode => {
                         onClick={() => handleShowGuilds(user)}
                       >
                          {user.guild_count}
+                      </Button>
+                    ) : (
+                      <div className="text-gray-400">0</div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {(user.youtubeMemberships?.length ?? 0) > 0 ? (
+                      <Button
+                        variant="link"
+                        className="text-red-500 p-0 h-auto hover:underline"
+                        onClick={() => handleShowYouTubeMemberships(user)}
+                      >
+                        {user.youtubeMemberships?.length}
                       </Button>
                     ) : (
                       <div className="text-gray-400">0</div>
@@ -1086,7 +1266,6 @@ const AdminUsers: React.FC = (): ReactNode => {
                     onChange={(e) => setNewConnection({...newConnection, platform: e.target.value})}
                   >
                     <option value="YouTube">YouTube</option>
-                    <option value="Discord">Discord</option>
                   </select>
                 </div>
                 <div>
@@ -1217,6 +1396,14 @@ const AdminUsers: React.FC = (): ReactNode => {
         onOpenChange={setShowDevicesDialog}
       />
       {/* ---- End Added Dialog Render ---- */}
+
+      {/* ---- Added YouTube Memberships Dialog Render ---- */}
+      <UserYouTubeMembershipsDialog
+        user={selectedUserForYouTubeMemberships}
+        open={showYouTubeMembershipsDialog}
+        onOpenChange={setShowYouTubeMembershipsDialog}
+      />
+      {/* ---- End Added YouTube Memberships Dialog Render ---- */}
 
     </AdminLayout>
   );
