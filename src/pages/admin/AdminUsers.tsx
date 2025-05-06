@@ -251,6 +251,11 @@ const AdminUsers: React.FC = (): ReactNode => {
   const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const USERS_PER_PAGE = 25; // Or your desired number of users per page
+  const [totalUsers, setTotalUsers] = useState(0);
+
   // State for Guilds Dialog
   const [showGuildsDialog, setShowGuildsDialog] = useState(false);
   const [selectedUserForGuilds, setSelectedUserForGuilds] = useState<UserData | null>(null);
@@ -270,13 +275,12 @@ const AdminUsers: React.FC = (): ReactNode => {
   // ---- End Added State ----
 
   useEffect(() => {
-    fetchUsers();
-    // Clear search term if a specific userId is requested via URL
-    const userIdFromUrl = searchParams.get('userId');
-    if (userIdFromUrl) {
-      setSearchTerm(""); // Clear any manual search
-    }
-  }, [searchParams]);
+    // If a specific userId is in the URL, we might want to ensure it's on page 1
+    // or handle fetching that specific user differently.
+    // For now, this effect just triggers a fetch based on currentPage.
+    // The filtering logic for userIdFromUrl will apply to the fetched page.
+    fetchUsers(currentPage);
+  }, [currentPage, searchParams]); // Keep searchParams to refetch if URL changes like userId cleared
 
   useEffect(() => {
     const userIdFromUrl = searchParams.get('userId');
@@ -316,50 +320,80 @@ const AdminUsers: React.FC = (): ReactNode => {
     }
   }, [guildSearchTerm, userGuilds]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (pageToFetch = currentPage) => {
     setLoading(true);
     try {
-      // Fetch profiles - explicitly select discord_id if needed, though '*' should get it.
+      // Fetch total count of profiles for pagination UI
+      const { count, error: countError } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+
+      if (countError) {
+        console.error("Error fetching total user count:", countError);
+        toast({
+          title: "Error",
+          description: "Could not fetch total user count.",
+          variant: "destructive",
+        });
+        // Set totalUsers to 0 or handle error appropriately
+        setTotalUsers(0);
+      } else {
+        setTotalUsers(count || 0);
+      }
+
+      // Fetch paginated profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*, discord_id'); // Ensure discord_id is selected
+        .select('*, discord_id')
+        .range((pageToFetch - 1) * USERS_PER_PAGE, pageToFetch * USERS_PER_PAGE - 1);
 
       if (profilesError) {
         throw profilesError;
       }
 
-      // Fetch roles
+      if (!profiles || profiles.length === 0) {
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
+      
+      const profileIds = profiles.map(p => p.id);
+
+      // Fetch roles for the current page's users
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
-        .select('*');
+        .select('*')
+        .in('user_id', profileIds);
 
       if (rolesError) {
         throw rolesError;
       }
 
-      // Fetch all connections (assuming discord_connections holds all types)
+      // Fetch all connections for the current page's users
       const { data: allConnections, error: connectionsError } = await supabase
-        .from('discord_connections') // Changed from fetching discord/youtube separately
-        .select('*');
+        .from('discord_connections')
+        .select('*')
+        .in('user_id', profileIds);
 
       if (connectionsError) {
-        throw connectionsError; // Changed error variable
+        throw connectionsError;
       }
 
       // Fetch guild counts using the RPC function
+      // Known Limitation: This RPC fetches all guild counts.
+      // Ideally, this would be adapted or replaced if performance is an issue.
       const { data: guildCountsData, error: guildCountsError } = await supabase
-        .rpc('get_user_guild_counts'); // Call the RPC function
+        .rpc('get_user_guild_counts');
 
       if (guildCountsError) {
-        // Don't throw, maybe just log, as guilds might be optional
         console.error("Error fetching guild counts:", guildCountsError);
-        // Potentially show a toast, but maybe not critical?
       }
 
-      // Fetch User Devices
+      // Fetch User Devices for the current page's users
       const { data: allDevices, error: devicesError } = await supabase
         .from('user_devices')
-        .select('id, user_id, fingerprint, user_agent, ip_address, last_seen_at, created_at'); // Select specific columns
+        .select('id, user_id, fingerprint, user_agent, ip_address, last_seen_at, created_at')
+        .in('user_id', profileIds);
       
       if (devicesError) {
         // Log error but don't necessarily fail the whole user load
@@ -744,6 +778,22 @@ const AdminUsers: React.FC = (): ReactNode => {
   };
   // --- End Delete User Logic ---
 
+  // --- Pagination Handlers ---
+  const totalPages = Math.ceil(totalUsers / USERS_PER_PAGE);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+  // --- End Pagination Handlers ---
+
   return (
     <AdminLayout>
       <div className="mb-6">
@@ -910,6 +960,29 @@ const AdminUsers: React.FC = (): ReactNode => {
           </Table>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {!loading && totalUsers > 0 && (
+        <div className="flex items-center justify-between mt-6">
+          <Button
+            variant="outline"
+            onClick={handlePreviousPage}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <span className="text-white">
+            Page {currentPage} of {totalPages} (Total: {totalUsers} users)
+          </span>
+          <Button
+            variant="outline"
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages || totalUsers === 0}
+          >
+            Next
+          </Button>
+        </div>
+      )}
 
       {/* Add Connection Dialog */}
       <Dialog open={showConnectionDialog} onOpenChange={setShowConnectionDialog}>
