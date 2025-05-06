@@ -109,7 +109,7 @@ const DiscordConnections: React.FC = () => {
                 size="sm" 
                 asChild
               >
-                <a href="https://discord.gg/lolcow" target="_blank" rel="noopener noreferrer">
+                <a href="https://discord.gg/lolcowuniverse" target="_blank" rel="noopener noreferrer">
                   <i className="fa-brands fa-discord mr-1"></i>
                   Join Server
                   <ExternalLink className="h-3 w-3 ml-1" />

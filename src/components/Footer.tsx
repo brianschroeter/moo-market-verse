@@ -53,7 +53,7 @@ const Footer: React.FC = () => {
             <ul className="space-y-2">
               <li>
                 <a
-                  href="https://discord.gg/lolcow"
+                  href="https://discord.gg/lolcowuniverse"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-lolcow-blue transition-colors flex items-center space-x-2"
