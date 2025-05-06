@@ -275,35 +275,53 @@ const AdminUsers: React.FC = (): ReactNode => {
   // ---- End Added State ----
 
   useEffect(() => {
-    // If a specific userId is in the URL, we might want to ensure it's on page 1
-    // or handle fetching that specific user differently.
-    // For now, this effect just triggers a fetch based on currentPage.
-    // The filtering logic for userIdFromUrl will apply to the fetched page.
-    fetchUsers(currentPage);
-  }, [currentPage, searchParams]); // Keep searchParams to refetch if URL changes like userId cleared
+    const userIdFromUrl = searchParams.get('userId');
+    if (userIdFromUrl) {
+      // If a specific user ID is in the URL, clear any active search term
+      // and ensure we are on page 1 (though pagination will be hidden).
+      if (searchTerm !== "") {
+        setSearchTerm("");
+      }
+      if (currentPage !== 1) {
+        setCurrentPage(1); 
+      }
+      // fetchUsers will be called by the change in searchTerm or currentPage, 
+      // or if they were already cleared/1, it's called by searchParams change directly.
+    }
+    // This effect will call fetchUsers due to dependency changes
+    fetchUsers(currentPage, searchTerm, userIdFromUrl);
+  }, [currentPage, searchTerm, searchParams]);
 
+  // Effect to reset to page 1 when search term changes, 
+  // but only if not navigating to a specific user via URL.
   useEffect(() => {
     const userIdFromUrl = searchParams.get('userId');
-
-    // Filter users based on URL param OR search term
-    if (userIdFromUrl) {
-      // If userId is in URL, filter ONLY by that ID
-      setFilteredUsers(users.filter(user => user.id === userIdFromUrl));
-    } else if (!searchTerm.trim()) {
-      // If no URL param and no search term, show all
-      setFilteredUsers(users);
-    } else {
-      // If no URL param, filter by search term
-      const lowercaseSearch = searchTerm.toLowerCase();
-      setFilteredUsers(users.filter(user => 
-        user.username.toLowerCase().includes(lowercaseSearch) || 
-        user.id.toLowerCase().includes(lowercaseSearch) ||
-        user.connections.some(conn => 
-          conn.username.toLowerCase().includes(lowercaseSearch)
-        )
-      ));
+    if (searchTerm !== "" && !userIdFromUrl) { 
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+      }
     }
-  }, [searchTerm, users, searchParams]);
+  }, [searchTerm]); // Removed currentPage from deps to avoid loop, fetchUsers is handled by the main effect.
+
+  // The 'users' state will hold the correctly filtered and paginated list from fetchUsers.
+  // 'filteredUsers' is primarily to handle the specific case of displaying a single user from URL if needed,
+  // or can be removed if 'users' state is directly used and correctly populated by fetchUsers in all cases.
+  useEffect(() => {
+    const userIdFromUrl = searchParams.get('userId');
+    if (userIdFromUrl && users.length === 1 && users[0].id === userIdFromUrl) {
+      // If we fetched a specific user and it's the only one in 'users', use it.
+      setFilteredUsers(users);
+    } else if (userIdFromUrl && users.length > 0 && users.filter(user => user.id === userIdFromUrl).length === 1){
+      // Fallback: if fetchUsers returned more (e.g. due to search term not cleared yet) but the user is there
+      setFilteredUsers(users.filter(user => user.id === userIdFromUrl));
+    } else if (userIdFromUrl) {
+        // User ID in URL but user not found in current 'users' list (e.g. after fetch)
+        setFilteredUsers([]);
+    }else {
+      // Default case: no specific user ID in URL, so display current page/search results from 'users'
+      setFilteredUsers(users);
+    }
+  }, [users, searchParams]);
 
   // Effect to filter guilds based on search term
   useEffect(() => {
@@ -320,13 +338,35 @@ const AdminUsers: React.FC = (): ReactNode => {
     }
   }, [guildSearchTerm, userGuilds]);
 
-  const fetchUsers = async (pageToFetch = currentPage) => {
+  const fetchUsers = async (pageToFetch = currentPage, currentSearchTerm = searchTerm, userIdToFetch = searchParams.get('userId')) => {
     setLoading(true);
     try {
-      // Fetch total count of profiles for pagination UI
-      const { count, error: countError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
+      let profilesBaseQuery = supabase.from('profiles');
+      let countBaseQuery = supabase.from('profiles');
+
+      let finalProfilesQuery;
+      let finalCountQuery;
+
+      if (userIdToFetch) {
+        finalProfilesQuery = profilesBaseQuery.select('*, discord_id').eq('id', userIdToFetch);
+        finalCountQuery = countBaseQuery.select('*', { count: 'exact', head: true }).eq('id', userIdToFetch);
+      } else if (currentSearchTerm && currentSearchTerm.trim() !== "") {
+        const cleanedSearchTerm = currentSearchTerm.trim();
+        const searchFilterString = `discord_username.ilike.%${cleanedSearchTerm}%,id.ilike.%${cleanedSearchTerm}%`;
+        
+        finalProfilesQuery = profilesBaseQuery
+          .select('*, discord_id')
+          .or(searchFilterString)
+          .range((pageToFetch - 1) * USERS_PER_PAGE, pageToFetch * USERS_PER_PAGE - 1);
+        finalCountQuery = countBaseQuery.select('*', { count: 'exact', head: true }).or(searchFilterString);
+      } else {
+        finalProfilesQuery = profilesBaseQuery
+          .select('*, discord_id')
+          .range((pageToFetch - 1) * USERS_PER_PAGE, pageToFetch * USERS_PER_PAGE - 1);
+        finalCountQuery = countBaseQuery.select('*', { count: 'exact', head: true });
+      }
+
+      const { count, error: countError } = await finalCountQuery;
 
       if (countError) {
         console.error("Error fetching total user count:", countError);
@@ -335,17 +375,12 @@ const AdminUsers: React.FC = (): ReactNode => {
           description: "Could not fetch total user count.",
           variant: "destructive",
         });
-        // Set totalUsers to 0 or handle error appropriately
         setTotalUsers(0);
       } else {
         setTotalUsers(count || 0);
       }
 
-      // Fetch paginated profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*, discord_id')
-        .range((pageToFetch - 1) * USERS_PER_PAGE, pageToFetch * USERS_PER_PAGE - 1);
+      const { data: profiles, error: profilesError } = await finalProfilesQuery;
 
       if (profilesError) {
         throw profilesError;
@@ -952,7 +987,16 @@ const AdminUsers: React.FC = (): ReactNode => {
               {filteredUsers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-400">
-                    {users.length === 0 ? "No users found" : "No users match your search"}
+                    {/* Adjust message based on whether a search is active or specific user */}
+                    {searchParams.get('userId') && users.length === 0 && !loading ? (
+                      `User with ID ${searchParams.get('userId')} not found.`
+                    ) : searchTerm.trim() !== "" ? (
+                      "No users match your search"
+                    ) : totalUsers === 0 && !loading ? (
+                      "No users found"
+                    ) : (
+                      "No users on this page" // Should ideally not be shown if totalUsers > 0
+                    )}
                   </TableCell>
                 </TableRow>
               )}
@@ -961,8 +1005,8 @@ const AdminUsers: React.FC = (): ReactNode => {
         )}
       </div>
 
-      {/* Pagination Controls */}
-      {!loading && totalUsers > 0 && (
+      {/* Pagination Controls - Hide if a specific user is being viewed via URL */}
+      {!loading && !searchParams.get('userId') && totalUsers > USERS_PER_PAGE && (
         <div className="flex items-center justify-between mt-6">
           <Button
             variant="outline"
