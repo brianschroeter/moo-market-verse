@@ -2,7 +2,7 @@ import React, { useState, useEffect, ReactNode } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon, Smartphone } from "lucide-react";
+import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon, Smartphone, Youtube } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -241,6 +241,86 @@ const UserDevicesDialog: React.FC<{
 };
 // ---- End Updated Component ----
 
+// ---- Added: YouTube Memberships Dialog Component ----
+const UserYouTubeMembershipsDialog: React.FC<{
+  user: UserData | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}> = ({ user, open, onOpenChange }) => {
+  if (!user) return null;
+
+  const memberships = user.youtube_memberships || [];
+
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'N/A';
+    try {
+      return format(new Date(dateString), 'PP'); // Format like: Sep 21, 2024
+    } catch (e) {
+      console.error("Error formatting date:", dateString, e);
+      return 'Invalid Date';
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center">
+            <Youtube className="h-5 w-5 mr-2 text-red-500" />
+            YouTube Memberships for {user.username}
+          </DialogTitle>
+          <DialogDescription>
+            Showing {memberships.length} YouTube channel membership(s) for this user.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="h-[60vh] rounded-md border p-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Creator Channel</TableHead>
+                <TableHead>Membership Level</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead>Expires</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {memberships.length > 0 ? (
+                memberships.map((membership) => (
+                  <TableRow key={membership.id}>
+                    <TableCell className="font-medium">{membership.creator_channel_name}</TableCell>
+                    <TableCell>{membership.membership_level}</TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={membership.status === 'active' ? 'default' : 'secondary'}
+                        className={membership.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}
+                      >
+                        {membership.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatDate(membership.joined_at)}</TableCell>
+                    <TableCell>{formatDate(membership.expires_at)}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center">
+                    No YouTube memberships found for this user.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </ScrollArea>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+// ---- End YouTube Memberships Dialog Component ----
+
 const AdminUsers: React.FC = (): ReactNode => {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
@@ -275,6 +355,11 @@ const AdminUsers: React.FC = (): ReactNode => {
   const [showDevicesDialog, setShowDevicesDialog] = useState(false);
   const [selectedUserForDevices, setSelectedUserForDevices] = useState<UserData | null>(null);
   // ---- End Added State ----
+
+  // ---- Added State for YouTube Memberships Dialog ----
+  const [showYouTubeMembershipsDialog, setShowYouTubeMembershipsDialog] = useState(false);
+  const [selectedUserForYouTubeMemberships, setSelectedUserForYouTubeMemberships] = useState<UserData | null>(null);
+  // ---- End Added State for YouTube Memberships Dialog ----
 
   useEffect(() => {
     const userIdFromUrl = searchParams.get('userId');
@@ -830,6 +915,13 @@ const AdminUsers: React.FC = (): ReactNode => {
   };
   // ---- End Added Handler ----
 
+  // ---- Added Handler for Showing YouTube Memberships ----
+  const handleShowYouTubeMemberships = (user: UserData) => {
+    setSelectedUserForYouTubeMemberships(user);
+    setShowYouTubeMembershipsDialog(true);
+  };
+  // ---- End Added Handler for Showing YouTube Memberships ----
+
   // --- Delete User Logic ---
   const handleDeleteUser = (user: UserData) => {
     setUserToDelete(user);
@@ -1000,25 +1092,24 @@ const AdminUsers: React.FC = (): ReactNode => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {user.youtube_memberships && user.youtube_memberships.length > 0 ? (
-                      <div className="space-y-1 text-xs">
-                        {user.youtube_memberships
-                          .filter(m => m.status === 'active')
-                          .map(membership => (
-                          <div key={membership.id} className="flex items-center" title={`Member of ${membership.creator_channel_name} - Level: ${membership.membership_level}`}>
-                             <Badge variant="outline" className="mr-1 border-purple-500 text-purple-300 text-nowrap">
-                                {membership.creator_channel_name}
-                             </Badge>
-                             <span className="text-gray-400 truncate">({membership.membership_level})</span>
-                          </div>
-                        ))}
-                        {user.youtube_memberships.filter(m => m.status === 'active').length === 0 && (
-                            <div className="text-gray-500">No active memberships</div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-gray-400 text-xs">None</div>
-                    )}
+                    {(() => {
+                      const activeMemberships = user.youtube_memberships?.filter(m => m.status === 'active').length || 0;
+                      const totalMemberships = user.youtube_memberships?.length || 0;
+
+                      if (totalMemberships === 0) {
+                        return <div className="text-gray-400 text-xs">None</div>;
+                      }
+                      return (
+                        <Button
+                          variant="link"
+                          className="text-lolcow-blue p-0 h-auto hover:underline text-xs"
+                          onClick={() => handleShowYouTubeMemberships(user)}
+                          title="View YouTube Memberships"
+                        >
+                          {activeMemberships > 0 ? `${activeMemberships} Active` : `${totalMemberships} Total`}
+                        </Button>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <div className="space-x-1">
@@ -1306,6 +1397,14 @@ const AdminUsers: React.FC = (): ReactNode => {
         onOpenChange={setShowDevicesDialog}
       />
       {/* ---- End Added Dialog Render ---- */}
+
+      {/* ---- Added YouTube Memberships Dialog Render ---- */}
+      <UserYouTubeMembershipsDialog
+        user={selectedUserForYouTubeMemberships}
+        open={showYouTubeMembershipsDialog}
+        onOpenChange={setShowYouTubeMembershipsDialog}
+      />
+      {/* ---- End Added YouTube Memberships Dialog Render ---- */}
 
     </AdminLayout>
   );
