@@ -79,8 +79,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </div>
         
         <div 
-          className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out 
-                      ${isSidebarOpen ? 'ml-64' : 'ml-0 lg:ml-20'} `}
+          className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ml-0`}
         >
           <main className="flex-1 overflow-y-auto p-6">
             {children}
