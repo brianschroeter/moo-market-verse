@@ -939,20 +939,14 @@ const AdminUsers: React.FC = (): ReactNode => {
                   </TableCell>
                   <TableCell>
                     <div className="space-x-1">
-                      {user.roles.length > 0 ? (
-                        user.roles.map((role, index) => {
-                          let bg = "bg-gray-500";
-                          if (role === "admin") bg = "bg-yellow-500";
-                          else if (role === "user") bg = "bg-blue-500";
-                          
-                          return (
-                            <span key={index} className={`px-2 py-1 rounded-full text-xs ${bg}`}>
-                              {role}
-                            </span>
-                          );
-                        })
+                      {user.roles.includes('admin') ? (
+                        <span className={`px-2 py-1 rounded-full text-xs bg-yellow-500`}>
+                          admin
+                        </span>
                       ) : (
-                        <span className="text-gray-400">No roles</span>
+                        <span className={`px-2 py-1 rounded-full text-xs bg-blue-500`}>
+                          user
+                        </span>
                       )}
                     </div>
                   </TableCell>
