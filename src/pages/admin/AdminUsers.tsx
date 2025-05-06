@@ -352,7 +352,19 @@ const AdminUsers: React.FC = (): ReactNode => {
         finalCountQuery = countBaseQuery.select('*', { count: 'exact', head: true }).eq('id', userIdToFetch);
       } else if (currentSearchTerm && currentSearchTerm.trim() !== "") {
         const cleanedSearchTerm = currentSearchTerm.trim();
-        const searchFilterString = `discord_username.ilike.%${cleanedSearchTerm}%,id.ilike.%${cleanedSearchTerm}%`;
+        // Regex to check for UUID format
+        const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+        const isSearchTermUUID = uuidRegex.test(cleanedSearchTerm);
+
+        let searchOrConditions = [`discord_username.ilike.%${cleanedSearchTerm}%`];
+
+        if (isSearchTermUUID) {
+          searchOrConditions.push(`id.eq.${cleanedSearchTerm}`);
+        }
+        // Add other text fields to search here if needed, e.g.:
+        // searchOrConditions.push(`some_other_text_column.ilike.%${cleanedSearchTerm}%`);
+
+        const searchFilterString = searchOrConditions.join(',');
         
         finalProfilesQuery = profilesBaseQuery
           .select('*, discord_id')
