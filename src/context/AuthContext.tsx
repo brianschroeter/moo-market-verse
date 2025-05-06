@@ -8,6 +8,59 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { getUserRoles } from "@/services/roleService";
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 
+// --- START DEV MODE SPOOFING DATA ---
+const DEV_MODE = import.meta.env.VITE_DEVMODE === 'true';
+const SPOOFED_USER_ID = 'f5af7e3e-168c-425f-8243-dd2639e41e04';
+const SPOOFED_DISCORD_ID = '213004748662636554';
+
+const mockUser: User | null = DEV_MODE ? {
+  id: SPOOFED_USER_ID,
+  app_metadata: { provider: 'discord', providers: ['discord'] },
+  user_metadata: {
+    avatar_url: 'https://cdn.discordapp.com/avatars/213004748662636554/a_mock_avatar.png', // Placeholder
+    email: 'dev@example.com',
+    email_verified: true,
+    full_name: 'Dev User',
+    iss: 'https://discord.com',
+    name: 'Dev User',
+    picture: 'https://cdn.discordapp.com/avatars/213004748662636554/a_mock_avatar.png', // Placeholder
+    provider_id: SPOOFED_DISCORD_ID,
+    sub: SPOOFED_DISCORD_ID,
+  },
+  aud: 'authenticated',
+  confirmation_sent_at: new Date().toISOString(),
+  confirmed_at: new Date().toISOString(),
+  created_at: new Date().toISOString(),
+  email: 'dev@example.com',
+  email_confirmed_at: new Date().toISOString(),
+  last_sign_in_at: new Date().toISOString(),
+  phone: '',
+  role: 'authenticated',
+  updated_at: new Date().toISOString(),
+  identities: [], // simplified
+} : null;
+
+const mockSession: Session | null = DEV_MODE && mockUser ? {
+  access_token: 'mock-access-token',
+  refresh_token: 'mock-refresh-token',
+  token_type: 'bearer',
+  expires_in: 3600,
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
+  user: mockUser,
+  provider_token: 'mock-discord-provider-token', // Added for discord sync
+  provider_refresh_token: 'mock-discord-provider-refresh-token', // Optional
+} : null;
+
+const mockProfile: Profile | null = DEV_MODE ? {
+  id: SPOOFED_USER_ID,
+  discord_id: SPOOFED_DISCORD_ID,
+  discord_username: 'DevUser#0000', // Placeholder
+  discord_avatar: 'a_mock_avatar', // Placeholder
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+} : null;
+// --- END DEV MODE SPOOFING DATA ---
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -62,7 +115,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // ---- Initialize Auth State ----
     const initializeAuth = async () => {
-      console.log("initializeAuth: Getting initial session state..."); 
+      if (DEV_MODE) {
+        console.warn("--- DEV MODE ACTIVE: Spoofing user ---");
+        console.log("Spoofed User ID:", SPOOFED_USER_ID);
+        console.log("Spoofed Discord ID:", SPOOFED_DISCORD_ID);
+        setSession(mockSession);
+        setUser(mockUser);
+        setProfile(mockProfile);
+        setIsAdmin(true); // Assume admin in dev mode for convenience
+        setLoading(false);
+        // Optionally trigger post-auth actions if needed for dev setup
+        // if (mockSession && mockUser) {
+        //   await checkAdminRole(); // Will use mock data or need adjustment
+        //   await syncDiscordConnections(mockSession); // Might fail if token is invalid
+        //   await upsertDeviceFingerprint();
+        // }
+        console.warn("--- DEV MODE: Spoofing complete ---");
+        return; // Skip real auth initialization
+      }
+
+      console.log("initializeAuth: Getting initial session state...");
       try {
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         if (error) {
@@ -84,6 +156,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // ---- Auth State Change Listener ----
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        // Prevent auth listener from overriding spoofed data in dev mode
+        if (DEV_MODE) {
+           console.log("[onAuthStateChange] Dev mode active, ignoring real auth state changes.");
+           // Ensure spoofed state persists if something tries to clear it
+           if (!user && mockUser) setUser(mockUser);
+           if (!session && mockSession) setSession(mockSession);
+           if (!profile && mockProfile) setProfile(mockProfile);
+           if (!isAdmin) setIsAdmin(true); // Re-assert admin if cleared
+           return;
+        }
+
         console.log(`[onAuthStateChange] Event: ${event}, Session User: ${currentSession?.user?.id ?? 'null'}`);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
@@ -130,12 +213,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     return () => {
+      // Still unsubscribe listener even in dev mode
       console.log("Unsubscribing from auth state changes.");
       subscription.unsubscribe();
     };
-  }, [toast, navigate]);
+  }, [toast, navigate]); // Removed dependencies related to spoofed state
 
   const checkAdminRole = async () => {
+    // Use spoofed admin status in dev mode
+    if (DEV_MODE) {
+        console.log("Admin role check skipped in dev mode (assumed admin).");
+        setIsAdmin(true); // Ensure admin state is set if called directly
+        return;
+    }
     if (adminCheckInProgress.current) {
       console.log("Admin role check already in progress, skipping.");
       return;
@@ -155,7 +245,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const syncDiscordConnections = async (currentSession: Session | null) => { 
+  const syncDiscordConnections = async (currentSession: Session | null) => {
+    // Skip Discord sync in dev mode unless specifically needed and configured
+    if (DEV_MODE) {
+        console.log("Discord sync skipped in dev mode.");
+        return;
+    }
     if (discordSyncInProgress.current) {
       console.log("Discord sync already in progress, skipping.");
       return;
@@ -184,6 +279,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const upsertDeviceFingerprint = async () => {
+     // Skip fingerprinting in dev mode
+    if (DEV_MODE) {
+        console.log("Device fingerprinting skipped in dev mode.");
+        return;
+    }
     if (fingerprintInProgress.current) {
       console.log("Device fingerprinting already in progress, skipping.");
       return;
@@ -215,6 +315,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const fetchProfile = async (userId: string) => {
+     // Use mock profile in dev mode
+    if (DEV_MODE) {
+        console.log("Profile fetch skipped in dev mode (using mock profile).");
+        setProfile(mockProfile); // Ensure mock profile is set if called directly
+        return;
+    }
     if (profileFetchInProgress.current) {
       console.log("Profile fetch already in progress, skipping.");
       return;
@@ -235,6 +341,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    // Handle sign out differently in dev mode (e.g., reload or clear mock state)
+    if (DEV_MODE) {
+        console.warn("--- DEV MODE: 'Signing out' - Reloading page to clear state ---");
+        // Option 1: Simply reload the page to reset to initial spoofed state
+        window.location.reload();
+
+        // Option 2: Clear state (less effective as listener might re-spoof)
+        // setSession(null);
+        // setUser(null);
+        // setProfile(null);
+        // setIsAdmin(false);
+        // toast({ title: "Dev Sign Out", description: "Cleared mock session. Reload if needed."});
+        return;
+    }
+
     console.log("Signing out user...");
     try {
       await authSignOut();
