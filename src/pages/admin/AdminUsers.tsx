@@ -335,7 +335,7 @@ const UserYouTubeMembershipsDialog: React.FC<{
 const AdminUsers: React.FC = (): ReactNode => {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
-  const [newConnection, setNewConnection] = useState({ platform: "YouTube", username: "" });
+  const [newConnection, setNewConnection] = useState({ platform: "YouTube", username: "", channelName: "" });
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddingConnection, setIsAddingConnection] = useState(false);
@@ -740,36 +740,70 @@ const AdminUsers: React.FC = (): ReactNode => {
       });
       return;
     }
+    // ---- Add check for channelName if platform is YouTube ----
+    if (newConnection.platform === 'YouTube' && !newConnection.channelName.trim()) {
+      toast({
+        title: "Error",
+        description: "YouTube Channel Name is required.",
+        variant: "destructive"
+      });
+      return;
+    }
+    // ---- End Add check ----
 
     setIsAddingConnection(true);
 
     try {
       const connectionType = newConnection.platform.toLowerCase();
-      const connectionName = newConnection.username.trim();
+      const youtubeChannelId = newConnection.username.trim(); // This is the Channel ID for YouTube
+      const youtubeChannelName = newConnection.platform === 'YouTube' ? newConnection.channelName.trim() : youtubeChannelId;
 
-      // Use the same table 'discord_connections' used in fetchUsers
-      const { error } = await supabase
-        .from('discord_connections')
-        .insert({
-          user_id: currentUser.id,
-          connection_type: connectionType,
-          connection_name: connectionName,
-          connection_id: connectionName, // Use username/channelId as connection_id for manual add
-          connection_verified: true // Manually added connections are considered verified
-          // Add other necessary fields if your table has them
-        });
+      // Call the Supabase Edge function
+      const { data: functionResponse, error } = await supabase.functions.invoke(
+        'add-user-connection',
+        {
+          body: {
+            target_user_id: currentUser.id,
+            connection_type: connectionType,
+            connection_id: youtubeChannelId, // For YouTube, this is the Channel ID
+            connection_name: youtubeChannelName, // For YouTube, this is the Channel Name
+          },
+        }
+      );
 
       if (error) {
-        throw error;
+        // Try to parse more specific error from function if available
+        let detailedError = error.message;
+        if (error.context && typeof error.context.error === 'string') {
+            detailedError = error.context.error;
+        } else if (error.context && error.context.details) {
+            detailedError = error.context.details;
+        }
+        throw new Error(detailedError);
       }
 
-      // Optimistically update the local state
+      // The function itself might return an error in its response body if something went wrong internally
+      if (functionResponse && functionResponse.error) {
+        throw new Error(functionResponse.error);
+      }
+      
+      // Assuming the function returns the new connection object in a 'connection' field on success
+      const addedConnectionData = functionResponse?.connection;
+      if (!addedConnectionData) {
+        // This case might happen if the function succeeded (status 2xx) but didn't return expected data
+        throw new Error("Edge function succeeded but did not return connection data.");
+      }
+
+      // Optimistically update the local state using the data returned from the function
       const addedConnection = {
         platform: newConnection.platform,
-        username: connectionName,
-        connected: true,
-        connection_id: connectionName // Include connection_id used in insert
+        // Use connection_name and connection_id from the function response if they are indeed returned and named so
+        // For now, let's stick to what we sent, assuming the DB schema is aligned
+        username: addedConnectionData.connection_name || youtubeChannelName, 
+        connected: addedConnectionData.connection_verified !== null ? addedConnectionData.connection_verified : true,
+        connection_id: addedConnectionData.connection_id || youtubeChannelId 
       };
+
       setUsers(users.map(u => {
         if (u.id === currentUser.id) {
           return {
@@ -785,14 +819,13 @@ const AdminUsers: React.FC = (): ReactNode => {
           connections: [...currentUser.connections, addedConnection]
       });
 
-
       toast({
         title: "Connection Added",
         description: `Added ${newConnection.platform} connection for ${currentUser.username}.`,
       });
       
       // Reset form and close dialog
-      setNewConnection({ platform: 'YouTube', username: '' });
+      setNewConnection({ platform: 'YouTube', username: '', channelName: '' });
       setShowConnectionDialog(false);
 
     } catch (error) {
@@ -807,51 +840,63 @@ const AdminUsers: React.FC = (): ReactNode => {
     }
   };
 
-  const handleRemoveConnection = async (connectionId: string) => {
+  const handleRemoveConnection = async (connectionIdToRemove: string) => {
     if (!currentUser) return;
 
-    // Use the actual connection identifier from the database table
-    // In fetchUsers, we stored the connection_id which should be unique per user+connection
-    const connectionToRemove = currentUser.connections.find(c => c.connection_id === connectionId);
+    const connectionDetails = currentUser.connections.find(c => c.connection_id === connectionIdToRemove);
 
-    if (!connectionToRemove) {
+    if (!connectionDetails) {
         toast({ title: "Error", description: "Connection details not found for removal.", variant: "destructive"});
         return;
     }
 
-    // Display confirmation toast or dialog if preferred
-    if (!window.confirm(`Are you sure you want to remove the ${connectionToRemove.platform} connection (${connectionToRemove.username})?`)) {
+    if (!window.confirm(`Are you sure you want to remove the ${connectionDetails.platform} connection (${connectionDetails.username})? This will also remove it from YouTube specific tables if applicable.`)) {
         return;
     }
 
+    // Show loading toast
+    const removalToast = toast({ title: "Processing", description: `Removing ${connectionDetails.platform} connection...` });
+
     try {
-        // Target the correct table and use the correct identifier (connection_id)
-        const { error } = await supabase
-            .from('discord_connections') // Using the table assumed to hold all connections
-            .delete()
-            .match({ user_id: currentUser.id, connection_id: connectionId }); // Match user and connection_id
+      const { error: functionError } = await supabase.functions.invoke('delete-user-connection', {
+        body: {
+          user_id: currentUser.id,
+          connection_id: connectionIdToRemove, // This is the ID like YouTube Channel ID
+        },
+      });
 
-        if (error) {
-            throw error;
+      if (functionError) {
+        let detailedError = functionError.message;
+        if (functionError.context && typeof functionError.context.error === 'string') {
+            detailedError = functionError.context.error;
+        } else if (functionError.context && functionError.context.details) {
+            detailedError = functionError.context.details;
         }
+        throw new Error(detailedError);
+      }
 
-        // Update local state optimistically
-        const updatedConnections = currentUser.connections.filter(c => c.connection_id !== connectionId);
-        setUsers(users.map(u => (u.id === currentUser.id ? { ...u, connections: updatedConnections } : u)));
-        setCurrentUser({ ...currentUser, connections: updatedConnections });
-
-        toast({
-            title: "Connection Removed",
-            description: `Removed ${connectionToRemove.platform} connection.`
-        });
+      // Optimistically update the local state
+      const updatedConnections = currentUser.connections.filter(c => c.connection_id !== connectionIdToRemove);
+      setUsers(users.map(u => (u.id === currentUser.id ? { ...u, connections: updatedConnections } : u)));
+      setCurrentUser({ ...currentUser, connections: updatedConnections });
+      
+      // Update toast to success
+      removalToast.update({
+        id: removalToast.id, 
+        title: "Connection Removed", 
+        description: `Successfully removed ${connectionDetails.platform} connection.`, 
+        variant: "default"
+      });
 
     } catch (error) {
-        console.error("Error removing connection:", error);
-        toast({
-            title: "Error",
-            description: `Failed to remove connection. ${error instanceof Error ? error.message : ''}`,
-            variant: "destructive"
-        });
+      console.error("Error removing connection via Edge Function:", error);
+      // Update toast to error
+      removalToast.update({
+        id: removalToast.id, 
+        title: "Error", 
+        description: `Failed to remove connection. ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
+      });
     }
   };
 
@@ -1077,16 +1122,37 @@ const AdminUsers: React.FC = (): ReactNode => {
                     <div className="space-y-1">
                       {user.connections.length > 0 ? (
                         user.connections.map((conn, index) => (
-                          <div key={index} className="flex items-center">
-                            <span className={`w-2 h-2 rounded-full mr-2 ${conn.connected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                            <span className="text-white font-medium">{conn.platform}: </span>
-                            <span className="ml-1 text-gray-400">
-                              {conn.connected ? conn.username : "Not connected"}
-                            </span>
+                          <div key={index} className="flex items-center justify-between bg-lolcow-lightgray/20 p-3 rounded">
+                            <div className="flex items-center">
+                              <span className={`w-3 h-3 rounded-full mr-3 ${conn.connected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                              <div>
+                                <span className="font-medium text-white">{conn.platform}: </span>
+                                {conn.connected ? (
+                                  <>
+                                    <span className="text-gray-300">{conn.username}</span>
+                                    {conn.platform === 'YouTube' && conn.connection_id && (
+                                      <span className="ml-1 text-xs text-gray-400">({conn.connection_id})</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-gray-400">Not connected</span>
+                                )}
+                              </div>
+                            </div>
+                            {conn.connected && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-500 hover:text-white hover:bg-red-500"
+                                onClick={() => handleRemoveConnection(conn.connection_id)}
+                              >
+                                Remove
+                              </Button>
+                            )}
                           </div>
                         ))
                       ) : (
-                        <div className="text-gray-400">No connections</div>
+                        <div className="text-gray-400">No connections found</div>
                       )}
                     </div>
                   </TableCell>
@@ -1236,7 +1302,19 @@ const AdminUsers: React.FC = (): ReactNode => {
                 <div key={index} className="flex items-center justify-between bg-lolcow-lightgray/20 p-3 rounded">
                   <div className="flex items-center">
                     <span className={`w-3 h-3 rounded-full mr-3 ${conn.connected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    <span>{conn.platform}: {conn.connected ? conn.username : "Not connected"}</span>
+                    <div>
+                      <span className="font-medium text-white">{conn.platform}: </span>
+                      {conn.connected ? (
+                        <>
+                          <span className="text-gray-300">{conn.username}</span>
+                          {conn.platform === 'YouTube' && conn.connection_id && (
+                            <span className="ml-1 text-xs text-gray-400">({conn.connection_id})</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-gray-400">Not connected</span>
+                      )}
+                    </div>
                   </div>
                   {conn.connected && (
                     <Button
@@ -1263,7 +1341,7 @@ const AdminUsers: React.FC = (): ReactNode => {
                   <select 
                     className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
                     value={newConnection.platform}
-                    onChange={(e) => setNewConnection({...newConnection, platform: e.target.value})}
+                    onChange={(e) => setNewConnection({...newConnection, platform: e.target.value, username: '', channelName: ''})} // Reset username/channelName on platform change
                   >
                     <option value="YouTube">YouTube</option>
                   </select>
@@ -1280,6 +1358,20 @@ const AdminUsers: React.FC = (): ReactNode => {
                     placeholder={newConnection.platform === 'YouTube' ? 'Enter Channel ID (e.g., UC...)' : 'Enter username'}
                   />
                 </div>
+                {/* ---- Added Channel Name Input for YouTube ---- */}
+                {newConnection.platform === 'YouTube' && (
+                  <div>
+                    <label className="block text-gray-300 mb-1">YouTube Channel Name</label>
+                    <input 
+                      type="text" 
+                      className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
+                      value={newConnection.channelName}
+                      onChange={(e) => setNewConnection({...newConnection, channelName: e.target.value})}
+                      placeholder="Enter Channel Name (e.g., Lolow Live)"
+                    />
+                  </div>
+                )}
+                {/* ---- End Added Channel Name Input ---- */}
               </div>
             </div>
           </div>
@@ -1288,7 +1380,7 @@ const AdminUsers: React.FC = (): ReactNode => {
             <Button
               className="mr-2 bg-lolcow-blue hover:bg-lolcow-blue/80"
               onClick={handleAddConnection}
-              disabled={isAddingConnection || !newConnection.username.trim()}
+              disabled={isAddingConnection || !newConnection.username.trim() || (newConnection.platform === 'YouTube' && !newConnection.channelName.trim())}
             >
               {isAddingConnection ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} 
               {isAddingConnection ? 'Adding...' : 'Add Connection'}
