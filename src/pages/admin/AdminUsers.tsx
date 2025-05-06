@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from 'date-fns';
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { YouTubeMembership } from "@/services/types/auth-types";
 
 // ---- Added: Interface for User Device ----
 interface UserDevice {
@@ -41,6 +42,7 @@ interface UserData {
   roles: string[];
   guild_count?: number;
   devices?: UserDevice[]; // Added optional devices array
+  youtube_memberships?: YouTubeMembership[]; // Added YouTube memberships
 }
 
 // Define type for a single guild
@@ -452,6 +454,47 @@ const AdminUsers: React.FC = (): ReactNode => {
         });
       }
 
+      // Fetch YouTube Memberships - Revised Approach
+      let allYoutubeMemberships: (YouTubeMembership & { user_id: string | null })[] = [];
+      const { data: userYoutubeConnections, error: ytConnectionsError } = await supabase
+        .from('youtube_connections')
+        .select('id, user_id') // Select youtube_connection_id (as id) and user_id
+        .in('user_id', profileIds);
+
+      if (ytConnectionsError) {
+        console.error("Error fetching YouTube connections:", ytConnectionsError);
+        toast({
+          title: "Warning",
+          description: "Could not load YouTube connection data for users.",
+          variant: "default"
+        });
+      } else if (userYoutubeConnections && userYoutubeConnections.length > 0) {
+        const youtubeConnectionIds = userYoutubeConnections.map(conn => conn.id);
+        const { data: fetchedMemberships, error: ytMembershipsError } = await supabase
+          .from('youtube_memberships')
+          .select('*, youtube_connection_id') // youtube_connection_id is crucial for mapping back
+          .in('youtube_connection_id', youtubeConnectionIds);
+
+        if (ytMembershipsError) {
+          console.error("Error fetching YouTube memberships:", ytMembershipsError);
+          toast({
+            title: "Warning",
+            description: "Could not load YouTube membership information for users.",
+            variant: "default"
+          });
+        } else if (fetchedMemberships) {
+          // Add user_id to each membership object for easier mapping later
+          allYoutubeMemberships = fetchedMemberships.map(mem => {
+            const connection = userYoutubeConnections.find(conn => conn.id === mem.youtube_connection_id);
+            return {
+              ...mem,
+              user_id: connection ? connection.user_id : null // Add user_id
+            };
+          }).filter(mem => mem.user_id !== null) as (YouTubeMembership & { user_id: string })[];
+        }
+      }
+      // ---- End YouTube Memberships Fetching ----
+
       // Process guild counts from RPC into a map
       const guildCountMap = new Map<string, number>();
       if (Array.isArray(guildCountsData)) {
@@ -488,7 +531,8 @@ const AdminUsers: React.FC = (): ReactNode => {
           connections: [],
           roles: [],
           guild_count: guildCountMap.get(profile.id) || 0, // Get count from map
-          devices: [] // Initialize devices array
+          devices: [], // Initialize devices array
+          youtube_memberships: [] // Initialize YouTube memberships array
         });
       });
 
@@ -546,6 +590,23 @@ const AdminUsers: React.FC = (): ReactNode => {
         });
       }
       // ---- End Added Logic ----
+
+      // ---- Added: Add YouTube Memberships to Users ----
+      if (allYoutubeMemberships.length > 0) {
+        allYoutubeMemberships.forEach(membershipWithUserId => {
+          // membershipWithUserId is now correctly typed as (YouTubeMembership & { user_id: string })
+          // because of the .filter(mem => mem.user_id !== null) and the subsequent cast.
+          const user = userMap.get(membershipWithUserId.user_id);
+          if (user) {
+            if (!user.youtube_memberships) {
+                user.youtube_memberships = [];
+            }
+            const { user_id, ...membershipData } = membershipWithUserId;
+            user.youtube_memberships.push(membershipData as YouTubeMembership);
+          }
+        });
+      }
+      // ---- End Added Logic for YouTube Memberships ----
 
       setUsers(Array.from(userMap.values()));
     } catch (error) {
@@ -874,6 +935,7 @@ const AdminUsers: React.FC = (): ReactNode => {
                 <TableHead className="text-gray-300">User</TableHead>
                 <TableHead className="text-gray-300">Connections</TableHead>
                 <TableHead className="text-gray-300">Guilds</TableHead>
+                <TableHead className="text-gray-300">YT Memberships</TableHead>
                 <TableHead className="text-gray-300">Roles</TableHead>
                 <TableHead className="text-gray-300">Joined</TableHead>
                 <TableHead className="text-gray-300 text-right">Actions</TableHead>
@@ -935,6 +997,27 @@ const AdminUsers: React.FC = (): ReactNode => {
                       </Button>
                     ) : (
                       <div className="text-gray-400">0</div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {user.youtube_memberships && user.youtube_memberships.length > 0 ? (
+                      <div className="space-y-1 text-xs">
+                        {user.youtube_memberships
+                          .filter(m => m.status === 'active')
+                          .map(membership => (
+                          <div key={membership.id} className="flex items-center" title={`Member of ${membership.creator_channel_name} - Level: ${membership.membership_level}`}>
+                             <Badge variant="outline" className="mr-1 border-purple-500 text-purple-300 text-nowrap">
+                                {membership.creator_channel_name}
+                             </Badge>
+                             <span className="text-gray-400 truncate">({membership.membership_level})</span>
+                          </div>
+                        ))}
+                        {user.youtube_memberships.filter(m => m.status === 'active').length === 0 && (
+                            <div className="text-gray-500">No active memberships</div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-gray-400 text-xs">None</div>
                     )}
                   </TableCell>
                   <TableCell>
@@ -1003,7 +1086,7 @@ const AdminUsers: React.FC = (): ReactNode => {
               ))}
               {filteredUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-400">
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-400">
                     {/* Adjust message based on whether a search is active or specific user */}
                     {searchParams.get('userId') && users.length === 0 && !loading ? (
                       `User with ID ${searchParams.get('userId')} not found.`
