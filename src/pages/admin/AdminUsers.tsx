@@ -2,7 +2,7 @@ import React, { useState, useEffect, ReactNode } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon, Smartphone, Youtube } from "lucide-react";
+import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon, Smartphone, PlaySquare } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,22 @@ interface UserDevice {
 }
 // ---- End Added Interface ----
 
+// ---- Added: Interface for YouTube Membership ----
+// Copied from src/services/types/auth-types.ts and modified for admin context if necessary
+interface YouTubeMembership {
+  id: string;
+  youtube_connection_id: string; // This ID links to a specific YouTube connection (channel) of the user
+  creator_channel_id: string; // The ID of the channel they are a member of
+  channel_name: string; // User's channel name - THIS IS THE SHOW NAME for the membership
+  membership_level: string;
+  status: string; // e.g., "active", "expired"
+  joined_at: string | null;
+  expires_at: string | null;
+  created_at: string; // Timestamp of when the membership record was created
+  updated_at: string; // Timestamp of when the membership record was last updated
+}
+// ---- End Added Interface ----
+
 interface UserData {
   id: string;
   email: string;
@@ -42,7 +58,7 @@ interface UserData {
   roles: string[];
   guild_count?: number;
   devices?: UserDevice[]; // Added optional devices array
-  youtube_memberships?: YouTubeMembership[]; // Added YouTube memberships
+  youtubeMemberships?: YouTubeMembership[]; // Added optional YouTube memberships array
 }
 
 // Define type for a single guild
@@ -241,7 +257,7 @@ const UserDevicesDialog: React.FC<{
 };
 // ---- End Updated Component ----
 
-// ---- Added: YouTube Memberships Dialog Component ----
+// ---- Component for YouTube Memberships Dialog ----
 const UserYouTubeMembershipsDialog: React.FC<{
   user: UserData | null;
   open: boolean;
@@ -249,68 +265,64 @@ const UserYouTubeMembershipsDialog: React.FC<{
 }> = ({ user, open, onOpenChange }) => {
   if (!user) return null;
 
-  const memberships = user.youtube_memberships || [];
-
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'N/A';
-    try {
-      return format(new Date(dateString), 'PP'); // Format like: Sep 21, 2024
-    } catch (e) {
-      console.error("Error formatting date:", dateString, e);
-      return 'Invalid Date';
-    }
+  // Sort memberships - using a predefined order similar to YouTubeMembershipsList
+  const membershipOrder: { [key: string]: number } = {
+    "Crown": 1,
+    "Pay Pig": 2,
+    "Cash Cow": 3,
+    "Ban World": 4,
+    // Add other levels if they exist and need specific ordering
   };
+
+  // If all memberships passed are considered active, no explicit client-side filter by status is needed here.
+  const sortedMemberships = [...(user.youtubeMemberships || [])].sort((a, b) => {
+    const orderA = membershipOrder[a.membership_level] || 99;
+    const orderB = membershipOrder[b.membership_level] || 99;
+    return orderA - orderB;
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-lg bg-lolcow-darkgray text-white border-lolcow-lightgray"> {/* Adjusted width slightly */}
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <Youtube className="h-5 w-5 mr-2 text-red-500" />
+          <DialogTitle className="text-xl font-fredoka flex items-center">
+            <PlaySquare className="w-5 h-5 mr-2 text-red-500" />
             YouTube Memberships for {user.username}
           </DialogTitle>
-          <DialogDescription>
-            Showing {memberships.length} YouTube channel membership(s) for this user.
+          <DialogDescription className="text-gray-400">
+            Showing {sortedMemberships.length} YouTube Memberships.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="h-[60vh] rounded-md border p-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Creator Channel</TableHead>
-                <TableHead>Membership Level</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Expires</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {memberships.length > 0 ? (
-                memberships.map((membership) => (
-                  <TableRow key={membership.id}>
-                    <TableCell className="font-medium">{membership.creator_channel_name}</TableCell>
-                    <TableCell>{membership.membership_level}</TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={membership.status === 'active' ? 'default' : 'secondary'}
-                        className={membership.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}
-                      >
-                        {membership.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(membership.joined_at)}</TableCell>
-                    <TableCell>{formatDate(membership.expires_at)}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center">
-                    No YouTube memberships found for this user.
-                  </TableCell>
+        <ScrollArea className="h-[auto] max-h-[60vh] rounded-md border border-lolcow-lightgray p-4 my-4">
+          {sortedMemberships.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-lolcow-lightgray">
+                  <TableHead className="text-gray-300">Channel Name</TableHead>
+                  <TableHead className="text-gray-300">Level</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {sortedMemberships.map((membership) => {
+                  // Format channel name: add space after "Lolcow" if followed by an uppercase letter
+                  const formattedChannelName = membership.channel_name.replace(/(Lolcow)([A-Z])/g, '$1 $2');
+
+                  return (
+                    <TableRow key={membership.id} className="border-b border-lolcow-lightgray/50 hover:bg-lolcow-lightgray/10">
+                      <TableCell className="text-white font-medium" title={membership.creator_channel_id}> {/* Title might still use creator_channel_id if that's the ID for the channel */}
+                        {formattedChannelName}
+                      </TableCell>
+                      <TableCell className="text-gray-300">{membership.membership_level}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center text-gray-400 py-8">
+              No active YouTube memberships found for this user.
+            </div>
+          )}
         </ScrollArea>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
@@ -319,12 +331,12 @@ const UserYouTubeMembershipsDialog: React.FC<{
     </Dialog>
   );
 };
-// ---- End YouTube Memberships Dialog Component ----
+// ---- End YouTube Memberships Dialog ----
 
 const AdminUsers: React.FC = (): ReactNode => {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
-  const [newConnection, setNewConnection] = useState({ platform: "YouTube", username: "" });
+  const [newConnection, setNewConnection] = useState({ platform: "YouTube", username: "", channelName: "" });
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddingConnection, setIsAddingConnection] = useState(false);
@@ -359,7 +371,7 @@ const AdminUsers: React.FC = (): ReactNode => {
   // ---- Added State for YouTube Memberships Dialog ----
   const [showYouTubeMembershipsDialog, setShowYouTubeMembershipsDialog] = useState(false);
   const [selectedUserForYouTubeMemberships, setSelectedUserForYouTubeMemberships] = useState<UserData | null>(null);
-  // ---- End Added State for YouTube Memberships Dialog ----
+  // ---- End Added State ----
 
   useEffect(() => {
     const userIdFromUrl = searchParams.get('userId');
@@ -625,7 +637,7 @@ const AdminUsers: React.FC = (): ReactNode => {
           roles: [],
           guild_count: guildCountMap.get(profile.id) || 0, // Get count from map
           devices: [], // Initialize devices array
-          youtube_memberships: [] // Initialize YouTube memberships array
+          youtubeMemberships: [] // Initialize YouTube memberships array
         });
       });
 
@@ -684,28 +696,65 @@ const AdminUsers: React.FC = (): ReactNode => {
       }
       // ---- End Added Logic ----
 
-      // ---- Added: Add YouTube Memberships to Users ----
-      if (allYoutubeMemberships.length > 0) {
-        allYoutubeMemberships.forEach(membershipWithUserId => {
-          // membershipWithUserId is now correctly typed as (YouTubeMembership & { user_id: string })
-          // because of the .filter(mem => mem.user_id !== null) and the subsequent cast.
-          const user = userMap.get(membershipWithUserId.user_id);
-          if (user) {
-            if (!user.youtube_memberships) {
-                user.youtube_memberships = [];
-            }
-            const { user_id, ...membershipData } = membershipWithUserId;
-            user.youtube_memberships.push(membershipData as YouTubeMembership);
-          }
-        });
-      }
-      // ---- End Added Logic for YouTube Memberships ----
+      // ---- Added: Fetch and process YouTube Memberships ----
+      if (profileIds.length > 0) {
+        // 1. Fetch all YouTube connections for the current page's users
+        const { data: userYouTubeConnections, error: ytConnectionsError } = await supabase
+          .from('youtube_connections')
+          .select('user_id, youtube_channel_id') // Select user_id to map back and channel_id for memberships
+          .in('user_id', profileIds);
 
-      // Log a sample user from userMap before setting state
-      if (userMap.size > 0) {
-        const firstUserKey = userMap.keys().next().value;
-        console.log("[AdminUsers] Sample user from userMap before setUsers:", userMap.get(firstUserKey));
+        if (ytConnectionsError) {
+          console.error("Error fetching YouTube connections for users:", ytConnectionsError);
+          // Decide if this should be a toast/hard error or just a warning
+        } else if (userYouTubeConnections && userYouTubeConnections.length > 0) {
+          const userConnectionMap = new Map<string, string[]>(); // user_id -> [youtube_channel_id, ...]
+          userYouTubeConnections.forEach(conn => {
+            if (!userConnectionMap.has(conn.user_id)) {
+              userConnectionMap.set(conn.user_id, []);
+            }
+            if (conn.youtube_channel_id) {
+              userConnectionMap.get(conn.user_id)!.push(conn.youtube_channel_id);
+            }
+          });
+
+          const allYouTubeChannelIds = userYouTubeConnections
+            .map(conn => conn.youtube_channel_id)
+            .filter((id): id is string => !!id); // Filter out null/undefined and ensure type is string
+          
+          if (allYouTubeChannelIds.length > 0) {
+            // 2. Fetch all YouTube memberships linked to these connection IDs
+            const { data: allMembershipsData, error: ytMembershipsError } = await supabase
+              .from('youtube_memberships')
+              .select('*') // Select all fields from YouTubeMembership interface
+              .in('youtube_connection_id', allYouTubeChannelIds);
+            
+            if (ytMembershipsError) {
+              console.error("Error fetching YouTube memberships:", ytMembershipsError);
+              toast({
+                title: "Warning",
+                description: "Could not load YouTube membership information for users.",
+                variant: "default"
+              });
+            } else if (allMembershipsData) {
+              // 3. Map memberships back to users
+              allMembershipsData.forEach(membership => {
+                // Find which user this membership belongs to by checking their youtube_channel_ids
+                for (const [userId, channelIds] of userConnectionMap.entries()) {
+                  if (channelIds.includes(membership.youtube_connection_id)) {
+                    const user = userMap.get(userId);
+                    if (user) {
+                      user.youtubeMemberships?.push(membership as YouTubeMembership);
+                    }
+                    break; // Found the user, no need to check other users for this membership
+                  }
+                }
+              });
+            }
+          }
+        }
       }
+      // ---- End Added: Fetch and process YouTube Memberships ----
 
       setUsers(Array.from(userMap.values()));
     } catch (error) {
@@ -741,36 +790,70 @@ const AdminUsers: React.FC = (): ReactNode => {
       });
       return;
     }
+    // ---- Add check for channelName if platform is YouTube ----
+    if (newConnection.platform === 'YouTube' && !newConnection.channelName.trim()) {
+      toast({
+        title: "Error",
+        description: "YouTube Channel Name is required.",
+        variant: "destructive"
+      });
+      return;
+    }
+    // ---- End Add check ----
 
     setIsAddingConnection(true);
 
     try {
       const connectionType = newConnection.platform.toLowerCase();
-      const connectionName = newConnection.username.trim();
+      const youtubeChannelId = newConnection.username.trim(); // This is the Channel ID for YouTube
+      const youtubeChannelName = newConnection.platform === 'YouTube' ? newConnection.channelName.trim() : youtubeChannelId;
 
-      // Use the same table 'discord_connections' used in fetchUsers
-      const { error } = await supabase
-        .from('discord_connections')
-        .insert({
-          user_id: currentUser.id,
-          connection_type: connectionType,
-          connection_name: connectionName,
-          connection_id: connectionName, // Use username/channelId as connection_id for manual add
-          connection_verified: true // Manually added connections are considered verified
-          // Add other necessary fields if your table has them
-        });
+      // Call the Supabase Edge function
+      const { data: functionResponse, error } = await supabase.functions.invoke(
+        'add-user-connection',
+        {
+          body: {
+            target_user_id: currentUser.id,
+            connection_type: connectionType,
+            connection_id: youtubeChannelId, // For YouTube, this is the Channel ID
+            connection_name: youtubeChannelName, // For YouTube, this is the Channel Name
+          },
+        }
+      );
 
       if (error) {
-        throw error;
+        // Try to parse more specific error from function if available
+        let detailedError = error.message;
+        if (error.context && typeof error.context.error === 'string') {
+            detailedError = error.context.error;
+        } else if (error.context && error.context.details) {
+            detailedError = error.context.details;
+        }
+        throw new Error(detailedError);
       }
 
-      // Optimistically update the local state
+      // The function itself might return an error in its response body if something went wrong internally
+      if (functionResponse && functionResponse.error) {
+        throw new Error(functionResponse.error);
+      }
+      
+      // Assuming the function returns the new connection object in a 'connection' field on success
+      const addedConnectionData = functionResponse?.connection;
+      if (!addedConnectionData) {
+        // This case might happen if the function succeeded (status 2xx) but didn't return expected data
+        throw new Error("Edge function succeeded but did not return connection data.");
+      }
+
+      // Optimistically update the local state using the data returned from the function
       const addedConnection = {
         platform: newConnection.platform,
-        username: connectionName,
-        connected: true,
-        connection_id: connectionName // Include connection_id used in insert
+        // Use connection_name and connection_id from the function response if they are indeed returned and named so
+        // For now, let's stick to what we sent, assuming the DB schema is aligned
+        username: addedConnectionData.connection_name || youtubeChannelName, 
+        connected: addedConnectionData.connection_verified !== null ? addedConnectionData.connection_verified : true,
+        connection_id: addedConnectionData.connection_id || youtubeChannelId 
       };
+
       setUsers(users.map(u => {
         if (u.id === currentUser.id) {
           return {
@@ -786,14 +869,13 @@ const AdminUsers: React.FC = (): ReactNode => {
           connections: [...currentUser.connections, addedConnection]
       });
 
-
       toast({
         title: "Connection Added",
         description: `Added ${newConnection.platform} connection for ${currentUser.username}.`,
       });
       
       // Reset form and close dialog
-      setNewConnection({ platform: 'YouTube', username: '' });
+      setNewConnection({ platform: 'YouTube', username: '', channelName: '' });
       setShowConnectionDialog(false);
 
     } catch (error) {
@@ -808,51 +890,63 @@ const AdminUsers: React.FC = (): ReactNode => {
     }
   };
 
-  const handleRemoveConnection = async (connectionId: string) => {
+  const handleRemoveConnection = async (connectionIdToRemove: string) => {
     if (!currentUser) return;
 
-    // Use the actual connection identifier from the database table
-    // In fetchUsers, we stored the connection_id which should be unique per user+connection
-    const connectionToRemove = currentUser.connections.find(c => c.connection_id === connectionId);
+    const connectionDetails = currentUser.connections.find(c => c.connection_id === connectionIdToRemove);
 
-    if (!connectionToRemove) {
+    if (!connectionDetails) {
         toast({ title: "Error", description: "Connection details not found for removal.", variant: "destructive"});
         return;
     }
 
-    // Display confirmation toast or dialog if preferred
-    if (!window.confirm(`Are you sure you want to remove the ${connectionToRemove.platform} connection (${connectionToRemove.username})?`)) {
+    if (!window.confirm(`Are you sure you want to remove the ${connectionDetails.platform} connection (${connectionDetails.username})? This will also remove it from YouTube specific tables if applicable.`)) {
         return;
     }
 
+    // Show loading toast
+    const removalToast = toast({ title: "Processing", description: `Removing ${connectionDetails.platform} connection...` });
+
     try {
-        // Target the correct table and use the correct identifier (connection_id)
-        const { error } = await supabase
-            .from('discord_connections') // Using the table assumed to hold all connections
-            .delete()
-            .match({ user_id: currentUser.id, connection_id: connectionId }); // Match user and connection_id
+      const { error: functionError } = await supabase.functions.invoke('delete-user-connection', {
+        body: {
+          user_id: currentUser.id,
+          connection_id: connectionIdToRemove, // This is the ID like YouTube Channel ID
+        },
+      });
 
-        if (error) {
-            throw error;
+      if (functionError) {
+        let detailedError = functionError.message;
+        if (functionError.context && typeof functionError.context.error === 'string') {
+            detailedError = functionError.context.error;
+        } else if (functionError.context && functionError.context.details) {
+            detailedError = functionError.context.details;
         }
+        throw new Error(detailedError);
+      }
 
-        // Update local state optimistically
-        const updatedConnections = currentUser.connections.filter(c => c.connection_id !== connectionId);
-        setUsers(users.map(u => (u.id === currentUser.id ? { ...u, connections: updatedConnections } : u)));
-        setCurrentUser({ ...currentUser, connections: updatedConnections });
-
-        toast({
-            title: "Connection Removed",
-            description: `Removed ${connectionToRemove.platform} connection.`
-        });
+      // Optimistically update the local state
+      const updatedConnections = currentUser.connections.filter(c => c.connection_id !== connectionIdToRemove);
+      setUsers(users.map(u => (u.id === currentUser.id ? { ...u, connections: updatedConnections } : u)));
+      setCurrentUser({ ...currentUser, connections: updatedConnections });
+      
+      // Update toast to success
+      removalToast.update({
+        id: removalToast.id, 
+        title: "Connection Removed", 
+        description: `Successfully removed ${connectionDetails.platform} connection.`, 
+        variant: "default"
+      });
 
     } catch (error) {
-        console.error("Error removing connection:", error);
-        toast({
-            title: "Error",
-            description: `Failed to remove connection. ${error instanceof Error ? error.message : ''}`,
-            variant: "destructive"
-        });
+      console.error("Error removing connection via Edge Function:", error);
+      // Update toast to error
+      removalToast.update({
+        id: removalToast.id, 
+        title: "Error", 
+        description: `Failed to remove connection. ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
+      });
     }
   };
 
@@ -934,7 +1028,7 @@ const AdminUsers: React.FC = (): ReactNode => {
     setSelectedUserForYouTubeMemberships(user);
     setShowYouTubeMembershipsDialog(true);
   };
-  // ---- End Added Handler for Showing YouTube Memberships ----
+  // ---- End Added Handler ----
 
   // --- Delete User Logic ---
   const handleDeleteUser = (user: UserData) => {
@@ -1041,7 +1135,7 @@ const AdminUsers: React.FC = (): ReactNode => {
                 <TableHead className="text-gray-300">User</TableHead>
                 <TableHead className="text-gray-300">Connections</TableHead>
                 <TableHead className="text-gray-300">Guilds</TableHead>
-                <TableHead className="text-gray-300">YT Memberships</TableHead>
+                <TableHead className="text-gray-300">Memberships</TableHead>
                 <TableHead className="text-gray-300">Roles</TableHead>
                 <TableHead className="text-gray-300">Joined</TableHead>
                 <TableHead className="text-gray-300 text-right">Actions</TableHead>
@@ -1078,16 +1172,37 @@ const AdminUsers: React.FC = (): ReactNode => {
                     <div className="space-y-1">
                       {user.connections.length > 0 ? (
                         user.connections.map((conn, index) => (
-                          <div key={index} className="flex items-center">
-                            <span className={`w-2 h-2 rounded-full mr-2 ${conn.connected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                            <span className="text-white font-medium">{conn.platform}: </span>
-                            <span className="ml-1 text-gray-400">
-                              {conn.connected ? conn.username : "Not connected"}
-                            </span>
+                          <div key={index} className="flex items-center justify-between bg-lolcow-lightgray/20 p-3 rounded">
+                            <div className="flex items-center">
+                              <span className={`w-3 h-3 rounded-full mr-3 ${conn.connected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                              <div>
+                                <span className="font-medium text-white">{conn.platform}: </span>
+                                {conn.connected ? (
+                                  <>
+                                    <span className="text-gray-300">{conn.username}</span>
+                                    {conn.platform === 'YouTube' && conn.connection_id && (
+                                      <span className="ml-1 text-xs text-gray-400">({conn.connection_id})</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-gray-400">Not connected</span>
+                                )}
+                              </div>
+                            </div>
+                            {conn.connected && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-500 hover:text-white hover:bg-red-500"
+                                onClick={() => handleRemoveConnection(conn.connection_id)}
+                              >
+                                Remove
+                              </Button>
+                            )}
                           </div>
                         ))
                       ) : (
-                        <div className="text-gray-400">No connections</div>
+                        <div className="text-gray-400">No connections found</div>
                       )}
                     </div>
                   </TableCell>
@@ -1106,41 +1221,28 @@ const AdminUsers: React.FC = (): ReactNode => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {(() => {
-                      const activeMemberships = user.youtube_memberships?.filter(m => m.status === 'active').length || 0;
-                      const totalMemberships = user.youtube_memberships?.length || 0;
-
-                      if (totalMemberships === 0) {
-                        return <div className="text-gray-400 text-xs">None</div>;
-                      }
-                      return (
-                        <Button
-                          variant="link"
-                          className="text-lolcow-blue p-0 h-auto hover:underline text-xs"
-                          onClick={() => handleShowYouTubeMemberships(user)}
-                          title="View YouTube Memberships"
-                        >
-                          {activeMemberships > 0 ? `${activeMemberships} Active` : `${totalMemberships} Total`}
-                        </Button>
-                      );
-                    })()}
+                    {(user.youtubeMemberships?.length ?? 0) > 0 ? (
+                      <Button
+                        variant="link"
+                        className="text-red-500 p-0 h-auto hover:underline"
+                        onClick={() => handleShowYouTubeMemberships(user)}
+                      >
+                        {user.youtubeMemberships?.length}
+                      </Button>
+                    ) : (
+                      <div className="text-gray-400">0</div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="space-x-1">
-                      {user.roles.length > 0 ? (
-                        user.roles.map((role, index) => {
-                          let bg = "bg-gray-500";
-                          if (role === "admin") bg = "bg-yellow-500";
-                          else if (role === "user") bg = "bg-blue-500";
-                          
-                          return (
-                            <span key={index} className={`px-2 py-1 rounded-full text-xs ${bg}`}>
-                              {role}
-                            </span>
-                          );
-                        })
+                      {user.roles.includes('admin') ? (
+                        <span className={`px-2 py-1 rounded-full text-xs bg-yellow-500`}>
+                          admin
+                        </span>
                       ) : (
-                        <span className="text-gray-400">No roles</span>
+                        <span className={`px-2 py-1 rounded-full text-xs bg-blue-500`}>
+                          user
+                        </span>
                       )}
                     </div>
                   </TableCell>
@@ -1250,7 +1352,19 @@ const AdminUsers: React.FC = (): ReactNode => {
                 <div key={index} className="flex items-center justify-between bg-lolcow-lightgray/20 p-3 rounded">
                   <div className="flex items-center">
                     <span className={`w-3 h-3 rounded-full mr-3 ${conn.connected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    <span>{conn.platform}: {conn.connected ? conn.username : "Not connected"}</span>
+                    <div>
+                      <span className="font-medium text-white">{conn.platform}: </span>
+                      {conn.connected ? (
+                        <>
+                          <span className="text-gray-300">{conn.username}</span>
+                          {conn.platform === 'YouTube' && conn.connection_id && (
+                            <span className="ml-1 text-xs text-gray-400">({conn.connection_id})</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-gray-400">Not connected</span>
+                      )}
+                    </div>
                   </div>
                   {conn.connected && (
                     <Button
@@ -1277,10 +1391,9 @@ const AdminUsers: React.FC = (): ReactNode => {
                   <select 
                     className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
                     value={newConnection.platform}
-                    onChange={(e) => setNewConnection({...newConnection, platform: e.target.value})}
+                    onChange={(e) => setNewConnection({...newConnection, platform: e.target.value, username: '', channelName: ''})} // Reset username/channelName on platform change
                   >
                     <option value="YouTube">YouTube</option>
-                    <option value="Discord">Discord</option>
                   </select>
                 </div>
                 <div>
@@ -1295,6 +1408,20 @@ const AdminUsers: React.FC = (): ReactNode => {
                     placeholder={newConnection.platform === 'YouTube' ? 'Enter Channel ID (e.g., UC...)' : 'Enter username'}
                   />
                 </div>
+                {/* ---- Added Channel Name Input for YouTube ---- */}
+                {newConnection.platform === 'YouTube' && (
+                  <div>
+                    <label className="block text-gray-300 mb-1">YouTube Channel Name</label>
+                    <input 
+                      type="text" 
+                      className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
+                      value={newConnection.channelName}
+                      onChange={(e) => setNewConnection({...newConnection, channelName: e.target.value})}
+                      placeholder="Enter Channel Name (e.g., Lolow Live)"
+                    />
+                  </div>
+                )}
+                {/* ---- End Added Channel Name Input ---- */}
               </div>
             </div>
           </div>
@@ -1303,7 +1430,7 @@ const AdminUsers: React.FC = (): ReactNode => {
             <Button
               className="mr-2 bg-lolcow-blue hover:bg-lolcow-blue/80"
               onClick={handleAddConnection}
-              disabled={isAddingConnection || !newConnection.username.trim()}
+              disabled={isAddingConnection || !newConnection.username.trim() || (newConnection.platform === 'YouTube' && !newConnection.channelName.trim())}
             >
               {isAddingConnection ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} 
               {isAddingConnection ? 'Adding...' : 'Add Connection'}
