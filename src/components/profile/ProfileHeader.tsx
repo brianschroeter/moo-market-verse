@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -15,7 +14,7 @@ const ProfileHeader: React.FC = () => {
     if (profile.discord_id && profile.discord_avatar) {
       return `https://cdn.discordapp.com/avatars/${profile.discord_id}/${profile.discord_avatar}.png?size=128`;
     }
-    return "https://via.placeholder.com/128";
+    return "https://placehold.co/128x128";
   };
 
   const formatJoinDate = () => {

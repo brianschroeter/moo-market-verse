@@ -876,11 +876,16 @@ const AdminUsers: React.FC = (): ReactNode => {
                   <TableCell className="py-4">
                     <div className="flex items-center">
                       <img 
-                        src={user.avatar || "https://via.placeholder.com/40"} 
+                        src={user.avatar || "https://placehold.co/40x40"} 
                         alt={user.username} 
                         className="w-10 h-10 rounded-full mr-3"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://via.placeholder.com/40";
+                          const target = e.target as HTMLImageElement;
+                          if (target.src.includes('placehold.co')) {
+                            target.style.display = 'none';
+                          } else {
+                            target.src = "https://placehold.co/40x40";
+                          }
                         }}
                       />
                       <div>
