@@ -492,6 +492,7 @@ const AdminUsers: React.FC = (): ReactNode => {
       }
       
       const profileIds = profiles.map(p => p.id);
+      console.log("[AdminUsers] Profile IDs for current page:", profileIds);
 
       // Fetch roles for the current page's users
       const { data: roles, error: rolesError } = await supabase
@@ -545,6 +546,8 @@ const AdminUsers: React.FC = (): ReactNode => {
         .from('youtube_connections')
         .select('id, user_id') // Select youtube_connection_id (as id) and user_id
         .in('user_id', profileIds);
+      
+      console.log("[AdminUsers] Fetched YouTube Connections:", userYoutubeConnections, "Error:", ytConnectionsError);
 
       if (ytConnectionsError) {
         console.error("Error fetching YouTube connections:", ytConnectionsError);
@@ -555,10 +558,14 @@ const AdminUsers: React.FC = (): ReactNode => {
         });
       } else if (userYoutubeConnections && userYoutubeConnections.length > 0) {
         const youtubeConnectionIds = userYoutubeConnections.map(conn => conn.id);
+        console.log("[AdminUsers] YouTube Connection IDs for memberships query:", youtubeConnectionIds);
+
         const { data: fetchedMemberships, error: ytMembershipsError } = await supabase
           .from('youtube_memberships')
           .select('*, youtube_connection_id') // youtube_connection_id is crucial for mapping back
           .in('youtube_connection_id', youtubeConnectionIds);
+        
+        console.log("[AdminUsers] Fetched YouTube Memberships:", fetchedMemberships, "Error:", ytMembershipsError);
 
         if (ytMembershipsError) {
           console.error("Error fetching YouTube memberships:", ytMembershipsError);
@@ -576,6 +583,7 @@ const AdminUsers: React.FC = (): ReactNode => {
               user_id: connection ? connection.user_id : null // Add user_id
             };
           }).filter(mem => mem.user_id !== null) as (YouTubeMembership & { user_id: string })[];
+          console.log("[AdminUsers] Processed allYoutubeMemberships (with user_id):", allYoutubeMemberships);
         }
       }
       // ---- End YouTube Memberships Fetching ----
@@ -692,6 +700,12 @@ const AdminUsers: React.FC = (): ReactNode => {
         });
       }
       // ---- End Added Logic for YouTube Memberships ----
+
+      // Log a sample user from userMap before setting state
+      if (userMap.size > 0) {
+        const firstUserKey = userMap.keys().next().value;
+        console.log("[AdminUsers] Sample user from userMap before setUsers:", userMap.get(firstUserKey));
+      }
 
       setUsers(Array.from(userMap.values()));
     } catch (error) {
