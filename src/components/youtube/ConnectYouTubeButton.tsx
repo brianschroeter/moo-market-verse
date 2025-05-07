@@ -123,13 +123,6 @@ const ConnectYouTubeButton: React.FC = () => {
                   Your channel avatar will be automatically fetched from YouTube's API
                 </p>
               </div>
-              
-              {debugInfo && (
-                <div className="bg-gray-700 p-3 rounded-md mt-4">
-                  <p className="text-xs text-white font-bold mb-1">Debug Information:</p>
-                  <pre className="text-xs text-gray-300 overflow-auto max-h-32 whitespace-pre-wrap">{debugInfo}</pre>
-                </div>
-              )}
             </div>
 
             <DialogFooter>

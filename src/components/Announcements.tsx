@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -107,7 +106,12 @@ const Announcements: React.FC<AnnouncementsProps> = ({
                       alt={product.name} 
                       className="w-full"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = "https://via.placeholder.com/300x200";
+                        const target = e.target as HTMLImageElement;
+                        if (target.src.includes('placehold.co')) {
+                          target.style.display = 'none'; 
+                        } else {
+                          target.src = "https://placehold.co/300x200";
+                        }
                       }}
                     />
                   </div>

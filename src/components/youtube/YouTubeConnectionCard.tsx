@@ -97,12 +97,6 @@ const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }
           )}
         </div>
       </div>
-      
-      {debugInfo && (
-        <div className="mt-2 p-2 bg-gray-700 rounded text-xs text-gray-300 overflow-auto max-h-48">
-          <p className="font-mono whitespace-pre-wrap">{debugInfo}</p>
-        </div>
-      )}
     </div>
   );
 };
