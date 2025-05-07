@@ -60,11 +60,24 @@ const DiscordConnections: React.FC = () => {
 
   // Determine if Discord access should be shown
   const hasYouTubeConnection = youtubeConnections.length > 0;
-  const hasMemberships = memberships.length > 0;
-  // Assuming 'ban_world' is the identifier for the Ban World tier
-  const onlyHasBanWorld = hasMemberships && memberships.every(m => m.membership_level === 'ban_world');
+  // const hasMemberships = memberships.length > 0; // This will be implicitly handled by hasQualifyingMembership
+  // Assuming 'ban_world' is the identifier for the Ban World tier -- This comment will be updated or removed
+  // const onlyHasBanWorld = hasMemberships && memberships.every(m => m.membership_level === 'ban_world'); // OLD LOGIC
   
-  const showDiscordAccess = hasYouTubeConnection && hasMemberships && !onlyHasBanWorld;
+  // const showDiscordAccess = hasYouTubeConnection && hasMemberships && !onlyHasBanWorld; // OLD LOGIC
+
+  const membershipOrder: { [key: string]: number } = {
+    "Crown": 1,
+    "Pay Pig": 2,
+    "Cash Cow": 3,
+    "Ban World": 4,
+  };
+
+  const hasQualifyingMembership = memberships.some(
+    (m) => (membershipOrder[m.membership_level] || 99) <= 3 // Cash Cow (rank 3) or higher
+  );
+  
+  const showDiscordAccess = hasYouTubeConnection && hasQualifyingMembership;
 
   return (
     <Card className="lolcow-card">
@@ -102,7 +115,7 @@ const DiscordConnections: React.FC = () => {
             <div className="bg-lolcow-lightgray p-4 rounded-lg">
               <h3 className="text-white text-lg mb-2">Server Access</h3>
               <p className="text-gray-300">
-                Based on your membership roles, you have access to the LolCow Discord server.
+                Your YouTube connection and qualifying membership (Cash Cow tier or higher) grant you access to the LolCow Discord server.
               </p>
               <Button 
                 className="mt-3 bg-purple-600 hover:bg-purple-700 text-white hover:scale-105 transition-transform duration-200 ease-in-out"
@@ -120,9 +133,12 @@ const DiscordConnections: React.FC = () => {
             <div className="bg-lolcow-lightgray p-4 rounded-lg">
               <h3 className="text-white text-lg mb-2">Discord Access Not Ready</h3>
               <p className="text-gray-300 text-sm">
-                {!hasYouTubeConnection && "Please connect your YouTube account first."}
-                {hasYouTubeConnection && !hasMemberships && "You need an active YouTube membership to access the Discord server."}
-                {hasYouTubeConnection && onlyHasBanWorld && "Your current membership tier does not grant Discord access."}
+                {!hasYouTubeConnection && 
+                  "Please connect your YouTube account to check for Discord access eligibility."}
+                {hasYouTubeConnection && memberships.length === 0 &&
+                  "An active YouTube membership is required for Discord access. A 'Cash Cow' tier or higher is needed."}
+                {hasYouTubeConnection && memberships.length > 0 && !hasQualifyingMembership && 
+                  "Your current YouTube membership(s) do not grant Discord access. A 'Cash Cow' tier or higher is required."}
               </p>
               {/* Optionally add buttons to connect YT or view memberships */}
             </div>
