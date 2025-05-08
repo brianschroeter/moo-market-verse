@@ -27,22 +27,6 @@ interface UserDevice {
 }
 // ---- End Added Interface ----
 
-// ---- Added: Interface for YouTube Membership ----
-// Copied from src/services/types/auth-types.ts and modified for admin context if necessary
-interface YouTubeMembership {
-  id: string;
-  youtube_connection_id: string; // This ID links to a specific YouTube connection (channel) of the user
-  creator_channel_id: string; // The ID of the channel they are a member of
-  channel_name: string; // User's channel name - THIS IS THE SHOW NAME for the membership
-  membership_level: string;
-  status: string; // e.g., "active", "expired"
-  joined_at: string | null;
-  expires_at: string | null;
-  created_at: string; // Timestamp of when the membership record was created
-  updated_at: string; // Timestamp of when the membership record was last updated
-}
-// ---- End Added Interface ----
-
 interface UserData {
   id: string;
   email: string;
@@ -336,7 +320,7 @@ const UserYouTubeMembershipsDialog: React.FC<{
 const AdminUsers: React.FC = (): ReactNode => {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
-  const [newConnection, setNewConnection] = useState({ platform: "YouTube", username: "", channelName: "" });
+  const [newConnection, setNewConnection] = useState({ platform: "YouTube", username: "" });
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddingConnection, setIsAddingConnection] = useState(false);
@@ -371,6 +355,15 @@ const AdminUsers: React.FC = (): ReactNode => {
   // ---- Added State for YouTube Memberships Dialog ----
   const [showYouTubeMembershipsDialog, setShowYouTubeMembershipsDialog] = useState(false);
   const [selectedUserForYouTubeMemberships, setSelectedUserForYouTubeMemberships] = useState<UserData | null>(null);
+  // ---- End Added State ----
+
+  // ---- Added: State for Fetched YouTube Channel Details ----
+  const [youtubeChannelDetails, setYoutubeChannelDetails] = useState<{
+    name: string | null;
+    pfpUrl: string | null;
+    memberships: { membership_level: string; channel_name: string; }[]; // Using existing channel_name from memberships table for now
+  } | null>(null);
+  const [isFetchingYouTubeDetails, setIsFetchingYouTubeDetails] = useState(false);
   // ---- End Added State ----
 
   useEffect(() => {
@@ -791,10 +784,10 @@ const AdminUsers: React.FC = (): ReactNode => {
       return;
     }
     // ---- Add check for channelName if platform is YouTube ----
-    if (newConnection.platform === 'YouTube' && !newConnection.channelName.trim()) {
+    if (newConnection.platform === 'YouTube' && !youtubeChannelDetails?.name) {
       toast({
         title: "Error",
-        description: "YouTube Channel Name is required.",
+        description: "Please fetch YouTube channel details before adding.",
         variant: "destructive"
       });
       return;
@@ -806,7 +799,16 @@ const AdminUsers: React.FC = (): ReactNode => {
     try {
       const connectionType = newConnection.platform.toLowerCase();
       const youtubeChannelId = newConnection.username.trim(); // This is the Channel ID for YouTube
-      const youtubeChannelName = newConnection.platform === 'YouTube' ? newConnection.channelName.trim() : youtubeChannelId;
+      const youtubeChannelName = newConnection.platform === 'YouTube' 
+        ? youtubeChannelDetails?.name 
+        : youtubeChannelId;
+
+      if (!youtubeChannelName) {
+        // This should ideally be caught by the check above, but as a safeguard:
+        toast({ title: "Error", description: "YouTube channel name is missing after fetch.", variant: "destructive" });
+        setIsAddingConnection(false);
+        return;
+      }
 
       // Call the Supabase Edge function
       const { data: functionResponse, error } = await supabase.functions.invoke(
@@ -875,8 +877,9 @@ const AdminUsers: React.FC = (): ReactNode => {
       });
       
       // Reset form and close dialog
-      setNewConnection({ platform: 'YouTube', username: '', channelName: '' });
+      setNewConnection({ platform: 'YouTube', username: '' });
       setShowConnectionDialog(false);
+      setYoutubeChannelDetails(null); // Reset fetched details
 
     } catch (error) {
       console.error("Error adding connection:", error);
@@ -1101,6 +1104,59 @@ const AdminUsers: React.FC = (): ReactNode => {
     }
   };
   // --- End Pagination Handlers ---
+
+  // ---- Added: Function to fetch YouTube Channel Details ----
+  const handleFetchYouTubeDetails = async (channelId: string) => {
+    if (!channelId.trim()) {
+      toast({ title: "Input Error", description: "Please enter a YouTube Channel ID.", variant: "default" });
+      return;
+    }
+    setIsFetchingYouTubeDetails(true);
+    setYoutubeChannelDetails(null); // Clear previous details
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'get-youtube-channel-details',
+        { body: { youtubeChannelId: channelId.trim() } }
+      );
+
+      if (error) {
+        console.error("Error invoking get-youtube-channel-details:", error);
+        throw new Error(error.message || "Failed to fetch channel details from function.");
+      }
+
+      if (data && data.error) { // Error returned by the function itself
+        console.error("Function returned error:", data.error);
+        throw new Error(data.error.details || data.error.message || "Function execution failed.");
+      }
+
+      if (!data || !data.name) { // If API found no channel, name might be null
+        toast({
+          title: "Not Found",
+          description: `No YouTube channel found with ID ${channelId}. Memberships from DB are shown if any.`, 
+          variant: "default"
+        });
+      }
+      
+      setYoutubeChannelDetails({
+        name: data.name || null, // API might not find it, but memberships might exist
+        pfpUrl: data.pfpUrl || null,
+        memberships: data.memberships || []
+      });
+
+    } catch (err) {
+      toast({
+        title: "Fetch Error",
+        description: err instanceof Error ? err.message : "Could not fetch YouTube channel details.",
+        variant: "destructive"
+      });
+      // Keep previously entered channelId in input, but clear details display
+      setYoutubeChannelDetails(null); 
+    } finally {
+      setIsFetchingYouTubeDetails(false);
+    }
+  };
+  // ---- End Added Function ----
 
   return (
     <AdminLayout>
@@ -1391,7 +1447,10 @@ const AdminUsers: React.FC = (): ReactNode => {
                   <select 
                     className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
                     value={newConnection.platform}
-                    onChange={(e) => setNewConnection({...newConnection, platform: e.target.value, username: '', channelName: ''})} // Reset username/channelName on platform change
+                    onChange={(e) => {
+                      setNewConnection({...newConnection, platform: e.target.value, username: ''}); // Reset username on platform change
+                      setYoutubeChannelDetails(null); // Reset fetched details on platform change
+                    }}
                   >
                     <option value="YouTube">YouTube</option>
                   </select>
@@ -1400,28 +1459,72 @@ const AdminUsers: React.FC = (): ReactNode => {
                   <label className="block text-gray-300 mb-1">
                     {newConnection.platform === 'YouTube' ? 'YouTube Channel ID' : 'Username'}
                   </label>
-                  <input 
-                    type="text" 
-                    className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
-                    value={newConnection.username}
-                    onChange={(e) => setNewConnection({...newConnection, username: e.target.value})}
-                    placeholder={newConnection.platform === 'YouTube' ? 'Enter Channel ID (e.g., UC...)' : 'Enter username'}
-                  />
-                </div>
-                {/* ---- Added Channel Name Input for YouTube ---- */}
-                {newConnection.platform === 'YouTube' && (
-                  <div>
-                    <label className="block text-gray-300 mb-1">YouTube Channel Name</label>
+                  <div className="flex items-center space-x-2">
                     <input 
                       type="text" 
-                      className="w-full py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
-                      value={newConnection.channelName}
-                      onChange={(e) => setNewConnection({...newConnection, channelName: e.target.value})}
-                      placeholder="Enter Channel Name (e.g., Lolow Live)"
+                      className="flex-grow py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
+                      value={newConnection.username} // This is the Channel ID for YouTube
+                      onChange={(e) => {
+                        setNewConnection({...newConnection, username: e.target.value});
+                        setYoutubeChannelDetails(null); // Clear details if ID changes
+                      }}
+                      placeholder={newConnection.platform === 'YouTube' ? 'Enter Channel ID (e.g., UC...)' : 'Enter username'}
                     />
+                    {newConnection.platform === 'YouTube' && (
+                      <Button 
+                        type="button" // Important: prevent form submission if inside a form
+                        onClick={() => handleFetchYouTubeDetails(newConnection.username)}
+                        disabled={isFetchingYouTubeDetails || !newConnection.username.trim()}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        {isFetchingYouTubeDetails ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Search className="h-4 w-4" /> 
+                        )}
+                         <span className="ml-2">Fetch Details</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* ---- Display Fetched YouTube Channel Details ---- */}
+                {newConnection.platform === 'YouTube' && youtubeChannelDetails && (
+                  <div className="mt-4 p-3 bg-lolcow-lightgray/30 rounded-md">
+                    <h4 className="text-md font-semibold text-white mb-2">Channel Details:</h4>
+                    {youtubeChannelDetails.pfpUrl && (
+                      <img src={youtubeChannelDetails.pfpUrl} alt={youtubeChannelDetails.name || 'Channel PFP'} className="w-16 h-16 rounded-full mb-2" />
+                    )}
+                    {youtubeChannelDetails.name ? (
+                      <p className="text-gray-300"><span className="font-medium text-white">Name:</span> {youtubeChannelDetails.name}</p>
+                    ) : (
+                      <p className="text-gray-400">Channel name not found via API.</p>
+                    )}
+
+                    {youtubeChannelDetails.memberships && youtubeChannelDetails.memberships.length > 0 && (
+                      <div className="mt-3">
+                        <h5 className="text-sm font-semibold text-white mb-1">Existing Memberships (from DB):</h5>
+                        <ul className="list-disc list-inside text-gray-400 text-xs space-y-1">
+                          {youtubeChannelDetails.memberships.map((mem, index) => (
+                            <li key={index}>{mem.membership_level} for {mem.channel_name}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                     {(!youtubeChannelDetails.memberships || youtubeChannelDetails.memberships.length === 0) && (
+                        <p className="text-xs text-gray-500 mt-2">No existing memberships found in DB for this Channel ID.</p>
+                    )}
                   </div>
                 )}
-                {/* ---- End Added Channel Name Input ---- */}
+                {newConnection.platform === 'YouTube' && isFetchingYouTubeDetails && !youtubeChannelDetails && (
+                    <div className="mt-4 flex items-center justify-center p-4 bg-lolcow-lightgray/30 rounded-md">
+                        <Loader2 className="h-5 w-5 animate-spin text-lolcow-blue" />
+                        <span className="ml-2 text-white">Fetching details...</span>
+                    </div>
+                )}
+                {/* ---- End Display Fetched YouTube Channel Details ---- */}
+
               </div>
             </div>
           </div>
@@ -1430,7 +1533,7 @@ const AdminUsers: React.FC = (): ReactNode => {
             <Button
               className="mr-2 bg-lolcow-blue hover:bg-lolcow-blue/80"
               onClick={handleAddConnection}
-              disabled={isAddingConnection || !newConnection.username.trim() || (newConnection.platform === 'YouTube' && !newConnection.channelName.trim())}
+              disabled={isAddingConnection || !newConnection.username.trim() || (newConnection.platform === 'YouTube' && !youtubeChannelDetails?.name)} // Updated disabled condition
             >
               {isAddingConnection ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} 
               {isAddingConnection ? 'Adding...' : 'Add Connection'}
