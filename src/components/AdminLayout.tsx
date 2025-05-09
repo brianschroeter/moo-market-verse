@@ -1,6 +1,6 @@
 import React, { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { User, Users, List, Link as LinkIcon, Navigation, Megaphone, Mail, Menu, X } from "lucide-react";
+import { User, Users, List, Link as LinkIcon, Navigation, Megaphone, Mail, Menu, X, Server } from "lucide-react";
 import AdminNavbar from "./admin/AdminNavbar";
 
 interface AdminLayoutProps {
@@ -35,6 +35,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navItems = [
     { path: "/admin/users", label: "Users", icon: <Users className="h-5 w-5" /> },
     { path: "/admin/tickets", label: "Tickets", icon: <List className="h-5 w-5" /> },
+    { path: "/admin/guild-search", label: "Guild Search", icon: <Server className="h-5 w-5" /> },
     { path: "/admin/products", label: "Featured Content", icon: <LinkIcon className="h-5 w-5" /> },
     { path: "/admin/navigation", label: "Navigation", icon: <Navigation className="h-5 w-5" /> },
     { path: "/admin/announcements", label: "Announcements", icon: <Megaphone className="h-5 w-5" /> },

@@ -359,11 +359,13 @@ const AdminUsers: React.FC = (): ReactNode => {
 
   // ---- Added: State for Fetched YouTube Channel Details ----
   const [youtubeChannelDetails, setYoutubeChannelDetails] = useState<{
+    id: string | null; // Added field for the resolved Channel ID
     name: string | null;
     pfpUrl: string | null;
-    memberships: { membership_level: string; channel_name: string; }[]; // Using existing channel_name from memberships table for now
+    memberships: { membership_level: string; channel_name: string; }[];
   } | null>(null);
   const [isFetchingYouTubeDetails, setIsFetchingYouTubeDetails] = useState(false);
+  const [pfpLoadError, setPfpLoadError] = useState(false); // Added state for PFP load error
   // ---- End Added State ----
 
   useEffect(() => {
@@ -775,50 +777,49 @@ const AdminUsers: React.FC = (): ReactNode => {
   };
 
   const handleAddConnection = async () => {
-    if (!currentUser || !newConnection.username.trim()) {
+    // Check if platform is YouTube and details are ready
+    if (newConnection.platform === 'YouTube' && (!youtubeChannelDetails || !youtubeChannelDetails.id)) {
       toast({
         title: "Error",
-        description: "User or connection details missing.",
+        description: "Please fetch and resolve YouTube channel details before adding.",
         variant: "destructive"
       });
       return;
     }
-    // ---- Add check for channelName if platform is YouTube ----
-    if (newConnection.platform === 'YouTube' && !youtubeChannelDetails?.name) {
-      toast({
-        title: "Error",
-        description: "Please fetch YouTube channel details before adding.",
-        variant: "destructive"
-      });
-      return;
+
+    if (!currentUser) { // General check
+        toast({ title: "Error", description: "Current user not selected.", variant: "destructive" });
+        return;
     }
-    // ---- End Add check ----
 
     setIsAddingConnection(true);
 
     try {
       const connectionType = newConnection.platform.toLowerCase();
-      const youtubeChannelId = newConnection.username.trim(); // This is the Channel ID for YouTube
-      const youtubeChannelName = newConnection.platform === 'YouTube' 
-        ? youtubeChannelDetails?.name 
-        : youtubeChannelId;
+      // Use the RESOLVED channel ID and fetched channel name for YouTube
+      const connectionId = newConnection.platform === 'YouTube' ? youtubeChannelDetails!.id! : newConnection.username.trim();
+      const connectionName = newConnection.platform === 'YouTube' ? youtubeChannelDetails!.name || connectionId : newConnection.username.trim(); // Fallback to ID if name is missing
 
-      if (!youtubeChannelName) {
-        // This should ideally be caught by the check above, but as a safeguard:
-        toast({ title: "Error", description: "YouTube channel name is missing after fetch.", variant: "destructive" });
+      if (!connectionId) {
+        toast({ title: "Error", description: "Connection ID is missing.", variant: "destructive" });
         setIsAddingConnection(false);
         return;
       }
+      if (!connectionName) {
+         toast({ title: "Error", description: "Connection Name is missing.", variant: "destructive" });
+         setIsAddingConnection(false);
+         return;
+      }
 
-      // Call the Supabase Edge function
+      // Call the Supabase Edge function to add the connection
       const { data: functionResponse, error } = await supabase.functions.invoke(
         'add-user-connection',
         {
           body: {
             target_user_id: currentUser.id,
             connection_type: connectionType,
-            connection_id: youtubeChannelId, // For YouTube, this is the Channel ID
-            connection_name: youtubeChannelName, // For YouTube, this is the Channel Name
+            connection_id: connectionId,
+            connection_name: connectionName,
           },
         }
       );
@@ -851,9 +852,9 @@ const AdminUsers: React.FC = (): ReactNode => {
         platform: newConnection.platform,
         // Use connection_name and connection_id from the function response if they are indeed returned and named so
         // For now, let's stick to what we sent, assuming the DB schema is aligned
-        username: addedConnectionData.connection_name || youtubeChannelName, 
+        username: addedConnectionData.connection_name || connectionName, 
         connected: addedConnectionData.connection_verified !== null ? addedConnectionData.connection_verified : true,
-        connection_id: addedConnectionData.connection_id || youtubeChannelId 
+        connection_id: addedConnectionData.connection_id || connectionId 
       };
 
       setUsers(users.map(u => {
@@ -1106,40 +1107,53 @@ const AdminUsers: React.FC = (): ReactNode => {
   // --- End Pagination Handlers ---
 
   // ---- Added: Function to fetch YouTube Channel Details ----
-  const handleFetchYouTubeDetails = async (channelId: string) => {
-    if (!channelId.trim()) {
-      toast({ title: "Input Error", description: "Please enter a YouTube Channel ID.", variant: "default" });
+  const handleFetchYouTubeDetails = async (identifier: string) => {
+    if (!identifier.trim()) {
+      toast({ title: "Input Error", description: "Please enter a YouTube Channel ID or @Username.", variant: "default" });
       return;
     }
     setIsFetchingYouTubeDetails(true);
     setYoutubeChannelDetails(null); // Clear previous details
+    setPfpLoadError(false); // Reset PFP error state on new fetch
 
     try {
       const { data, error } = await supabase.functions.invoke(
         'get-youtube-channel-details',
-        { body: { youtubeChannelId: channelId.trim() } }
+        { body: { identifier: identifier.trim() } } // Pass identifier
       );
 
       if (error) {
         console.error("Error invoking get-youtube-channel-details:", error);
-        throw new Error(error.message || "Failed to fetch channel details from function.");
+        // Check if the error is specifically the 404 we added for not resolving
+        if (error.message?.includes("Could not resolve") || error.context?.status === 404) { 
+            throw new Error(`Could not resolve '${identifier.trim()}' to a YouTube Channel ID.`);
+        } else {
+            throw new Error(error.message || "Failed to fetch channel details from function.");
+        }
       }
 
-      if (data && data.error) { // Error returned by the function itself
+      if (data && data.error) { // Error returned by the function itself (e.g., API key issue)
         console.error("Function returned error:", data.error);
         throw new Error(data.error.details || data.error.message || "Function execution failed.");
       }
 
-      if (!data || !data.name) { // If API found no channel, name might be null
+      if (!data || !data.id) { // Should have an ID if successful
+        throw new Error(`Could not resolve '${identifier.trim()}' to a YouTube Channel ID (unexpected empty response).`);
+      }
+      
+      // Display message if name wasn't found via API, even if ID was resolved
+      if (!data.name) { 
         toast({
-          title: "Not Found",
-          description: `No YouTube channel found with ID ${channelId}. Memberships from DB are shown if any.`, 
+          title: "Channel Name Not Found",
+          description: `Resolved to ID ${data.id}, but could not fetch channel name via API. Memberships shown if any.`, 
           variant: "default"
         });
       }
       
+      // Store resolved ID along with other details
       setYoutubeChannelDetails({
-        name: data.name || null, // API might not find it, but memberships might exist
+        id: data.id, // Store the resolved ID
+        name: data.name || null,
         pfpUrl: data.pfpUrl || null,
         memberships: data.memberships || []
       });
@@ -1150,7 +1164,6 @@ const AdminUsers: React.FC = (): ReactNode => {
         description: err instanceof Error ? err.message : "Could not fetch YouTube channel details.",
         variant: "destructive"
       });
-      // Keep previously entered channelId in input, but clear details display
       setYoutubeChannelDetails(null); 
     } finally {
       setIsFetchingYouTubeDetails(false);
@@ -1450,6 +1463,7 @@ const AdminUsers: React.FC = (): ReactNode => {
                     onChange={(e) => {
                       setNewConnection({...newConnection, platform: e.target.value, username: ''}); // Reset username on platform change
                       setYoutubeChannelDetails(null); // Reset fetched details on platform change
+                      setPfpLoadError(false); // Reset PFP error state
                     }}
                   >
                     <option value="YouTube">YouTube</option>
@@ -1457,23 +1471,25 @@ const AdminUsers: React.FC = (): ReactNode => {
                 </div>
                 <div>
                   <label className="block text-gray-300 mb-1">
-                    {newConnection.platform === 'YouTube' ? 'YouTube Channel ID' : 'Username'}
+                    {/* Updated Label */}
+                    {newConnection.platform === 'YouTube' ? 'YouTube Channel ID or @Username' : 'Username'}
                   </label>
                   <div className="flex items-center space-x-2">
                     <input 
                       type="text" 
                       className="flex-grow py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray"
-                      value={newConnection.username} // This is the Channel ID for YouTube
+                      value={newConnection.username} // This holds the user input (ID or Username)
                       onChange={(e) => {
                         setNewConnection({...newConnection, username: e.target.value});
-                        setYoutubeChannelDetails(null); // Clear details if ID changes
+                        setYoutubeChannelDetails(null); // Clear details if input changes
+                        setPfpLoadError(false); // Reset PFP error state
                       }}
-                      placeholder={newConnection.platform === 'YouTube' ? 'Enter Channel ID (e.g., UC...)' : 'Enter username'}
+                      placeholder={newConnection.platform === 'YouTube' ? 'Enter Channel ID or @Username' : 'Enter username'}
                     />
                     {newConnection.platform === 'YouTube' && (
                       <Button 
-                        type="button" // Important: prevent form submission if inside a form
-                        onClick={() => handleFetchYouTubeDetails(newConnection.username)}
+                        type="button" 
+                        onClick={() => handleFetchYouTubeDetails(newConnection.username)} // Pass the input value
                         disabled={isFetchingYouTubeDetails || !newConnection.username.trim()}
                         variant="secondary"
                         size="sm"
@@ -1493,8 +1509,27 @@ const AdminUsers: React.FC = (): ReactNode => {
                 {newConnection.platform === 'YouTube' && youtubeChannelDetails && (
                   <div className="mt-4 p-3 bg-lolcow-lightgray/30 rounded-md">
                     <h4 className="text-md font-semibold text-white mb-2">Channel Details:</h4>
-                    {youtubeChannelDetails.pfpUrl && (
-                      <img src={youtubeChannelDetails.pfpUrl} alt={youtubeChannelDetails.name || 'Channel PFP'} className="w-16 h-16 rounded-full mb-2" />
+                    {/* --- Updated PFP Rendering --- */}
+                    {!pfpLoadError && youtubeChannelDetails.pfpUrl ? (
+                      <img 
+                        src={youtubeChannelDetails.pfpUrl} 
+                        alt={youtubeChannelDetails.name || 'Channel PFP'} 
+                        className="w-16 h-16 rounded-full mb-2 bg-lolcow-lightgray/30" // Added bg for loading phase
+                        onError={() => setPfpLoadError(true)} // Set error state on failure
+                      />
+                    ) : youtubeChannelDetails.name ? ( // Show initial only if name exists
+                      <div className="w-16 h-16 rounded-full mb-2 flex items-center justify-center bg-lolcow-blue text-white text-2xl font-semibold">
+                        {youtubeChannelDetails.name.charAt(0).toUpperCase()}
+                      </div>
+                    ) : ( // Fallback if no URL and no name
+                       <div className="w-16 h-16 rounded-full mb-2 flex items-center justify-center bg-lolcow-lightgray text-gray-400">
+                         <User size={32}/> {/* Placeholder Icon */}
+                       </div>
+                    )}
+                    {/* --- End Updated PFP Rendering --- */}
+
+                    {youtubeChannelDetails.id && ( // Display the resolved ID
+                       <p className="text-gray-400 text-xs font-mono mb-1">ID: {youtubeChannelDetails.id}</p>
                     )}
                     {youtubeChannelDetails.name ? (
                       <p className="text-gray-300"><span className="font-medium text-white">Name:</span> {youtubeChannelDetails.name}</p>
@@ -1533,7 +1568,7 @@ const AdminUsers: React.FC = (): ReactNode => {
             <Button
               className="mr-2 bg-lolcow-blue hover:bg-lolcow-blue/80"
               onClick={handleAddConnection}
-              disabled={isAddingConnection || !newConnection.username.trim() || (newConnection.platform === 'YouTube' && !youtubeChannelDetails?.name)} // Updated disabled condition
+              disabled={isAddingConnection || (newConnection.platform === 'YouTube' && !youtubeChannelDetails?.id)} // Check for resolved ID
             >
               {isAddingConnection ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} 
               {isAddingConnection ? 'Adding...' : 'Add Connection'}

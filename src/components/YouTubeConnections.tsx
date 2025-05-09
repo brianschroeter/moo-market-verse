@@ -263,7 +263,7 @@ const YouTubeConnections: React.FC = () => {
         
         {/* Connected YouTube accounts */}
         {hasNoYouTubeConnections ? (
-          <ConnectYouTubeButton />
+          null 
         ) : (
           <YouTubeConnectionsList accounts={accounts} />
         )}
@@ -273,6 +273,10 @@ const YouTubeConnections: React.FC = () => {
           memberships={memberships}
           showMemberships={accounts.length > 0 && memberships.length > 0}
         />
+
+        {/* Always render the Connect button, pass prop */} 
+        <ConnectYouTubeButton hasExistingConnections={accounts.length > 0} />
+
       </CardContent>
     </Card>
   );

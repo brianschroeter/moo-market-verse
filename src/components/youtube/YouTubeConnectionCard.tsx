@@ -92,9 +92,6 @@ const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }
         <div className="flex-grow">
           <p className="text-white">{localAccount.youtube_channel_name}</p>
           <p className="text-sm text-gray-400">{localAccount.youtube_channel_id}</p>
-          {!localAccount.is_verified && (
-            <span className="text-xs text-yellow-500">Verification pending</span>
-          )}
         </div>
       </div>
     </div>

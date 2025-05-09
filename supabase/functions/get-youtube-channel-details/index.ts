@@ -2,17 +2,24 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
+// Interfaces for YouTube API responses
+interface YouTubeThumbnail {
+  url: string;
+  width: number;
+  height: number;
+}
+
 interface YouTubeChannelSnippet {
   title: string;
   description: string;
   customUrl?: string;
   publishedAt: string;
   thumbnails: {
-    default: { url: string; width: number; height: number };
-    medium: { url: string; width: number; height: number };
-    high: { url: string; width: number; height: number };
+    default: YouTubeThumbnail;
+    medium: YouTubeThumbnail;
+    high: YouTubeThumbnail;
   };
-  localized: {
+  localized?: { // Optional as per typical use for snippet
     title: string;
     description: string;
   };
@@ -22,11 +29,11 @@ interface YouTubeChannelSnippet {
 interface YouTubeChannelItem {
   kind: string;
   etag: string;
-  id: string;
+  id: string; // This is the Channel ID
   snippet: YouTubeChannelSnippet;
 }
 
-interface YouTubeAPIResponse {
+interface YouTubeChannelsAPIResponse {
   kind: string;
   etag: string;
   pageInfo: {
@@ -34,6 +41,46 @@ interface YouTubeAPIResponse {
     resultsPerPage: number;
   };
   items: YouTubeChannelItem[];
+}
+
+interface YouTubeSearchId {
+  kind: string;
+  channelId?: string;
+  videoId?: string; // Not used here, but part of search result ID object
+  playlistId?: string; // Not used here
+}
+interface YouTubeSearchSnippet {
+    publishedAt: string;
+    channelId: string;
+    title: string;
+    description: string;
+    thumbnails: {
+        default: YouTubeThumbnail;
+        medium: YouTubeThumbnail;
+        high: YouTubeThumbnail;
+    };
+    channelTitle: string;
+    liveBroadcastContent: string;
+    publishTime?: string; // publishTime might only be for videos
+}
+
+interface YouTubeSearchItem {
+  kind: string;
+  etag: string;
+  id: YouTubeSearchId;
+  snippet: YouTubeSearchSnippet; // Search results also have snippets
+}
+
+interface YouTubeSearchAPIResponse {
+  kind: string;
+  etag: string;
+  nextPageToken?: string;
+  regionCode?: string;
+  pageInfo: {
+    totalResults: number;
+    resultsPerPage: number;
+  };
+  items: YouTubeSearchItem[];
 }
 
 interface Membership {
@@ -51,15 +98,14 @@ interface Membership {
 
 
 serve(async (req: Request) => {
-  // This is needed if you're planning to invoke your function from a browser.
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { youtubeChannelId } = await req.json()
-    if (!youtubeChannelId) {
-      return new Response(JSON.stringify({ error: 'youtubeChannelId is required' }), {
+    const { identifier } = await req.json()
+    if (!identifier || typeof identifier !== 'string' || identifier.trim() === '') {
+      return new Response(JSON.stringify({ error: 'identifier is required and must be a non-empty string' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       })
@@ -73,43 +119,80 @@ serve(async (req: Request) => {
         });
     }
 
-    const youtubeApiUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${youtubeChannelId}&key=${YOUTUBE_API_KEY}`;
-    
-    let channelTitle = null;
-    let channelPfpUrl = null;
+    let resolvedChannelId: string | null = null;
+    const channelIdPattern = /^UC[0-9A-Za-z_-]{22}$/;
 
-    const youtubeResponse = await fetch(youtubeApiUrl);
-    if (!youtubeResponse.ok) {
-      const errorData = await youtubeResponse.json();
-      console.error('YouTube API Error:', errorData);
-      // Don't fail entirely, maybe the channel exists in our DB but API failed
-      // Or, the ID is invalid and it won't be in our DB either.
-      // We will proceed to check our DB for memberships.
+    if (channelIdPattern.test(identifier)) {
+      resolvedChannelId = identifier;
+      console.log(`Identifier '${identifier}' matches Channel ID pattern.`);
     } else {
-      const youtubeData = await youtubeResponse.json() as YouTubeAPIResponse;
-      if (youtubeData.items && youtubeData.items.length > 0) {
-        channelTitle = youtubeData.items[0].snippet.title;
-        channelPfpUrl = youtubeData.items[0].snippet.thumbnails?.default?.url || null;
+      console.log(`Identifier '${identifier}' does not match Channel ID pattern, attempting username search.`);
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(identifier)}&type=channel&maxResults=1&key=${YOUTUBE_API_KEY}`;
+      try {
+        const searchResponse = await fetch(searchUrl);
+        if (!searchResponse.ok) {
+          const errorData = await searchResponse.json();
+          console.error('YouTube Search API Error:', errorData);
+          // Do not throw yet, channel might still be found by ID if it was a malformed ID mistaken for username
+        } else {
+          const searchData = await searchResponse.json() as YouTubeSearchAPIResponse;
+          if (searchData.items && searchData.items.length > 0 && searchData.items[0].id.channelId) {
+            resolvedChannelId = searchData.items[0].id.channelId;
+            console.log(`Username '${identifier}' resolved to Channel ID: ${resolvedChannelId}`);
+          } else {
+            console.log(`No channel found for username/handle: '${identifier}'`);
+          }
+        }
+      } catch (searchFetchError) {
+         console.error('Error fetching YouTube search results:', searchFetchError);
+         // Allow to proceed, maybe the initial identifier was an ID after all but failed regex for some reason
       }
     }
 
-    // Create a Supabase client with the Auth context of the logged in user.
-    const supabaseClient = createClient(
-      // Supabase API URL - env var exported by default.
-      Deno.env.get('SUPABASE_URL') ?? '',
-      // Supabase API ANON KEY - env var exported by default.
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      // Create client with Auth context of the user that called the function.
-      // This way RLS policies are applied.
-      // { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-      // For this function, we use the service role key to bypass RLS if needed,
-      // or ensure your RLS allows reading from youtube_memberships.
-      // If you want to use the user's context, uncomment the above and ensure the function is called with Authorization header.
-      // For admin-like functions, service_role key is often safer if RLS isn't set up for this specific query by users.
-    );
+    if (!resolvedChannelId) {
+      return new Response(JSON.stringify({ error: `Could not resolve '${identifier}' to a YouTube Channel ID.` }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 404, // Not Found
+      });
+    }
     
-    // For admin tasks, it's often better to use the service role key to query internal tables.
-    // Ensure this key is set in your Supabase project's environment variables.
+    let channelTitle = null;
+    let channelPfpUrl = null;
+    let canonicalChannelId = resolvedChannelId; // Start with the initially resolved ID
+
+    // Always fetch channel details using the resolvedChannelId for consistency
+    const channelDetailsUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${resolvedChannelId}&key=${YOUTUBE_API_KEY}`;
+    try {
+        const channelDetailsResponse = await fetch(channelDetailsUrl);
+        if (!channelDetailsResponse.ok) {
+            const errorData = await channelDetailsResponse.json();
+            console.error('YouTube Channels API Error (fetching details for resolved ID):', errorData);
+            // Fallback: canonicalChannelId remains the initially resolvedChannelId
+        } else {
+            const channelDetailsData = await channelDetailsResponse.json() as YouTubeChannelsAPIResponse;
+            if (channelDetailsData.items && channelDetailsData.items.length > 0) {
+                // --- Use the ID *from the response* as the canonical ID ---
+                canonicalChannelId = channelDetailsData.items[0].id; 
+                channelTitle = channelDetailsData.items[0].snippet.title;
+                channelPfpUrl = channelDetailsData.items[0].snippet.thumbnails?.high?.url || 
+                                channelDetailsData.items[0].snippet.thumbnails?.medium?.url || 
+                                channelDetailsData.items[0].snippet.thumbnails?.default?.url || null;
+                if (canonicalChannelId !== resolvedChannelId) {
+                     console.log(`Initial resolved ID ${resolvedChannelId} confirmed/updated to canonical ID ${canonicalChannelId} by channels.list API.`);
+                }
+            } else {
+                 console.warn(`channels.list returned ok but no items for ID: ${resolvedChannelId}`);
+                 // Fallback: canonicalChannelId remains the initially resolvedChannelId
+            }
+        }
+    } catch (channelFetchError) {
+        console.error('Error fetching YouTube channel details for resolved ID:', channelFetchError);
+        // Fallback: canonicalChannelId remains the initially resolvedChannelId
+    }
+
+    // --- Use the canonicalChannelId (best effort) for the membership query ---
+    console.log(`Querying memberships using canonicalChannelId: ${canonicalChannelId}`); 
+
     const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!SERVICE_ROLE_KEY) {
         return new Response(JSON.stringify({ error: 'Service role key is not configured for Supabase client.' }), {
@@ -117,36 +200,32 @@ serve(async (req: Request) => {
             status: 500,
         });
     }
-
-    const supabaseAdminClient = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        SERVICE_ROLE_KEY
-    );
+    const supabaseAdminClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', SERVICE_ROLE_KEY);
 
     const { data: memberships, error: dbError } = await supabaseAdminClient
       .from('youtube_memberships')
-      .select('membership_level, channel_name') // Only select what's needed
-      .eq('youtube_connection_id', youtubeChannelId); // Assuming this is the column linking to the channel ID
+      .select('membership_level, channel_name')
+      .eq('youtube_connection_id', canonicalChannelId); // <-- Use canonicalChannelId here
 
     if (dbError) {
-      console.error('Supabase DB Error:', dbError);
-      return new Response(JSON.stringify({ error: 'Failed to query memberships', details: dbError.message }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      });
+      console.error('Supabase DB Error fetching memberships:', dbError);
+      // Do not fail the whole request if memberships can't be fetched, but log it.
+      // Return an empty array for memberships in this case.
     }
 
+    // --- Return canonicalChannelId ---
     return new Response(JSON.stringify({ 
-      name: channelTitle, 
+      id: canonicalChannelId, // Return the canonical ID
+      name: channelTitle,
       pfpUrl: channelPfpUrl,
-      memberships: memberships || [] // Ensure memberships is always an array
+      memberships: memberships || []
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
-    console.error('General Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('General Error in get-youtube-channel-details function:', error);
+    return new Response(JSON.stringify({ error: error.message || 'An unexpected error occurred.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     })

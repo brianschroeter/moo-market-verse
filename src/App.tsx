@@ -22,6 +22,7 @@ import AdminTickets from "./pages/admin/AdminTickets";
 import AdminNavigation from "./pages/admin/AdminNavigation";
 import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
 import AdminNewsletterSignups from "./pages/admin/newsletter-signups.tsx";
+import AdminGuildSearch from "./pages/admin/AdminGuildSearch";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -101,6 +102,11 @@ const App = () => {
                 <Route path="/admin/newsletter-signups" element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminNewsletterSignups />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/guild-search" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminGuildSearch />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<NotFound />} />

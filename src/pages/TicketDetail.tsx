@@ -453,7 +453,7 @@ const TicketDetail: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
             <div>
               <div className="flex items-center space-x-2">
-                <Link to="/tickets" className="text-lolcow-blue hover:underline">
+                <Link to={isAdmin ? "/admin/tickets" : "/tickets"} className="text-lolcow-blue hover:underline">
                   <List className="h-4 w-4 inline mr-1" />
                   All Tickets
                 </Link>
