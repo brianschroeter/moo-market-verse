@@ -17,6 +17,8 @@ import Terms from "./pages/Terms";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Faq from "./pages/Faq";
 import AdminUsers from "./pages/admin/AdminUsers";
+import SharedYoutubeConnectionsPage from "./pages/admin/SharedYoutubeConnectionsPage";
+import SharedFingerprintsPage from "./pages/admin/SharedFingerprintsPage";
 import AdminFeaturedContent from "./pages/admin/AdminFeaturedContent";
 import AdminTickets from "./pages/admin/AdminTickets";
 import AdminNavigation from "./pages/admin/AdminNavigation";
@@ -77,6 +79,16 @@ const App = () => {
                 <Route path="/admin/users" element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminUsers />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/shared-youtube" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <SharedYoutubeConnectionsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/shared-fingerprints" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <SharedFingerprintsPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/admin/tickets" element={
