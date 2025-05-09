@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { FileUp, List, User } from "lucide-react";
+import { FileUp, List, User, Edit3, Trash2, MessageSquare, Loader2 } from "lucide-react";
 import { 
   Ticket, 
   TicketMessage, 
@@ -20,6 +20,9 @@ import { Profile } from "@/services/ticket";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 
 // Helper to get public URL for Supabase Storage
 const getAttachmentUrl = (filePath: string): string => {
@@ -45,6 +48,16 @@ const TicketDetail: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isClosing, setIsClosing] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Added State for Edit/Delete
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingMessage, setEditingMessage] = useState<TicketMessage | null>(null);
+  const [editedContent, setEditedContent] = useState("");
+  const [isUpdatingResponse, setIsUpdatingResponse] = useState(false);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const [isDeletingResponse, setIsDeletingResponse] = useState(false);
 
   // Pre-process attachments to map them to message IDs
   const attachmentsByMessageId = useMemo(() => {
@@ -290,6 +303,85 @@ const TicketDetail: React.FC = () => {
     }
   };
 
+  // Added Edit/Delete Handlers
+  const handleOpenEditModal = (message: TicketMessage) => {
+    setEditingMessage(message);
+    setEditedContent(message.content);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateResponse = async () => {
+    if (!editingMessage || !editedContent.trim()) return;
+    setIsUpdatingResponse(true);
+    try {
+      const { data, error: functionError } = await supabase.functions.invoke(
+        'update-ticket-response',
+        { body: { response_id: editingMessage.id, content: editedContent.trim() } }
+      );
+
+      if (functionError) throw new Error(functionError.message || "Failed to invoke update function.");
+      if (data && data.error) throw new Error(data.error.details || data.error.message || "Update function returned an error.");
+
+      // Optimistic update
+      setTicketData(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          messages: prev.messages.map(msg => 
+            msg.id === editingMessage.id ? { ...msg, content: editedContent.trim(), updated_at: new Date().toISOString() } : msg
+          ),
+          ticket: { ...prev.ticket, updated_at: new Date().toISOString() } // Also update ticket's updated_at
+        };
+      });
+      toast({ title: "Success", description: "Response updated." });
+      setShowEditModal(false);
+      setEditingMessage(null);
+    } catch (err) {
+      console.error("Error updating response:", err);
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to update response.", variant: "destructive" });
+    } finally {
+      setIsUpdatingResponse(false);
+    }
+  };
+
+  const handleOpenDeleteConfirm = (messageId: string) => {
+    setDeletingMessageId(messageId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteResponse = async () => {
+    if (!deletingMessageId) return;
+    setIsDeletingResponse(true);
+    try {
+      const { data, error: functionError } = await supabase.functions.invoke(
+        'delete-ticket-response',
+        { body: { response_id: deletingMessageId } }
+      );
+      if (functionError) throw new Error(functionError.message || "Failed to invoke delete function.");
+      if (data && data.error) throw new Error(data.error.details || data.error.message || "Delete function returned an error.");
+
+      // Optimistic update
+      setTicketData(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          messages: prev.messages.filter(msg => msg.id !== deletingMessageId),
+          // Optionally remove associated attachments from local state if you manage them separately and want immediate UI update
+          // attachments: prev.attachments.filter(att => att.message_id !== deletingMessageId),
+          ticket: { ...prev.ticket, updated_at: new Date().toISOString() }
+        };
+      });
+      toast({ title: "Success", description: "Response deleted." });
+      setShowDeleteConfirm(false);
+      setDeletingMessageId(null);
+    } catch (err) {
+      console.error("Error deleting response:", err);
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to delete response.", variant: "destructive" });
+    } finally {
+      setIsDeletingResponse(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -453,7 +545,7 @@ const TicketDetail: React.FC = () => {
               return (
                 <div 
                   key={message.id} 
-                  className={`lolcow-card ${!isFromTicketCreator ? "border-l-4 border-l-lolcow-blue" : ""}`}
+                  className={`lolcow-card group ${!isFromTicketCreator ? "border-l-4 border-l-lolcow-blue" : ""}`}
                 >
                   <div className="flex items-start space-x-4">
                     <img 
@@ -461,8 +553,8 @@ const TicketDetail: React.FC = () => {
                       alt={displayName} 
                       className="w-10 h-10 rounded-full"
                     />
-                    <div className="flex-1">
-                      <div className="flex justify-between">
+                    <div className="flex-1 relative">
+                      <div className="flex justify-between items-center">
                         <h3 className="font-medium text-white">
                           {displayName}
                           {!isFromTicketCreator && (
@@ -471,7 +563,48 @@ const TicketDetail: React.FC = () => {
                             </span>
                           )}
                         </h3>
-                        <span className="text-gray-400 text-sm">{format(new Date(message.created_at), "PPpp")}</span>
+                        <div className="flex items-center space-x-2">
+                          {user && ticketData && (
+                            (() => {
+                              const isUserMessage = message.from_user;
+                              const isTicketOwner = user.id === ticketData.ticket.user_id;
+                              let canEditOrDelete = false;
+
+                              if (isUserMessage && isTicketOwner) {
+                                canEditOrDelete = true;
+                              } else if (!isUserMessage && isAdmin) {
+                                canEditOrDelete = true;
+                              }
+
+                              if (canEditOrDelete) {
+                                return (
+                                  <>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-6 w-6 text-blue-400 hover:text-blue-500 hover:bg-lolcow-lightgray/20 focus-visible:ring-0 focus-visible:ring-offset-0" 
+                                      onClick={() => handleOpenEditModal(message)} 
+                                      title="Edit Response"
+                                    >
+                                      <Edit3 size={14} />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-6 w-6 text-red-400 hover:text-red-500 hover:bg-lolcow-lightgray/20 focus-visible:ring-0 focus-visible:ring-offset-0" 
+                                      onClick={() => handleOpenDeleteConfirm(message.id)} 
+                                      title="Delete Response"
+                                    >
+                                      <Trash2 size={14} />
+                                    </Button>
+                                  </>
+                                );
+                              }
+                              return null;
+                            })()
+                          )}
+                          <span className="text-gray-400 text-sm">{format(new Date(message.created_at), "PPpp")}</span>
+                        </div>
                       </div>
                       <div className="mt-2 text-gray-300 whitespace-pre-wrap">
                         {message.content}
@@ -572,7 +705,7 @@ const TicketDetail: React.FC = () => {
                     className="bg-lolcow-blue hover:bg-lolcow-blue/80"
                     disabled={isSubmitting || !reply.trim()}
                   >
-                    {isSubmitting ? "Sending..." : "Send Reply"}
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />} Submit Reply
                   </Button>
                 </div>
               </form>
@@ -593,6 +726,50 @@ const TicketDetail: React.FC = () => {
         </div>
       </main>
       <Footer />
+
+      {/* Added Modals/Dialogs */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="sm:max-w-[425px] bg-lolcow-darkgray text-white border-lolcow-lightgray">
+          <DialogHeader>
+            <DialogTitle>Edit Response</DialogTitle>
+            <DialogDescription>
+              Make changes to your response. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-1 items-center gap-4">
+              <Label htmlFor="edit-content" className="sr-only">
+                Response
+              </Label>
+              <Textarea
+                id="edit-content"
+                value={editedContent}
+                onChange={(e) => setEditedContent(e.target.value)}
+                className="min-h-[100px] bg-lolcow-lightgray text-white border-lolcow-lightgray focus:ring-lolcow-blue"
+                rows={5}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)} disabled={isUpdatingResponse}>Cancel</Button>
+            <Button onClick={handleUpdateResponse} disabled={isUpdatingResponse || !editedContent.trim() || editedContent.trim() === editingMessage?.content.trim() } className="bg-lolcow-blue hover:bg-lolcow-blue/90">
+              {isUpdatingResponse && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmationDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        onConfirm={handleDeleteResponse}
+        isConfirming={isDeletingResponse}
+        title="Confirm Delete Response"
+        description="Are you sure you want to delete this response? This action cannot be undone."
+        confirmText="Delete"
+        confirmVariant="destructive"
+      />
     </div>
   );
 };
