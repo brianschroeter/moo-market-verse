@@ -31,6 +31,7 @@ interface UserData {
   id: string;
   email: string;
   username: string;
+  discord_id?: string | null; // Added discord_id
   avatar: string | null;
   joined: string;
   connections: {
@@ -334,6 +335,10 @@ const AdminUsers: React.FC = (): ReactNode => {
   const USERS_PER_PAGE = 25; // Or your desired number of users per page
   const [totalUsers, setTotalUsers] = useState(0);
 
+  // Sorting State
+  const [sortBy, setSortBy] = useState<string>('created_at'); // Default sort by joined date
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc'); // Default to descending
+
   // State for Guilds Dialog
   const [showGuildsDialog, setShowGuildsDialog] = useState(false);
   const [selectedUserForGuilds, setSelectedUserForGuilds] = useState<UserData | null>(null);
@@ -377,25 +382,37 @@ const AdminUsers: React.FC = (): ReactNode => {
         setSearchTerm("");
       }
       if (currentPage !== 1) {
-        setCurrentPage(1); 
+        setCurrentPage(1);
       }
-      // fetchUsers will be called by the change in searchTerm or currentPage, 
+      // fetchUsers will be called by the change in searchTerm or currentPage,
       // or if they were already cleared/1, it's called by searchParams change directly.
     }
     // This effect will call fetchUsers due to dependency changes
-    fetchUsers(currentPage, searchTerm, userIdFromUrl);
-  }, [currentPage, searchTerm, searchParams]);
+    fetchUsers(currentPage, searchTerm, userIdFromUrl, sortBy, sortDirection);
+  }, [currentPage, searchTerm, searchParams, sortBy, sortDirection]);
 
-  // Effect to reset to page 1 when search term changes, 
+  // Effect to reset to page 1 when search term changes,
   // but only if not navigating to a specific user via URL.
   useEffect(() => {
     const userIdFromUrl = searchParams.get('userId');
-    if (searchTerm !== "" && !userIdFromUrl) { 
+    if (searchTerm !== "" && !userIdFromUrl) {
       if (currentPage !== 1) {
         setCurrentPage(1);
       }
     }
   }, [searchTerm]); // Removed currentPage from deps to avoid loop, fetchUsers is handled by the main effect.
+
+  // Effect to reset to page 1 when sorting changes,
+  // but only if not navigating to a specific user via URL.
+  useEffect(() => {
+    const userIdFromUrl = searchParams.get('userId');
+    if (!userIdFromUrl && currentPage !== 1) {
+        // Check if sortBy or sortDirection caused this effect, if so, reset page
+        // This simple check might run more often but ensures page reset on sort.
+        // A more complex check could compare previous sortBy/sortDirection values.
+        setCurrentPage(1);
+    }
+  }, [sortBy, sortDirection]);
 
   // The 'users' state will hold the correctly filtered and paginated list from fetchUsers.
   // 'filteredUsers' is primarily to handle the specific case of displaying a single user from URL if needed,
@@ -432,42 +449,55 @@ const AdminUsers: React.FC = (): ReactNode => {
     }
   }, [guildSearchTerm, userGuilds]);
 
-  const fetchUsers = async (pageToFetch = currentPage, currentSearchTerm = searchTerm, userIdToFetch = searchParams.get('userId')) => {
+  const fetchUsers = async (
+    pageToFetch = currentPage,
+    currentSearchTerm = searchTerm,
+    userIdToFetch = searchParams.get('userId'),
+    currentSortBy = sortBy, // Added currentSortBy
+    currentSortDirection = sortDirection // Added currentSortDirection
+  ) => {
     setLoading(true);
     try {
-      let profilesBaseQuery = supabase.from('profiles');
-      let countBaseQuery = supabase.from('profiles');
+      // Use the new view 'profiles_with_guild_info'
+      let profilesBaseQuery = supabase.from('profiles_with_guild_info');
+      // The count query can still use 'profiles' or 'profiles_with_guild_info'
+      // Using 'profiles' for count might be slightly more direct if the view adds overhead for counting.
+      // However, for consistency and to ensure filters apply correctly, using the view is safer.
+      let countBaseQuery = supabase.from('profiles_with_guild_info');
+
+      // Define the columns to select from the view.
+      // Ensure 'guild_count' is selected.
+      // Also include 'discord_id' as it's used for avatar URLs and other logic.
+      const selectColumns = 'id, discord_username, discord_avatar, created_at, discord_id, guild_count';
 
       let finalProfilesQuery;
       let finalCountQuery;
 
       if (userIdToFetch) {
-        finalProfilesQuery = profilesBaseQuery.select('*, discord_id').eq('id', userIdToFetch);
+        finalProfilesQuery = profilesBaseQuery.select(selectColumns).eq('id', userIdToFetch);
         finalCountQuery = countBaseQuery.select('*', { count: 'exact', head: true }).eq('id', userIdToFetch);
       } else if (currentSearchTerm && currentSearchTerm.trim() !== "") {
         const cleanedSearchTerm = currentSearchTerm.trim();
-        // Regex to check for UUID format
         const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
         const isSearchTermUUID = uuidRegex.test(cleanedSearchTerm);
 
+        // Adjust search conditions for view columns if necessary
         let searchOrConditions = [`discord_username.ilike.%${cleanedSearchTerm}%`];
-
         if (isSearchTermUUID) {
           searchOrConditions.push(`id.eq.${cleanedSearchTerm}`);
         }
-        // Add other text fields to search here if needed, e.g.:
-        // searchOrConditions.push(`some_other_text_column.ilike.%${cleanedSearchTerm}%`);
-
         const searchFilterString = searchOrConditions.join(',');
-        
+
         finalProfilesQuery = profilesBaseQuery
-          .select('*, discord_id')
+          .select(selectColumns)
           .or(searchFilterString)
+          .order(currentSortBy, { ascending: currentSortDirection === 'asc' }) // Apply sorting
           .range((pageToFetch - 1) * USERS_PER_PAGE, pageToFetch * USERS_PER_PAGE - 1);
         finalCountQuery = countBaseQuery.select('*', { count: 'exact', head: true }).or(searchFilterString);
       } else {
         finalProfilesQuery = profilesBaseQuery
-          .select('*, discord_id')
+          .select(selectColumns)
+          .order(currentSortBy, { ascending: currentSortDirection === 'asc' }) // Apply sorting
           .range((pageToFetch - 1) * USERS_PER_PAGE, pageToFetch * USERS_PER_PAGE - 1);
         finalCountQuery = countBaseQuery.select('*', { count: 'exact', head: true });
       }
@@ -519,16 +549,6 @@ const AdminUsers: React.FC = (): ReactNode => {
 
       if (connectionsError) {
         throw connectionsError;
-      }
-
-      // Fetch guild counts using the RPC function
-      // Known Limitation: This RPC fetches all guild counts.
-      // Ideally, this would be adapted or replaced if performance is an issue.
-      const { data: guildCountsData, error: guildCountsError } = await supabase
-        .rpc('get_user_guild_counts');
-
-      if (guildCountsError) {
-        console.error("Error fetching guild counts:", guildCountsError);
       }
 
       // Fetch User Devices for the current page's users
@@ -595,21 +615,6 @@ const AdminUsers: React.FC = (): ReactNode => {
       }
       // ---- End YouTube Memberships Fetching ----
 
-      // Process guild counts from RPC into a map
-      const guildCountMap = new Map<string, number>();
-      if (Array.isArray(guildCountsData)) {
-        guildCountsData.forEach((row: { user_id: string; guild_count: bigint | number | null }) => {
-          // Ensure guild_count is treated as a number, handle potential nulls/undefined
-          const count = typeof row.guild_count === 'bigint' 
-                          ? Number(row.guild_count) 
-                          : (typeof row.guild_count === 'number' ? row.guild_count : 0);
-          guildCountMap.set(row.user_id, count);
-        });
-      } else {
-        // Log if RPC data is unexpectedly null/undefined
-        console.warn("Received null/undefined data from get_user_guild_counts RPC.");
-      }
-
       // Process and combine the data
       const userMap = new Map<string, UserData>();
 
@@ -626,11 +631,12 @@ const AdminUsers: React.FC = (): ReactNode => {
           id: profile.id,
           email: "", // We don't have direct access to this
           username: profile.discord_username || "Unknown",
+          discord_id: profile.discord_id,
           avatar: avatarUrl, // Use the correctly constructed URL
           joined: new Date(profile.created_at).toLocaleDateString(),
           connections: [],
           roles: [],
-          guild_count: guildCountMap.get(profile.id) || 0, // Get count from map
+          guild_count: profile.guild_count, // Use guild_count from the view
           devices: [], // Initialize devices array
           youtubeMemberships: [] // Initialize YouTube memberships array
         });
@@ -1090,6 +1096,22 @@ const AdminUsers: React.FC = (): ReactNode => {
   };
   // --- End Delete User Logic ---
 
+  // --- Sorting Handler ---
+  const handleSort = (columnName: string) => {
+    if (sortBy === columnName) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(columnName);
+      // Default to descending for guild_count and created_at (joined date), ascending for username
+      if (columnName === 'guild_count' || columnName === 'created_at') {
+        setSortDirection('desc');
+      } else {
+        setSortDirection('asc');
+      }
+    }
+    // Resetting to page 1 is handled by the useEffect watching sortBy and sortDirection
+  };
+
   // --- Pagination Handlers ---
   const totalPages = Math.ceil(totalUsers / USERS_PER_PAGE);
 
@@ -1201,12 +1223,36 @@ const AdminUsers: React.FC = (): ReactNode => {
           <Table>
             <TableHeader>
               <TableRow className="border-b border-lolcow-lightgray">
-                <TableHead className="text-gray-300">User</TableHead>
+                <TableHead 
+                  className="text-gray-300 cursor-pointer hover:text-white"
+                  onClick={() => handleSort('discord_username')}
+                >
+                  User 
+                  {sortBy === 'discord_username' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '🔼' : '🔽'}</span>
+                  )}
+                </TableHead>
                 <TableHead className="text-gray-300">Connections</TableHead>
-                <TableHead className="text-gray-300">Guilds</TableHead>
+                <TableHead 
+                  className="text-gray-300 cursor-pointer hover:text-white"
+                  onClick={() => handleSort('guild_count')}
+                >
+                  Guilds 
+                  {sortBy === 'guild_count' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '🔼' : '🔽'}</span>
+                  )}
+                </TableHead>
                 <TableHead className="text-gray-300">Memberships</TableHead>
                 <TableHead className="text-gray-300">Roles</TableHead>
-                <TableHead className="text-gray-300">Joined</TableHead>
+                <TableHead 
+                  className="text-gray-300 cursor-pointer hover:text-white"
+                  onClick={() => handleSort('created_at')}
+                >
+                  Joined 
+                  {sortBy === 'created_at' && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '🔼' : '🔽'}</span>
+                  )}
+                </TableHead>
                 <TableHead className="text-gray-300 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -1233,6 +1279,9 @@ const AdminUsers: React.FC = (): ReactNode => {
                       />
                       <div>
                         <div className="font-medium text-white">{user.username}</div>
+                        {user.discord_id && (
+                          <div className="text-xs text-gray-500">Discord ID: {user.discord_id}</div>
+                        )}
                         <div className="text-sm text-gray-400">{user.id}</div>
                       </div>
                     </div>
