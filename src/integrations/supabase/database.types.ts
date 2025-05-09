@@ -81,6 +81,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "discord_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_with_guild_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       discord_guilds: {
@@ -111,6 +118,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discord_guilds_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_with_guild_info"
             referencedColumns: ["id"]
           },
         ]
@@ -286,6 +300,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "support_tickets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_with_guild_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ticket_attachments: {
@@ -431,6 +452,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_with_guild_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       youtube_connections: {
@@ -472,6 +500,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "youtube_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_with_guild_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       youtube_memberships: {
@@ -497,7 +532,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profiles_with_guild_info: {
+        Row: {
+          created_at: string | null
+          discord_avatar: string | null
+          discord_id: string | null
+          discord_username: string | null
+          guild_count: number | null
+          id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       assert_admin: {
@@ -526,6 +571,29 @@ export type Database = {
         Returns: {
           guild_id: string
           guild_name: string
+        }[]
+      }
+      get_shared_fingerprint_details: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          fingerprint: string
+          user_id: string
+          username: string
+          discord_id: string
+          discord_avatar: string
+          last_seen_at: string
+          first_seen_at: string
+        }[]
+      }
+      get_shared_youtube_connection_details: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          youtube_channel_id: string
+          youtube_channel_name: string
+          user_id: string
+          username: string
+          discord_id: string
+          discord_avatar: string
         }[]
       }
       get_user_guild_counts: {
@@ -558,6 +626,10 @@ export type Database = {
         Returns: {
           guild_id: string
           guild_name: string
+          user_profile_id: string
+          user_discord_username: string
+          user_discord_avatar: string
+          user_discord_id: string
         }[]
       }
     }
