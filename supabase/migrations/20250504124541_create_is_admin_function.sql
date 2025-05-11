@@ -1,4 +1,3 @@
-
 -- Function to check if the current user has the 'admin' role
 CREATE OR REPLACE FUNCTION is_admin()
 RETURNS boolean
@@ -15,5 +14,4 @@ AS $$
 $$;
 
 -- Grant execute permission to authenticated users
-GRANT EXECUTE ON FUNCTION is_admin() TO authenticated;
-
+GRANT EXECUTE ON FUNCTION is_admin() TO authenticated; 

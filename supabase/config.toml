@@ -1,6 +1,9 @@
 
 project_id = "dlmbqojnhjsecajxltzj"
 
+[auth]
+site_url = "http://localhost:8080" # Define the correct local frontend site URL
+
 [functions.verify-youtube]
 verify_jwt = false
 
@@ -37,3 +40,11 @@ entrypoint = "./functions/upsert-device/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/upsert-device/*.html" ]
+
+[auth.external.discord]
+enabled = true
+client_id = "1368249016927780894"  # Replace with your Discord app's Client ID
+secret = "K5MiDvCBKLOeXsKOPnGYwCBApF7Bb0lk" # Replace with your Discord app's Client Secret
+redirect_uri = "http://localhost:54321/auth/v1/callback"
+# Optional: specify scopes if needed, e.g., "identify email guilds"
+# additional_scopes = ["identify", "email"]

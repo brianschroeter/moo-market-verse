@@ -1,8 +1,8 @@
 -- Drop the policy referencing the column
-DROP POLICY "Users can view own YouTube memberships" ON public.youtube_memberships;
+DROP POLICY IF EXISTS "Users can view their own YouTube memberships." ON public.youtube_memberships;
 
 -- Drop the foreign key constraint
-ALTER TABLE public.youtube_memberships DROP CONSTRAINT youtube_memberships_youtube_connection_id_fkey;
+ALTER TABLE public.youtube_memberships DROP CONSTRAINT IF EXISTS youtube_memberships_youtube_connection_id_fkey;
 
 -- Alter the column type
 ALTER TABLE public.youtube_memberships
@@ -10,7 +10,7 @@ ALTER COLUMN youtube_connection_id TYPE TEXT
 USING youtube_connection_id::text;
 
 -- Recreate the policy
-CREATE POLICY "Users can view own YouTube memberships"
+CREATE POLICY "Users can view their own YouTube memberships."
 ON public.youtube_memberships
 AS PERMISSIVE
 FOR SELECT

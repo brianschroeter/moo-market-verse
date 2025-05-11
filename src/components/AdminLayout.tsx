@@ -1,6 +1,6 @@
 import React, { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { User, Users, List, Link as LinkIcon, Navigation, Megaphone, Mail, Menu, X, Server, Share2, Fingerprint as FingerprintIcon } from "lucide-react";
+import { User, Users, List, Link as LinkIcon, Navigation, Megaphone, Mail, Menu, X, Server, Share2, Fingerprint as FingerprintIcon, Youtube as YoutubeIcon, Calendar } from "lucide-react";
 import AdminNavbar from "./admin/AdminNavbar";
 
 interface AdminLayoutProps {
@@ -36,6 +36,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { path: "/admin/users", label: "Users", icon: <Users className="h-5 w-5" /> },
     { path: "/admin/shared-youtube", label: "Shared YouTube", icon: <Share2 className="h-5 w-5" /> },
     { path: "/admin/shared-fingerprints", label: "Shared Fingerprints", icon: <FingerprintIcon className="h-5 w-5" /> },
+    { path: "/admin/youtube-schedule/channels", label: "Schedule Channels", icon: <YoutubeIcon className="h-5 w-5" /> },
+    { path: "/admin/youtube-schedule/slots", label: "Manage Schedule", icon: <Calendar className="h-5 w-5" /> },
     { path: "/admin/tickets", label: "Tickets", icon: <List className="h-5 w-5" /> },
     { path: "/admin/guild-search", label: "Guild Search", icon: <Server className="h-5 w-5" /> },
     { path: "/admin/products", label: "Featured Content", icon: <LinkIcon className="h-5 w-5" /> },

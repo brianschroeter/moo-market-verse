@@ -42,7 +42,7 @@ USING (is_admin());
 
 -- Grant necessary privileges
 GRANT SELECT ON TABLE public.ticket_attachments TO authenticated;
-GRANT INSERT (ticket_id, message_id, file_name, file_type, file_size, file_path) ON TABLE public.ticket_attachments TO authenticated;
+GRANT INSERT (ticket_id, message_id, file_name, file_type, file_size_bytes, file_path) ON TABLE public.ticket_attachments TO authenticated;
 GRANT DELETE ON TABLE public.ticket_attachments TO authenticated; -- Admins can delete via RLS
 
 -- Ensure service_role has permissions if needed

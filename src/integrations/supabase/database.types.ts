@@ -168,6 +168,62 @@ export type Database = {
         }
         Relationships: []
       }
+      live_streams: {
+        Row: {
+          actual_end_time_utc: string | null
+          actual_start_time_utc: string | null
+          created_at: string
+          id: string
+          last_checked_at: string
+          scheduled_start_time_utc: string | null
+          status: string | null
+          stream_url: string | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string
+          video_id: string
+          youtube_channel_id: string
+        }
+        Insert: {
+          actual_end_time_utc?: string | null
+          actual_start_time_utc?: string | null
+          created_at?: string
+          id?: string
+          last_checked_at?: string
+          scheduled_start_time_utc?: string | null
+          status?: string | null
+          stream_url?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          video_id: string
+          youtube_channel_id: string
+        }
+        Update: {
+          actual_end_time_utc?: string | null
+          actual_start_time_utc?: string | null
+          created_at?: string
+          id?: string
+          last_checked_at?: string
+          scheduled_start_time_utc?: string | null
+          status?: string | null
+          stream_url?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          video_id?: string
+          youtube_channel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_streams_youtube_channel_id_fkey"
+            columns: ["youtube_channel_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       membership_changes: {
         Row: {
           change_timestamp: string
@@ -266,6 +322,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      schedule_slots: {
+        Row: {
+          created_at: string
+          day_of_week: number[] | null
+          default_start_time_utc: string | null
+          fallback_title: string | null
+          id: string
+          is_recurring: boolean
+          notes: string | null
+          specific_date: string | null
+          updated_at: string
+          youtube_channel_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week?: number[] | null
+          default_start_time_utc?: string | null
+          fallback_title?: string | null
+          id?: string
+          is_recurring?: boolean
+          notes?: string | null
+          specific_date?: string | null
+          updated_at?: string
+          youtube_channel_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number[] | null
+          default_start_time_utc?: string | null
+          fallback_title?: string | null
+          id?: string
+          is_recurring?: boolean
+          notes?: string | null
+          specific_date?: string | null
+          updated_at?: string
+          youtube_channel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_slots_youtube_channel_id_fkey"
+            columns: ["youtube_channel_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_channels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       support_tickets: {
         Row: {
@@ -461,6 +564,36 @@ export type Database = {
           },
         ]
       }
+      youtube_channels: {
+        Row: {
+          avatar_url: string | null
+          channel_name: string | null
+          created_at: string
+          custom_display_name: string | null
+          id: string
+          updated_at: string
+          youtube_channel_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          channel_name?: string | null
+          created_at?: string
+          custom_display_name?: string | null
+          id?: string
+          updated_at?: string
+          youtube_channel_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          channel_name?: string | null
+          created_at?: string
+          custom_display_name?: string | null
+          id?: string
+          updated_at?: string
+          youtube_channel_id?: string
+        }
+        Relationships: []
+      }
       youtube_connections: {
         Row: {
           created_at: string
@@ -545,6 +678,10 @@ export type Database = {
       }
     }
     Functions: {
+      are_days_of_week_valid: {
+        Args: { days: number[] }
+        Returns: boolean
+      }
       assert_admin: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -611,10 +748,12 @@ export type Database = {
         }[]
       }
       has_role: {
-        Args: {
-          _user_id: string
-          _role: Database["public"]["Enums"]["user_role"]
-        }
+        Args:
+          | {
+              _user_id: string
+              _role: Database["public"]["Enums"]["user_role"]
+            }
+          | { p_user_id: string; p_role_name: string }
         Returns: boolean
       }
       is_admin: {

@@ -25,6 +25,8 @@ import AdminNavigation from "./pages/admin/AdminNavigation";
 import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
 import AdminNewsletterSignups from "./pages/admin/newsletter-signups.tsx";
 import AdminGuildSearch from "./pages/admin/AdminGuildSearch";
+import AdminYouTubeScheduleChannels from "./pages/admin/AdminYouTubeScheduleChannels";
+import AdminYouTubeSchedulePage from "./pages/admin/AdminYouTubeSchedulePage";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -119,6 +121,16 @@ const App = () => {
                 <Route path="/admin/guild-search" element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminGuildSearch />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/youtube-schedule/channels" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminYouTubeScheduleChannels />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/youtube-schedule/slots" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminYouTubeSchedulePage />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<NotFound />} />

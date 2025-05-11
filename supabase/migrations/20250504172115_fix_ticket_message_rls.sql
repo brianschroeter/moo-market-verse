@@ -55,9 +55,9 @@ USING (is_admin());
 
 -- Grant necessary privileges
 GRANT SELECT ON TABLE public.ticket_messages TO authenticated;
-GRANT INSERT (ticket_id, content, from_user) ON TABLE public.ticket_messages TO authenticated;
+GRANT INSERT (ticket_id, body, from_user) ON TABLE public.ticket_messages TO authenticated;
 -- Grant UPDATE/DELETE based on who needs the permission (RLS controls rows)
-GRANT UPDATE (content) ON TABLE public.ticket_messages TO authenticated; -- Admins can update via RLS
+GRANT UPDATE (body) ON TABLE public.ticket_messages TO authenticated; -- Admins can update via RLS
 GRANT DELETE ON TABLE public.ticket_messages TO authenticated; -- Admins can delete via RLS
 
 -- Ensure service_role has permissions if needed
