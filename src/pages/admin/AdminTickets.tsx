@@ -18,7 +18,9 @@ const AdminTickets: React.FC = () => {
   // Fetch tickets with updated query structure
   const { data: tickets, isLoading, error } = useQuery({
     queryKey: ["tickets", statusFilter, currentPage, searchTerm],
-    queryFn: () => getTickets({ status: statusFilter !== "all" ? statusFilter : null })
+    queryFn: () => getTickets({ status: statusFilter !== "all" ? statusFilter : null }),
+    refetchInterval: 15000, // Add this line to refetch every 15 seconds
+    refetchIntervalInBackground: true, // Add this line to refetch even when tab is in background
   });
 
   // Mutation for updating ticket status
