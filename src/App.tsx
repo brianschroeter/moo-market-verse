@@ -30,18 +30,17 @@ import AdminYouTubeSchedulePage from "./pages/admin/AdminYouTubeSchedulePage";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// Create a new client for every render - this ensures proper React hooks context
-const App = () => {
-  // Create a client
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        retry: false,
-      },
+// Create a stable QueryClient instance outside the component
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: false,
     },
-  });
+  },
+});
 
+const App = () => {
   return (
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>

@@ -5,6 +5,7 @@ import YouTubeConnections from "@/components/YouTubeConnections";
 import Announcements from "../components/Announcements";
 import ProfileHeader from "../components/profile/ProfileHeader";
 import DiscordConnections from "../components/profile/DiscordConnections";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import LoginRequired from '@/components/profile/LoginRequired';
 import { useNavigate } from 'react-router-dom';
@@ -24,13 +25,15 @@ const Profile: React.FC = () => {
     }
   }, [loading, user, session, navigate, signOut]);
 
-  if (loading) {
-    return <div>Loading profile...</div>;
-  }
-
   if (!user || !profile) {
+    if (loading) {
+      return <div>Loading profile...</div>;
+    }
     return <LoginRequired />;
   }
+// If user and profile are loaded, we render the main content below,
+// regardless of minor flickers in the 'loading' state of AuthContext,
+// thus preventing unnecessary remounts of YouTubeConnections.
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -47,7 +50,23 @@ const Profile: React.FC = () => {
 
             {/* YouTube Connections */}
             <div className="col-span-1 lg:col-span-2">
-              <YouTubeConnections />
+              {session?.provider_token ? (
+                <YouTubeConnections />
+              ) : (
+                <Card className="lolcow-card w-full">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-fredoka text-white flex items-center">
+                      <i className="fa-brands fa-youtube text-red-500 mr-2"></i> YouTube Connections
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-300">Verifying YouTube connection status...</p>
+                    {(!loading && user && !session?.provider_token) && (
+                      <p className="text-sm text-yellow-400 mt-2">Your session needs to be refreshed. You may be redirected to login.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Announcements & Featured */}

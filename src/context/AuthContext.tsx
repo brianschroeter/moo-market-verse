@@ -217,7 +217,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log("Unsubscribing from auth state changes.");
       subscription.unsubscribe();
     };
-  }, [toast, navigate]); // Removed dependencies related to spoofed state
+  }, []); // Ensures this effect runs only once on mount and cleans up on unmount
 
   const checkAdminRole = async () => {
     // Use spoofed admin status in dev mode

@@ -31,10 +31,10 @@ const formatTime = (seconds: number): string => {
 
 const YouTubeConnections: React.FC = () => {
   const { toast } = useToast();
-  const { session } = useAuth(); // Get session from AuthContext
+  const { session, user, loading: authLoading } = useAuth(); // Get session, user, and authLoading from AuthContext
   const [accounts, setAccounts] = useState<YouTubeConnection[]>([]);
   const [memberships, setMemberships] = useState<YouTubeMembership[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(true); // Component's own loading state for data
   const [refreshing, setRefreshing] = useState<boolean>(false);
   
   // Cooldown State
@@ -43,8 +43,8 @@ const YouTubeConnections: React.FC = () => {
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
   const cooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Debounce the initial data fetching
-  const initialFetchDone = useRef<boolean>(false);
+  // Store the userId for which the initial fetch was completed
+  const initialFetchDoneForUser = useRef<string | null>(null);
   
   // --- Cooldown Timer Logic ---
   useEffect(() => {
@@ -132,13 +132,28 @@ const YouTubeConnections: React.FC = () => {
   }, [toast]);
 
   useEffect(() => {
-    // Prevent duplicate initial data fetching
-    if (!initialFetchDone.current) {
-      initialFetchDone.current = true;
-      setLoading(true);
-      fetchYouTubeDisplayData().finally(() => setLoading(false)); // Fetch initial data
+    // Fetch initial data only when auth is no longer loading, a user is present,
+    // and the fetch hasn't been done for this specific user yet.
+    // Also ensure provider_token is present before attempting fetch, as Profile.tsx uses it for rendering.
+    if (!authLoading && user?.id && session?.provider_token && initialFetchDoneForUser.current !== user.id) {
+      console.log(`YouTubeConnections: Auth loaded, user ${user.id} present, provider_token exists. Fetching display data.`);
+      initialFetchDoneForUser.current = user.id; // Mark fetch as initiated for this user
+      setLoading(true); // Set component loading state
+      fetchYouTubeDisplayData().finally(() => {
+        setLoading(false); // Clear component loading state
+        console.log(`YouTubeConnections: fetchYouTubeDisplayData complete for user ${user.id}.`);
+      });
+    } else if (authLoading) {
+      console.log("YouTubeConnections: Waiting for AuthContext to finish loading...");
+      setLoading(true); // Keep component loading if auth is still loading
+    } else if (!user?.id || !session?.provider_token) {
+      console.log("YouTubeConnections: No user or no provider_token. Clearing data and not fetching.");
+      setAccounts([]);
+      setMemberships([]);
+      setLoading(false); // Not loading if no user/token
+      initialFetchDoneForUser.current = null; // Reset if user logs out or token disappears
     }
-  }, [fetchYouTubeDisplayData]); // Depend on the memoized fetch function
+  }, [authLoading, user, session, fetchYouTubeDisplayData]); // Dependencies
 
   const handleRefreshConnections = async () => {
     // Check cooldown first
