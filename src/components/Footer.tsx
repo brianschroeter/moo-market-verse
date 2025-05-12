@@ -46,35 +46,7 @@ const Footer: React.FC = () => {
               </li>
             </ul>
           </div>
-
-          {/* Connect */}
-          <div>
-            <h3 className="text-lg font-fredoka text-white mb-4">Connect</h3>
-            <ul className="space-y-2">
-              <li>
-                <a
-                  href="https://discord.gg/lolcowuniverse"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-lolcow-blue transition-colors flex items-center space-x-2"
-                >
-                  <i className="fa-brands fa-discord"></i>
-                  <span>Discord</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://x.com/lolcowlive"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-lolcow-blue transition-colors flex items-center space-x-2"
-                >
-                  <i className="fa-brands fa-twitter"></i>
-                  <span>Twitter</span>
-                </a>
-              </li>
-            </ul>
-          </div>
+          
         </div>
 
         <div className="border-t border-lolcow-lightgray mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
