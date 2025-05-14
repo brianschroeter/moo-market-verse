@@ -59,7 +59,7 @@ const chartConfig = {
   amount: { label: "Amount ($)", theme: { light: "#3b82f6", dark: "#3b82f6" } }, 
   gifts: { label: "Gifts", theme: { light: "#8b5cf6", dark: "#8b5cf6" } }, 
   crown: { label: "Crown", theme: { light: "#f59e0b", dark: "#f59e0b" } }, 
-  paypig: { label: "Paypig", theme: { light: "#84cc16", dark: "#84cc16" } }, 
+  paypig: { label: "Pay Pig", theme: { light: "#84cc16", dark: "#84cc16" } }, 
   cashCow: { label: "Cash Cow", theme: { light: "#0ea5e9", dark: "#0ea5e9" } }, 
 };
 
