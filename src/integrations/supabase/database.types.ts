@@ -564,6 +564,39 @@ export type Database = {
           },
         ]
       }
+      video_stats: {
+        Row: {
+          channel_name: string | null
+          created_at: string
+          gifted_memberships: number | null
+          id: string
+          month: string | null
+          total_donations_usd: number | null
+          video_url: string | null
+          year: string | null
+        }
+        Insert: {
+          channel_name?: string | null
+          created_at?: string
+          gifted_memberships?: number | null
+          id?: string
+          month?: string | null
+          total_donations_usd?: number | null
+          video_url?: string | null
+          year?: string | null
+        }
+        Update: {
+          channel_name?: string | null
+          created_at?: string
+          gifted_memberships?: number | null
+          id?: string
+          month?: string | null
+          total_donations_usd?: number | null
+          video_url?: string | null
+          year?: string | null
+        }
+        Relationships: []
+      }
       youtube_channels: {
         Row: {
           avatar_url: string | null
@@ -769,6 +802,20 @@ export type Database = {
           user_discord_username: string
           user_discord_avatar: string
           user_discord_id: string
+        }[]
+      }
+      sum_donations_by_channel_for_month_year: {
+        Args: { p_month: string; p_year: string }
+        Returns: {
+          channel_name: string
+          total_donations_sum: number
+        }[]
+      }
+      sum_gifted_memberships_by_channel_for_month_year: {
+        Args: { p_month: string; p_year: string }
+        Returns: {
+          channel_name: string
+          total_gifted_memberships_sum: number
         }[]
       }
     }
