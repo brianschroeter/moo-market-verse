@@ -27,36 +27,62 @@ import { Award, Star, TrendingUp, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 // Define types for our fetched and processed data
-interface LeaderboardItem {
-  id: string; // channel_name can serve as an id
+interface SuperchatLeaderboardItem { // Renamed for clarity
+  id: string; 
   rank: number;
-  show: string; // channel_name
-  host: string; // channel_name (can be refined later if host is different)
+  show: string; 
+  host: string; 
   amount: number;
 }
 
-// Chart config
+interface GiftedMembershipLeaderboardItem { // New interface for gifted memberships
+  id: string;
+  rank: number;
+  show: string;
+  host: string; // Will be removed from display but kept in data for now
+  amount: number; // Total gifted memberships
+}
+
+interface MembershipBreakdownItem { // New interface for membership breakdown
+  id: string; // channel_name
+  rank: number;
+  show: string; // channel_name
+  host: string; // channel_name
+  crownCount: number;
+  paypigCount: number;
+  cashCowCount: number;
+  totalMembers: number;
+}
+
+// Consolidated and corrected Chart config
 const chartConfig = {
-  amount: { label: "Amount ($)", theme: { light: "#3b82f6", dark: "#3b82f6" } },
+  amount: { label: "Amount ($)", theme: { light: "#3b82f6", dark: "#3b82f6" } }, 
+  gifts: { label: "Gifts", theme: { light: "#8b5cf6", dark: "#8b5cf6" } }, 
+  crown: { label: "Crown", theme: { light: "#f59e0b", dark: "#f59e0b" } }, 
+  paypig: { label: "Paypig", theme: { light: "#84cc16", dark: "#84cc16" } }, 
+  cashCow: { label: "Cash Cow", theme: { light: "#0ea5e9", dark: "#0ea5e9" } }, 
 };
 
-// Format currency
 const formatCurrency = (value: number): string => {
   return `$${value.toLocaleString()}`;
 };
 
-// Define chart data type that supports all our different chart data shapes
+// Updated ChartDataItem to support both superchat and membership chart structures
 type ChartDataItem = {
   name: string;
-  amount?: number;
+  amount?: number;   
+  gifts?: number;    
+  crown?: number;    
+  paypig?: number;   
+  cashCow?: number;  
 };
 
 const Leaderboard: React.FC = () => {
   const [tabValue, setTabValue] = useState("superchats");
   
-  // State for leaderboard data, loading, and errors
-  const [superchatsData, setSuperchatsData] = useState<LeaderboardItem[]>([]);
-  const [membershipsData, setMembershipsData] = useState<LeaderboardItem[]>([]);
+  const [superchatsData, setSuperchatsData] = useState<SuperchatLeaderboardItem[]>([]);
+  const [giftedMembershipsData, setGiftedMembershipsData] = useState<GiftedMembershipLeaderboardItem[]>([]); // New state for gifted
+  const [membershipsByLevelData, setMembershipsByLevelData] = useState<MembershipBreakdownItem[]>([]);
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +97,7 @@ const Leaderboard: React.FC = () => {
       const currentYear = currentDate.getFullYear().toString();
 
       try {
-        // Fetch Superchats data by calling the RPC function directly
+        // Fetch Superchats data
         const { data: superchatsRaw, error: superchatsError } = await supabase
           .rpc('sum_donations_by_channel_for_month_year', { 
             p_month: currentMonth, 
@@ -80,11 +106,11 @@ const Leaderboard: React.FC = () => {
 
         if (superchatsError) throw superchatsError;
 
-        let processedSuperchats: LeaderboardItem[] = [];
+        let processedSuperchats: SuperchatLeaderboardItem[] = [];
         if (superchatsRaw) {
             processedSuperchats = superchatsRaw.map((item: any, index: number) => ({
             id: item.channel_name,
-            rank: index + 1,
+            rank: index + 1, // RPC for donations doesn't return rank, so we assign it here.
             show: item.channel_name,
             host: item.channel_name, 
             amount: parseFloat(item.total_donations_sum || 0),
@@ -92,34 +118,52 @@ const Leaderboard: React.FC = () => {
         }
         setSuperchatsData(processedSuperchats);
 
-        // Fetch Memberships data by calling the RPC function directly
-        const { data: membershipsRaw, error: membershipsError } = await supabase
-          .rpc('sum_gifted_memberships_by_channel_for_month_year', { 
-            p_month: currentMonth, 
-            p_year: currentYear 
+        // Fetch Gifted Memberships data
+        const { data: giftedRaw, error: giftedError } = await supabase
+          .rpc('sum_gifted_memberships_by_channel_for_month_year', {
+            p_month: currentMonth,
+            p_year: currentYear
           });
-
-        if (membershipsError) throw membershipsError;
-        
-        let processedMemberships: LeaderboardItem[] = [];
-        if (membershipsRaw) {
-           processedMemberships = membershipsRaw.map((item: any, index: number) => ({
+        if (giftedError) throw giftedError;
+        let processedGifted: GiftedMembershipLeaderboardItem[] = [];
+        if (giftedRaw) {
+          processedGifted = giftedRaw.map((item: any, index: number) => ({
             id: item.channel_name,
-            rank: index + 1,
+            rank: index + 1, // Assuming RPC orders by sum DESC
             show: item.channel_name,
-            host: item.channel_name, 
+            host: item.channel_name, // Keep for data consistency if needed elsewhere, will remove from table
             amount: parseInt(item.total_gifted_memberships_sum || 0, 10),
           }));
         }
-        setMembershipsData(processedMemberships);
+        setGiftedMembershipsData(processedGifted);
+
+        // Fetch Memberships breakdown data
+        const { data: membershipsRaw, error: membershipsError } = await supabase
+          .rpc('get_channel_membership_breakdown'); // No params for now
+
+        if (membershipsError) throw membershipsError;
+        
+        let processedMemberships: MembershipBreakdownItem[] = [];
+        if (membershipsRaw) {
+           processedMemberships = membershipsRaw.map((item: any) => ({
+            id: item.channel_name,
+            rank: item.rank, // RPC returns rank
+            show: item.channel_name,
+            host: item.channel_name, 
+            crownCount: item.crown_count || 0,
+            paypigCount: item.paypig_count || 0,
+            cashCowCount: item.cash_cow_count || 0,
+            totalMembers: item.total_members_count || 0,
+          }));
+        }
+        setMembershipsByLevelData(processedMemberships);
 
         // Set initial chart data (all superchats)
         setChartData(
           processedSuperchats.map(item => ({
             name: item.show,
             amount: item.amount,
-          }))
-        );
+          })));
 
       } catch (err: any) {
         console.error("Error fetching leaderboard data:", err);
@@ -141,10 +185,17 @@ const Leaderboard: React.FC = () => {
         name: item.show,
         amount: item.amount,
       })));
-    } else if (value === "memberships") {
-      setChartData(membershipsData.map(item => ({
+    } else if (value === "giftedMemberships") { // New case for gifted memberships tab
+      setChartData(giftedMembershipsData.map(item => ({ 
+        name: item.show, 
+        gifts: item.amount 
+      })));
+    } else if (value === "membershipBreakdown") { // Renamed from "memberships"
+      setChartData(membershipsByLevelData.map(item => ({ 
         name: item.show,
-        amount: item.amount,
+        crown: item.crownCount,
+        paypig: item.paypigCount,
+        cashCow: item.cashCowCount,
       })));
     }
   };
@@ -189,16 +240,21 @@ const Leaderboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <Tabs value={tabValue} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid grid-cols-2 mb-4 bg-lolcow-lightgray">
+              <TabsList className="grid grid-cols-3 mb-4 bg-lolcow-lightgray">
                 <TabsTrigger value="superchats" className="text-sm">
                   <Star className="h-4 w-4 mr-2" />
                   <span className="hidden md:inline">Superchats</span>
                   <span className="inline md:hidden">SC</span>
                 </TabsTrigger>
-                <TabsTrigger value="memberships" className="text-sm">
+                <TabsTrigger value="giftedMemberships" className="text-sm">
                   <Users className="h-4 w-4 mr-2" />
-                  <span className="hidden md:inline">Memberships</span>
-                  <span className="inline md:hidden">Mems</span>
+                  <span className="hidden md:inline">Gifted Mems</span>
+                  <span className="inline md:hidden">Gifts</span>
+                </TabsTrigger>
+                <TabsTrigger value="membershipBreakdown" className="text-sm">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  <span className="hidden md:inline">Breakdown</span>
+                  <span className="inline md:hidden">Levels</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -273,12 +329,12 @@ const Leaderboard: React.FC = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="memberships">
+              <TabsContent value="giftedMemberships">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card className="bg-lolcow-darkgray border border-lolcow-lightgray">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg font-fredoka text-white">
-                        Membership Gift Rankings
+                        Gifted Membership Rankings
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -291,15 +347,13 @@ const Leaderboard: React.FC = () => {
                                 tick={{ fill: '#9CA3AF' }}
                                 tickFormatter={(value) => value.split(' ')[0]}
                               />
-                              <YAxis 
-                                tick={{ fill: '#9CA3AF' }}
-                              />
+                              <YAxis tick={{ fill: '#9CA3AF' }} />
                               <Tooltip content={<ChartTooltipContent />} />
                               <Legend />
                               <Bar
-                                dataKey="amount"
-                                fill="#8b5cf6"
-                                name="Gifts"
+                                dataKey="gifts"
+                                fill={chartConfig.gifts.theme.light}
+                                name={chartConfig.gifts.label}
                                 radius={[4, 4, 0, 0]}
                               />
                             </BarChart>
@@ -315,12 +369,11 @@ const Leaderboard: React.FC = () => {
                         <TableRow className="hover:bg-lolcow-lightgray/20">
                           <TableHead className="text-gray-300">Rank</TableHead>
                           <TableHead className="text-gray-300">Show</TableHead>
-                          <TableHead className="text-gray-300">Host</TableHead>
-                          <TableHead className="text-gray-300 text-right">Gifts</TableHead>
+                          <TableHead className="text-gray-300 text-right">Total Gifts</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {membershipsData.map((item) => (
+                        {giftedMembershipsData.map((item) => (
                           <TableRow key={item.id} className="hover:bg-lolcow-lightgray/20">
                             <TableCell className="font-medium">
                               {item.rank === 1 && <span className="text-yellow-400">#1 🏆</span>}
@@ -328,11 +381,73 @@ const Leaderboard: React.FC = () => {
                               {item.rank === 3 && <span className="text-amber-600">#3 🥉</span>}
                               {item.rank > 3 && <span>#{item.rank}</span>}
                             </TableCell>
-                            <TableCell className="font-medium text-lolcow-blue">
-                              {item.show}
-                            </TableCell>
-                            <TableCell>{item.host}</TableCell>
+                            <TableCell className="font-medium text-lolcow-blue">{item.show}</TableCell>
                             <TableCell className="text-right">{item.amount}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="membershipBreakdown">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="bg-lolcow-darkgray border border-lolcow-lightgray">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg font-fredoka text-white">
+                        Membership Level Breakdown
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[300px] w-full">
+                        <ChartContainer config={chartConfig}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData} layout="vertical">
+                              <XAxis type="number" tick={{ fill: '#9CA3AF' }} />
+                              <YAxis 
+                                dataKey="name" 
+                                type="category" 
+                                tick={{ fill: '#9CA3AF' }}
+                                width={80}
+                                tickFormatter={(value) => value.split(' ')[0]}
+                              />
+                              <Tooltip content={<ChartTooltipContent />} />
+                              <Legend />
+                              <Bar dataKey="crown" stackId="a" fill={chartConfig.crown.theme.light} name={chartConfig.crown.label} radius={[0, 4, 4, 0]} />
+                              <Bar dataKey="paypig" stackId="a" fill={chartConfig.paypig.theme.light} name={chartConfig.paypig.label} />
+                              <Bar dataKey="cashCow" stackId="a" fill={chartConfig.cashCow.theme.light} name={chartConfig.cashCow.label} radius={[4, 0, 0, 4]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </ChartContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <div className="overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-lolcow-lightgray/20">
+                          <TableHead className="text-gray-300">Rank</TableHead>
+                          <TableHead className="text-gray-300">Show</TableHead>
+                          <TableHead className="text-gray-300 text-right">👑</TableHead>
+                          <TableHead className="text-gray-300 text-right">🐖</TableHead>
+                          <TableHead className="text-gray-300 text-right">🐄</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {membershipsByLevelData.map((item) => (
+                          <TableRow key={item.id} className="hover:bg-lolcow-lightgray/20">
+                            <TableCell className="font-medium">
+                              {item.rank === 1 && <span className="text-yellow-400">#1 🏆</span>}
+                              {item.rank === 2 && <span className="text-gray-300">#2 🥈</span>}
+                              {item.rank === 3 && <span className="text-amber-600">#3 🥉</span>}
+                              {item.rank > 3 && <span>#{item.rank}</span>}
+                            </TableCell>
+                            <TableCell className="font-medium text-lolcow-blue">{item.show}</TableCell>
+                            <TableCell className="text-right">{item.crownCount}</TableCell>
+                            <TableCell className="text-right">{item.paypigCount}</TableCell>
+                            <TableCell className="text-right">{item.cashCowCount}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

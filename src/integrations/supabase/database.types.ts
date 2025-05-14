@@ -736,6 +736,17 @@ export type Database = {
           user_metadata: Json
         }[]
       }
+      get_channel_membership_breakdown: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          channel_name: string
+          rank: number
+          crown_count: number
+          paypig_count: number
+          cash_cow_count: number
+          total_members_count: number
+        }[]
+      }
       get_guilds_for_user: {
         Args: { user_uuid: string }
         Returns: {
