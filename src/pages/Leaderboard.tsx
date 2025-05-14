@@ -54,6 +54,36 @@ interface MembershipBreakdownItem { // New interface for membership breakdown
   totalMembers: number;
 }
 
+// Map for channel display names and YouTube URLs
+const channelDisplayMap: Record<string, { displayName: string; url: string }> = {
+  LolcowLive: { displayName: "Lolcow Live", url: "https://www.youtube.com/@LolcowLive" },
+  LolcowQueens: { displayName: "Lolcow Queens", url: "https://www.youtube.com/@LolcowQueens" },
+  LolcowRewind: { displayName: "Lolcow Rewind", url: "https://www.youtube.com/@LolcowRewind" },
+  LolcowMilkers: { displayName: "Lolcow Milkers", url: "https://www.youtube.com/@LolcowMilkers" },
+  LolcowNerd: { displayName: "Lolcow Nerds", url: "https://www.youtube.com/@LolcowNerd" }, // Note: Nerds (plural)
+  LolcowCafe: { displayName: "Lolcow Cafe", url: "https://www.youtube.com/@LolcowCafe" },
+  LolcowTest: { displayName: "Lolcow Test", url: "https://www.youtube.com/@LolcowTest" },
+  LolcowAussy: { displayName: "Lolcow Aussy", url: "https://www.youtube.com/@LolcowAussy" },
+  LolcowTechTalk: { displayName: "Lolcow Tech Talk", url: "https://www.youtube.com/@LolcowTechTalk" },
+  // Add other specific mappings if needed
+};
+
+// Helper function to get display name and URL
+const formatShowDisplay = (rawChannelName: string): { displayName: string; url?: string } => {
+  if (channelDisplayMap[rawChannelName]) {
+    return channelDisplayMap[rawChannelName];
+  }
+  // Fallback for channel names not in the map (e.g., if new ones appear)
+  // Simple formatting: add a space if it starts with Lolcow and has a capital letter following.
+  if (rawChannelName.startsWith("Lolcow") && rawChannelName.length > 6) {
+    const parts = rawChannelName.match(/^Lolcow([A-Z][a-z]*.*)$/);
+    if (parts && parts[1]) {
+      return { displayName: `Lolcow ${parts[1]}`, url: `https://www.youtube.com/@${rawChannelName}` };
+    }
+  }
+  return { displayName: rawChannelName, url: `https://www.youtube.com/@${rawChannelName}` }; // Default link even if not perfectly formatted
+};
+
 // Consolidated and corrected Chart config
 const chartConfig = {
   amount: { label: "Amount ($)", theme: { light: "#3b82f6", dark: "#3b82f6" } }, 
@@ -303,7 +333,6 @@ const Leaderboard: React.FC = () => {
                         <TableRow className="hover:bg-lolcow-lightgray/20">
                           <TableHead className="text-gray-300">Rank</TableHead>
                           <TableHead className="text-gray-300">Show</TableHead>
-                          <TableHead className="text-gray-300">Host</TableHead>
                           <TableHead className="text-gray-300 text-right">Amount</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -317,9 +346,15 @@ const Leaderboard: React.FC = () => {
                               {item.rank > 3 && <span>#{item.rank}</span>}
                             </TableCell>
                             <TableCell className="font-medium text-lolcow-blue">
-                              {item.show}
+                              {(() => {
+                                const { displayName, url } = formatShowDisplay(item.show);
+                                return url ? (
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                    {displayName}
+                                  </a>
+                                ) : displayName;
+                              })()}
                             </TableCell>
-                            <TableCell>{item.host}</TableCell>
                             <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
                           </TableRow>
                         ))}
@@ -381,7 +416,16 @@ const Leaderboard: React.FC = () => {
                               {item.rank === 3 && <span className="text-amber-600">#3 🥉</span>}
                               {item.rank > 3 && <span>#{item.rank}</span>}
                             </TableCell>
-                            <TableCell className="font-medium text-lolcow-blue">{item.show}</TableCell>
+                            <TableCell className="font-medium text-lolcow-blue">
+                              {(() => {
+                                const { displayName, url } = formatShowDisplay(item.show);
+                                return url ? (
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                    {displayName}
+                                  </a>
+                                ) : displayName;
+                              })()}
+                            </TableCell>
                             <TableCell className="text-right">{item.amount}</TableCell>
                           </TableRow>
                         ))}
@@ -444,7 +488,16 @@ const Leaderboard: React.FC = () => {
                               {item.rank === 3 && <span className="text-amber-600">#3 🥉</span>}
                               {item.rank > 3 && <span>#{item.rank}</span>}
                             </TableCell>
-                            <TableCell className="font-medium text-lolcow-blue">{item.show}</TableCell>
+                            <TableCell className="font-medium text-lolcow-blue">
+                              {(() => {
+                                const { displayName, url } = formatShowDisplay(item.show);
+                                return url ? (
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                    {displayName}
+                                  </a>
+                                ) : displayName;
+                              })()}
+                            </TableCell>
                             <TableCell className="text-right">{item.crownCount}</TableCell>
                             <TableCell className="text-right">{item.paypigCount}</TableCell>
                             <TableCell className="text-right">{item.cashCowCount}</TableCell>
