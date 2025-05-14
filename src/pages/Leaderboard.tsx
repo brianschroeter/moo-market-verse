@@ -248,7 +248,7 @@ const Leaderboard: React.FC = () => {
                 </TabsTrigger>
                 <TabsTrigger value="giftedMemberships" className="text-sm">
                   <Users className="h-4 w-4 mr-2" />
-                  <span className="hidden md:inline">Gifted Mems</span>
+                  <span className="hidden md:inline">Gifted Members</span>
                   <span className="inline md:hidden">Gifts</span>
                 </TabsTrigger>
                 <TabsTrigger value="membershipBreakdown" className="text-sm">
