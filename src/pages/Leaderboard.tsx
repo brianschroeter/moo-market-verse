@@ -16,7 +16,11 @@ import {
   CardTitle,
   CardDescription 
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import LeaderboardTabs from "@/components/LeaderboardTabs";
+import SuperchatsTab from "@/components/SuperchatsTab";
+import GiftedMembersTab from "@/components/GiftedMembersTab";
+import BreakdownTab from "@/components/BreakdownTab";
+import LeaderboardHeader from "@/components/LeaderboardHeader";
 import { 
   ChartContainer, 
   ChartTooltip, 
@@ -108,7 +112,7 @@ type ChartDataItem = {
 };
 
 const Leaderboard: React.FC = () => {
-  const [tabValue, setTabValue] = useState("superchats");
+  const [tabValue, setTabValue] = useState<"superchats" | "gifted" | "breakdown">("superchats");
   
   const [superchatsData, setSuperchatsData] = useState<SuperchatLeaderboardItem[]>([]);
   const [giftedMembershipsData, setGiftedMembershipsData] = useState<GiftedMembershipLeaderboardItem[]>([]); // New state for gifted
@@ -208,19 +212,19 @@ const Leaderboard: React.FC = () => {
 
 
   const handleTabChange = (value: string) => {
-    setTabValue(value);
+    setTabValue(value as "superchats" | "gifted" | "breakdown");
     
     if (value === "superchats") {
       setChartData(superchatsData.map(item => ({
         name: item.show,
         amount: item.amount,
       })));
-    } else if (value === "giftedMemberships") { // New case for gifted memberships tab
+    } else if (value === "gifted") {
       setChartData(giftedMembershipsData.map(item => ({ 
         name: item.show, 
         gifts: item.amount 
       })));
-    } else if (value === "membershipBreakdown") { // Renamed from "memberships"
+    } else if (value === "breakdown") {
       setChartData(membershipsByLevelData.map(item => ({ 
         name: item.show,
         crown: item.crownCount,
@@ -251,266 +255,32 @@ const Leaderboard: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-lolcow-black to-lolcow-darkgray text-white">
       <Navbar />
       <main className="flex-grow container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-fredoka text-center mb-8">
-          <span className="text-lolcow-blue">LOL</span>
-          <span className="text-lolcow-red">COW</span>
-          <span className="text-white">.CO</span>
-          <span className="text-white"> Leaderboard</span>
-        </h1>
+        <LeaderboardHeader />
 
         <Card className="bg-lolcow-black border border-lolcow-lightgray mb-8">
-          <CardHeader>
-            <CardTitle className="font-fredoka text-white">
-              <Award className="inline-block mr-2 h-5 w-5 text-lolcow-red" />
-              Top Shows - {new Date().toLocaleString('default', { month: 'long' })} {new Date().getFullYear()}
-            </CardTitle>
-            <CardDescription className="text-gray-400">
-              Monthly rankings based on viewer engagement metrics
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={tabValue} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid grid-cols-3 mb-4 bg-lolcow-lightgray">
-                <TabsTrigger value="superchats" className="text-sm">
-                  <Star className="h-4 w-4 mr-2" />
-                  <span className="hidden md:inline">Superchats</span>
-                  <span className="inline md:hidden">SC</span>
-                </TabsTrigger>
-                <TabsTrigger value="giftedMemberships" className="text-sm">
-                  <Users className="h-4 w-4 mr-2" />
-                  <span className="hidden md:inline">Gifted Members</span>
-                  <span className="inline md:hidden">Gifts</span>
-                </TabsTrigger>
-                <TabsTrigger value="membershipBreakdown" className="text-sm">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  <span className="hidden md:inline">Breakdown</span>
-                  <span className="inline md:hidden">Levels</span>
-                </TabsTrigger>
-              </TabsList>
+          <CardContent className="pt-6">
+            <LeaderboardTabs activeTab={tabValue} onTabChange={handleTabChange} />
 
-              <TabsContent value="superchats">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card className="bg-lolcow-darkgray border border-lolcow-lightgray">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg font-fredoka text-white">
-                        Superchat Rankings
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-[300px] w-full">
-                        <ChartContainer config={chartConfig}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData}>
-                              <XAxis 
-                                dataKey="name" 
-                                tick={{ fill: '#9CA3AF' }}
-                                tickFormatter={(value) => value.split(' ')[0]}
-                              />
-                              <YAxis 
-                                yAxisId="left"
-                                tick={{ fill: '#9CA3AF' }}
-                                tickFormatter={(value) => `$${value}`}
-                              />
-                              <Tooltip content={<ChartTooltipContent />} />
-                              <Legend />
-                              <Bar
-                                dataKey="amount"
-                                fill="#3b82f6"
-                                name="Amount ($)"
-                                yAxisId="left"
-                                radius={[4, 4, 0, 0]}
-                              />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </ChartContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <div className="overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-lolcow-lightgray/20">
-                          <TableHead className="text-gray-300">Rank</TableHead>
-                          <TableHead className="text-gray-300">Show</TableHead>
-                          <TableHead className="text-gray-300 text-right">Amount</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {superchatsData.map((item) => (
-                          <TableRow key={item.id} className="hover:bg-lolcow-lightgray/20">
-                            <TableCell className="font-medium">
-                              {item.rank === 1 && <span className="text-yellow-400">#1 🏆</span>}
-                              {item.rank === 2 && <span className="text-gray-300">#2 🥈</span>}
-                              {item.rank === 3 && <span className="text-amber-600">#3 🥉</span>}
-                              {item.rank > 3 && <span>#{item.rank}</span>}
-                            </TableCell>
-                            <TableCell className="font-medium text-lolcow-blue">
-                              {(() => {
-                                const { displayName, url } = formatShowDisplay(item.show);
-                                return url ? (
-                                  <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                                    {displayName}
-                                  </a>
-                                ) : displayName;
-                              })()}
-                            </TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.amount)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              </TabsContent>
+            {tabValue === "superchats" && (
+              <SuperchatsTab data={superchatsData} />
+            )}
 
-              <TabsContent value="giftedMemberships">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card className="bg-lolcow-darkgray border border-lolcow-lightgray">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg font-fredoka text-white">
-                        Gifted Membership Rankings
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-[300px] w-full">
-                        <ChartContainer config={chartConfig}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData}>
-                              <XAxis 
-                                dataKey="name" 
-                                tick={{ fill: '#9CA3AF' }}
-                                tickFormatter={(value) => value.split(' ')[0]}
-                              />
-                              <YAxis tick={{ fill: '#9CA3AF' }} />
-                              <Tooltip content={<ChartTooltipContent />} />
-                              <Legend />
-                              <Bar
-                                dataKey="gifts"
-                                fill={chartConfig.gifts.theme.light}
-                                name={chartConfig.gifts.label}
-                                radius={[4, 4, 0, 0]}
-                              />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </ChartContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <div className="overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-lolcow-lightgray/20">
-                          <TableHead className="text-gray-300">Rank</TableHead>
-                          <TableHead className="text-gray-300">Show</TableHead>
-                          <TableHead className="text-gray-300 text-right">Total Gifts</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {giftedMembershipsData.map((item) => (
-                          <TableRow key={item.id} className="hover:bg-lolcow-lightgray/20">
-                            <TableCell className="font-medium">
-                              {item.rank === 1 && <span className="text-yellow-400">#1 🏆</span>}
-                              {item.rank === 2 && <span className="text-gray-300">#2 🥈</span>}
-                              {item.rank === 3 && <span className="text-amber-600">#3 🥉</span>}
-                              {item.rank > 3 && <span>#{item.rank}</span>}
-                            </TableCell>
-                            <TableCell className="font-medium text-lolcow-blue">
-                              {(() => {
-                                const { displayName, url } = formatShowDisplay(item.show);
-                                return url ? (
-                                  <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                                    {displayName}
-                                  </a>
-                                ) : displayName;
-                              })()}
-                            </TableCell>
-                            <TableCell className="text-right">{item.amount}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              </TabsContent>
+            {tabValue === "gifted" && (
+              <GiftedMembersTab data={giftedMembershipsData} />
+            )}
 
-              <TabsContent value="membershipBreakdown">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card className="bg-lolcow-darkgray border border-lolcow-lightgray">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg font-fredoka text-white">
-                        Membership Level Breakdown
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-[300px] w-full">
-                        <ChartContainer config={chartConfig}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} layout="vertical">
-                              <XAxis type="number" tick={{ fill: '#9CA3AF' }} />
-                              <YAxis 
-                                dataKey="name" 
-                                type="category" 
-                                tick={{ fill: '#9CA3AF' }}
-                                width={80}
-                                tickFormatter={(value) => value.split(' ')[0]}
-                              />
-                              <Tooltip content={<ChartTooltipContent />} />
-                              <Legend />
-                              <Bar dataKey="crown" stackId="a" fill={chartConfig.crown.theme.light} name={chartConfig.crown.label} radius={[0, 4, 4, 0]} />
-                              <Bar dataKey="paypig" stackId="a" fill={chartConfig.paypig.theme.light} name={chartConfig.paypig.label} />
-                              <Bar dataKey="cashCow" stackId="a" fill={chartConfig.cashCow.theme.light} name={chartConfig.cashCow.label} radius={[4, 0, 0, 4]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </ChartContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <div className="overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-lolcow-lightgray/20">
-                          <TableHead className="text-gray-300">Rank</TableHead>
-                          <TableHead className="text-gray-300">Show</TableHead>
-                          <TableHead className="text-gray-300 text-right">👑</TableHead>
-                          <TableHead className="text-gray-300 text-right">🐖</TableHead>
-                          <TableHead className="text-gray-300 text-right">🐄</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {membershipsByLevelData.map((item) => (
-                          <TableRow key={item.id} className="hover:bg-lolcow-lightgray/20">
-                            <TableCell className="font-medium">
-                              {item.rank === 1 && <span className="text-yellow-400">#1 🏆</span>}
-                              {item.rank === 2 && <span className="text-gray-300">#2 🥈</span>}
-                              {item.rank === 3 && <span className="text-amber-600">#3 🥉</span>}
-                              {item.rank > 3 && <span>#{item.rank}</span>}
-                            </TableCell>
-                            <TableCell className="font-medium text-lolcow-blue">
-                              {(() => {
-                                const { displayName, url } = formatShowDisplay(item.show);
-                                return url ? (
-                                  <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                                    {displayName}
-                                  </a>
-                                ) : displayName;
-                              })()}
-                            </TableCell>
-                            <TableCell className="text-right">{item.crownCount}</TableCell>
-                            <TableCell className="text-right">{item.paypigCount}</TableCell>
-                            <TableCell className="text-right">{item.cashCowCount}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+            {tabValue === "breakdown" && (
+              <BreakdownTab data={membershipsByLevelData} />
+            )}
           </CardContent>
         </Card>
+
+        <div className="flex justify-center mb-8">
+          <div className="bg-slate-700/50 border border-slate-600/70 text-sm text-slate-300 px-4 py-2 rounded-full flex items-center">
+            <span className="h-2.5 w-2.5 bg-green-500 rounded-full mr-2.5"></span>
+            Data updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          </div>
+        </div>
       </main>
       <Footer />
     </div>
