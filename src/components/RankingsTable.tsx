@@ -29,9 +29,9 @@ const RankingsTable: React.FC<RankingsTableProps> = ({ data, columns, valueForma
       crown: "👑 Crown",
       pig: "🐷 Pay Pig",
       cow: "🐮 Cash Cow",
-      crownCount:  "👑 Crown",
-      paypigCount: "🐷 Pay Pig",
-      cashCowCount:"🐮 Cash Cow",
+      crownCount:  "👑",
+      paypigCount: "🐷",
+      cashCowCount:"🐮",
     };
     
     return labels[column] || column.charAt(0).toUpperCase() + column.slice(1);
@@ -50,16 +50,17 @@ const RankingsTable: React.FC<RankingsTableProps> = ({ data, columns, valueForma
 
   return (
     <div className="overflow-x-auto rounded-lg">
-      <table className="w-full min-w-[400px]">
+      <table className="w-full">
         <thead>
           <tr className="text-gray-400 border-b border-gray-700/50">
             {columns.map((column) => (
               <th 
                 key={column} 
                 className={cn(
-                  "py-3 px-3 text-left font-medium text-sm whitespace-nowrap",
+                  "py-3 px-3 text-left font-medium text-sm",
                   column === "rank" && "w-12 text-center",
-                  (column === "amount" || column === "gifts" || column === "crownCount" || column === "paypigCount" || column === "cashCowCount" || column === "crown" || column === "pig" || column === "cow") && "text-right"
+                  (column === "amount" || column === "gifts") && "text-right",
+                  (column === "crownCount" || column === "paypigCount" || column === "cashCowCount" || column === "crown" || column === "pig" || column === "cow") && "text-center"
                 )}
               >
                 {getHeaderLabel(column)}
@@ -80,15 +81,15 @@ const RankingsTable: React.FC<RankingsTableProps> = ({ data, columns, valueForma
                 <td 
                   key={`${row.id || index}-${column}`} 
                   className={cn(
-                    "py-3 px-3 whitespace-nowrap",
+                    "py-3 px-3",
                     column === "rank" && index < 3 ? "font-bold flex justify-center items-center h-full" : "",
                     column === "rank" && index >= 3 && "font-medium text-gray-500 text-center",
                     column === "show" && "text-white font-medium",
                     column === "amount" && "text-blue-400 font-medium text-right",
                     column === "gifts" && "text-green-400 font-medium text-right",
-                    (column === "crownCount" || column === "crown") && "text-yellow-400 font-medium text-right",
-                    (column === "paypigCount" || column === "pig") && "text-pink-400 font-medium text-right",
-                    (column === "cashCowCount" || column === "cow") && "text-sky-400 font-medium text-right"
+                    (column === "crownCount" || column === "crown") && "text-yellow-400 font-medium text-center",
+                    (column === "paypigCount" || column === "pig") && "text-pink-400 font-medium text-center",
+                    (column === "cashCowCount" || column === "cow") && "text-sky-400 font-medium text-center"
                   )}
                 >
                   {column === "rank" ? getRankDisplay(row[column], index) : formatValue(column, row[column])}

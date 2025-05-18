@@ -123,7 +123,7 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart 
               data={chartData} 
-              margin={{ top: 20, right: 30, left: 0, bottom: 25 }} // Adjusted left and bottom margins for YAxis labels and Legend
+              margin={{ top: 20, right: 30, left: 0, bottom: 40 }} // Increased bottom margin
             >
               <defs>
                 <linearGradient id="colorCrownBreakdown" x1="0" y1="0" x2="0" y2="1"> {/* Unique ID */}
@@ -159,8 +159,8 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
               />
               <Legend 
                 iconType="circle" 
-                wrapperStyle={{ paddingTop: 20 }} // Add padding to avoid overlap
-                formatter={(value) => <span className="text-gray-300 capitalize">{value}</span>} // Capitalize legend text
+                wrapperStyle={{ paddingTop: 20, display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }} 
+                formatter={(value) => <span className="text-gray-300 capitalize mx-2">{value}</span>} // Added mx-2 for spacing
               />
               {/* For a grouped bar chart, each Bar component needs a unique dataKey and no stackId */}
               {/* Or, if it's meant to be stacked, they all need the same stackId */}

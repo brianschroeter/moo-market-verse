@@ -10,7 +10,7 @@ interface LeaderboardTabsProps {
 const LeaderboardTabs = ({ activeTab, onTabChange }: LeaderboardTabsProps) => {
   return (
     <div className="relative border-b border-gray-700/50 mb-6">
-      <div className="flex overflow-x-auto scrollbar-none">
+      <div className="flex flex-col md:flex-row">
         <TabButton 
           isActive={activeTab === "superchats"}
           onClick={() => onTabChange("superchats")}

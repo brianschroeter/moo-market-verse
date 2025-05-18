@@ -258,7 +258,7 @@ const Leaderboard: React.FC = () => {
         <LeaderboardHeader />
 
         <Card className="bg-lolcow-black border border-lolcow-lightgray mb-8">
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 overflow-hidden">
             <LeaderboardTabs activeTab={tabValue} onTabChange={handleTabChange} />
 
             {tabValue === "superchats" && (

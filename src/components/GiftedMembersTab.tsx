@@ -93,7 +93,7 @@ const GiftedMembersTab: React.FC<GiftedMembersTabProps> = ({ data }) => {
           </h3>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-center md:justify-end gap-4">
           <div className="bg-gray-800/80 rounded-lg px-4 py-2 border border-gray-700/50 flex items-center">
             <Award className="h-4 w-4 text-yellow-500 mr-2" />
             <span className="text-gray-400 text-sm mr-2">Most gifted:</span>
@@ -112,7 +112,7 @@ const GiftedMembersTab: React.FC<GiftedMembersTabProps> = ({ data }) => {
         <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 min-h-[350px] shadow-lg">
           <div className="mb-4 text-lg font-medium text-gray-200">Top 5 Shows by Gifted Memberships</div>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}> {/* Adjusted bottom margin */}
+            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 30 }}> {/* Adjusted bottom margin */}
               <defs>
                 <linearGradient id="colorGiftsTab" x1="0" y1="0" x2="0" y2="1"> {/* Unique ID */}
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
@@ -126,6 +126,8 @@ const GiftedMembersTab: React.FC<GiftedMembersTabProps> = ({ data }) => {
                 axisLine={{ stroke: '#4b5563' }}
                 tickLine={false}
                 interval={0}
+                angle={-45}
+                textAnchor="end"
               />
               <YAxis 
                 tick={{ fill: '#9ca3af' }} 

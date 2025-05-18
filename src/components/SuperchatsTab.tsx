@@ -73,7 +73,7 @@ const SuperchatsTab: React.FC<SuperchatsTabProps> = ({ data }) => {
           </h3>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-center md:justify-end gap-4">
           <div className="bg-gray-800/80 rounded-lg px-4 py-2 border border-gray-700/50 flex items-center">
             <Trophy className="h-4 w-4 text-yellow-500 mr-2" />
             <span className="text-gray-400 text-sm mr-2">Top earner:</span>
@@ -92,7 +92,7 @@ const SuperchatsTab: React.FC<SuperchatsTabProps> = ({ data }) => {
         <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 min-h-[350px] shadow-lg">
           <div className="mb-4 text-lg font-medium text-gray-200">Top 5 Shows by Superchat Revenue</div>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 30 }}>
               <defs>
                 <linearGradient id="colorRevenueSuperchat" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#FF0000" stopOpacity={0.8}/>
@@ -102,10 +102,12 @@ const SuperchatsTab: React.FC<SuperchatsTabProps> = ({ data }) => {
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
               <XAxis 
                 dataKey="name"
-                tick={{ fill: '#9ca3af' }}
+                tick={{ fill: '#9ca3af' }} 
                 axisLine={{ stroke: '#4b5563' }}
                 tickLine={false}
                 interval={0}
+                angle={-45}
+                textAnchor="end"
               />
               <YAxis 
                 tick={{ fill: '#9ca3af' }} 
