@@ -11,7 +11,6 @@ verify_jwt = false
 [functions.delete-user]
 enabled = true
 verify_jwt = true
-import_map = "./functions/delete-user/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/delete-user/index.ts"
@@ -22,7 +21,6 @@ entrypoint = "./functions/delete-user/index.ts"
 [functions.newsletter-subscribe]
 enabled = true
 verify_jwt = true
-import_map = "./functions/newsletter-subscribe/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/newsletter-subscribe/index.ts"
@@ -33,7 +31,6 @@ entrypoint = "./functions/newsletter-subscribe/index.ts"
 [functions.upsert-device]
 enabled = true
 verify_jwt = true
-import_map = "./functions/upsert-device/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/upsert-device/index.ts"
@@ -48,3 +45,9 @@ secret = "K5MiDvCBKLOeXsKOPnGYwCBApF7Bb0lk" # Replace with your Discord app's Cl
 redirect_uri = "http://localhost:54321/auth/v1/callback"
 # Optional: specify scopes if needed, e.g., "identify email guilds"
 # additional_scopes = ["identify", "email"]
+
+[functions.order-linking]
+enabled = true
+verify_jwt = true # Assuming this is desired, like other functions
+import_map = "./functions/order-linking/import_map.json"
+entrypoint = "./functions/order-linking/index.ts"

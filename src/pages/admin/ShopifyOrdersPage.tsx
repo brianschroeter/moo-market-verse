@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import AdminLayout from '@/components/AdminLayout';
+import AdminLayout from '../../components/AdminLayout.tsx';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from "@/components/ui/input";
 import {
@@ -35,6 +35,7 @@ import {
   DialogFooter, // Added DialogFooter
 } from "@/components/ui/dialog"; // Added Dialog components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added Card components
+import { ShopifyPrintfulLinker } from '@/components/admin/linking/ShopifyPrintfulLinker'; // Added for order linking
 
 // --- Interfaces based on shopify-orders Edge Function ---
 interface TransformedShopifyOrder {
@@ -573,6 +574,12 @@ const ShopifyOrdersPage: React.FC = () => {
                   </Card>
                 </div>
               </div>
+{/* Shopify-Printful Linker Integration */}
+                {selectedOrderForDetail && (
+                  <div className="mt-6 mb-4"> {/* Add some margin for separation */}
+                    <ShopifyPrintfulLinker shopifyOrderId={selectedOrderForDetail.id} />
+                  </div>
+                )}
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDetailModalOpen(false)}>Close</Button>
               </DialogFooter>

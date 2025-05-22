@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
 // --- Shopify API Configuration ---
@@ -168,6 +169,8 @@ serve(async (req: Request) => {
     const shopDomain = Deno.env.get("SHOPIFY_SHOP_DOMAIN");
     const adminApiAccessToken = Deno.env.get("SHOPIFY_ADMIN_API_ACCESS_TOKEN");
     const apiVersion = Deno.env.get("SHOPIFY_API_VERSION") || DEFAULT_API_VERSION;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
     if (!shopDomain || !adminApiAccessToken) {
       console.error("Missing Shopify API credentials in environment variables.");
@@ -177,16 +180,32 @@ serve(async (req: Request) => {
       );
     }
 
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Missing Supabase credentials in environment variables.");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error: Supabase credentials missing." } as ErrorResponse),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
+    }
+    
+    const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: req.headers.get('Authorization')! } }
+    });
+
     const shopifyApiBaseUrl = `https://${shopDomain}/admin/api/${apiVersion}`;
 
     const url = new URL(req.url);
-    const orderId = url.searchParams.get("order_id"); // For fetching a single order
+    const orderIdFromUrl = url.searchParams.get("order_id"); // For fetching a single order via GET
 
     // --- Request Parameters ---
     let params: any = {};
+    let action: string | null = null;
+
     if (req.body) {
       try {
-        params = await req.json();
+        const body = await req.json();
+        params = body;
+        action = body.action || null; // Expect 'action' in the JSON body for POST requests
       } catch (e) {
         console.warn("Could not parse request body as JSON:", e);
         // Continue with empty params or handle error
@@ -197,13 +216,146 @@ serve(async (req: Request) => {
         params[key] = value;
       });
     }
+    // If action is in query params (e.g. for a GET request that triggers an action)
+    if (!action && url.searchParams.has("action")) {
+        action = url.searchParams.get("action");
+    }
+
 
     console.log("Edge Function received params:", JSON.stringify(params, null, 2));
-    
+    console.log("Action:", action);
+
+    // --- Action: sync-orders-to-db ---
+    if (action === "sync-orders-to-db") {
+      console.log("Executing sync-orders-to-db action...");
+      try {
+        // For initial sync, we'll attempt to fetch all orders by removing created_at_min.
+        // For regular, scheduled syncs, a created_at_min or updated_at_min based on
+        // the last sync time from the DB would be more appropriate.
+        const syncLimit = "250"; // Shopify's max limit per page
+
+        // Initial query parameters for the first page
+        let currentSyncQueryParams = new URLSearchParams();
+        currentSyncQueryParams.set("status", "any"); // Fetch orders of any status
+        // Omitting created_at_min to fetch all historical orders for initial sync
+        currentSyncQueryParams.set("limit", syncLimit);
+        currentSyncQueryParams.set("order", "created_at asc"); // Process oldest orders first
+
+        let allShopifyOrders: ShopifyOrder[] = [];
+        let nextPageInfo: string | null = null;
+        let pageCount = 0;
+        const maxPages = 50; // Increased safety break for pagination for initial full sync
+        let fetchedOrdersOnThisPage: ShopifyOrder[] = [];
+
+        do {
+          pageCount++;
+          
+          const syncShopifyUrl = `${shopifyApiBaseUrl}/orders.json?${currentSyncQueryParams.toString()}`;
+          console.log(`Fetching Shopify orders for sync (page ${pageCount}): ${syncShopifyUrl}`);
+
+          const syncShopifyResponse = await fetch(syncShopifyUrl, {
+            method: "GET",
+            headers: {
+              "X-Shopify-Access-Token": adminApiAccessToken,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!syncShopifyResponse.ok) {
+            const errorBody = await syncShopifyResponse.text();
+            console.error("Shopify API request failed during sync:", errorBody);
+            throw new Error(`Shopify API error during sync: ${syncShopifyResponse.statusText} - ${errorBody}`);
+          }
+
+          const syncResponseData = await syncShopifyResponse.json();
+          fetchedOrdersOnThisPage = syncResponseData.orders as ShopifyOrder[]; // Assign to new variable
+
+          if (fetchedOrdersOnThisPage && fetchedOrdersOnThisPage.length > 0) {
+            allShopifyOrders.push(...fetchedOrdersOnThisPage);
+          }
+          
+          // Handle pagination
+          const linkHeader = syncShopifyResponse.headers.get("Link");
+          nextPageInfo = null; // Reset for current page's determination
+          if (linkHeader) {
+            const links = linkHeader.split(", ");
+            const nextLink = links.find(link => link.includes('rel="next"'));
+            if (nextLink) {
+              const match = nextLink.match(/page_info=([^&>]+)/);
+              if (match && match[1]) {
+                nextPageInfo = match[1];
+              }
+            }
+          }
+          console.log(`Fetched ${fetchedOrdersOnThisPage.length} orders on page ${pageCount}. Next page_info: ${nextPageInfo}`);
+
+          if (nextPageInfo) {
+            // For the next iteration, Shopify expects only limit and page_info
+            currentSyncQueryParams = new URLSearchParams();
+            currentSyncQueryParams.set("limit", syncLimit);
+            currentSyncQueryParams.set("page_info", nextPageInfo);
+          }
+
+        } while (nextPageInfo && fetchedOrdersOnThisPage.length > 0 && pageCount < maxPages);
+        
+        console.log(`Total Shopify orders fetched for sync after ${pageCount} page(s): ${allShopifyOrders.length}`);
+
+        if (allShopifyOrders.length === 0) {
+          return new Response(
+            JSON.stringify({ message: "Sync complete. No orders found matching the criteria (or store is empty)." }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+          );
+        }
+        
+        let syncMessage = `Shopify orders synced to database successfully. Synced ${allShopifyOrders.length} orders.`;
+        if (pageCount >= maxPages && nextPageInfo) {
+            syncMessage = `Shopify orders synced to database. Synced ${allShopifyOrders.length} orders. Reached max page limit (${maxPages}); more orders might exist. Run sync again to continue.`;
+        }
+
+
+        const ordersToUpsert = allShopifyOrders.map(order => ({
+          id: order.id, // Shopify Order ID
+          shopify_order_number: order.name,
+          order_date: order.created_at,
+          customer_name: getCustomerName(order.customer),
+          customer_email: order.customer?.email || null,
+          total_amount: parseAmount(order.total_price),
+          currency: order.currency,
+          payment_status: order.financial_status,
+          fulfillment_status: order.fulfillment_status || null,
+          raw_shopify_data: order, // Store the full Shopify order object
+          last_shopify_sync_at: new Date().toISOString(),
+        }));
+
+        const { data: upsertedData, error: upsertError } = await supabase
+          .from("shopify_orders")
+          .upsert(ordersToUpsert, { onConflict: "id", ignoreDuplicates: false }); // Ensure `id` is the PK
+
+        if (upsertError) {
+          console.error("Error upserting Shopify orders to Supabase:", upsertError);
+          throw new Error(`Supabase upsert error: ${upsertError.message}`);
+        }
+
+        console.log("Successfully upserted Shopify orders to database:", upsertedData);
+        return new Response(
+          JSON.stringify({ message: syncMessage, synced_count: allShopifyOrders.length, details: upsertedData }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+
+      } catch (syncError) {
+        console.error("Error during sync-orders-to-db action:", syncError);
+        return new Response(
+          JSON.stringify({ error: "Failed to sync Shopify orders to database.", details: syncError.message } as ErrorResponse),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+    }
+
+    // --- Existing Logic for fetching orders (for admin page, etc.) ---
     // Pagination params (cursor-based preferred)
     const limit = parseInt(params.limit || "10", 10);
     const pageInfo = params.page_info; // Shopify's cursor for next/prev page
-    const direction = params.direction || "next"; // 'next' or 'previous'
+    // const direction = params.direction || "next"; // 'next' or 'previous' - Not directly used with page_info
 
     // Sorting params
     const sortBy = params.sort_by || "created_at"; // 'name', 'created_at', 'total_price'
@@ -218,21 +370,21 @@ serve(async (req: Request) => {
     // Search params
     const searchQuery = params.search_query; // Search by order number, customer name, or email
 
-
-    // --- Shopify API Call Logic ---
     let apiEndpoint = "";
     const queryParams = new URLSearchParams();
-    queryParams.set("limit", String(limit));
+    
+    // Determine if fetching single order or list
+    const requestedOrderIdFromBody = params.order_id;
+    const effectiveOrderId = requestedOrderIdFromBody || orderIdFromUrl;
 
-    if (params.order_id) { // Check params from request body first
+    if (effectiveOrderId) {
       // Fetch single order
-      apiEndpoint = `/orders/${params.order_id}.json`;
-    } else if (orderId) { // Fallback to URL param (though body is preferred for POST/PUT)
-      // Fetch single order
-      apiEndpoint = `/orders/${orderId}.json`;
+      apiEndpoint = `/orders/${effectiveOrderId}.json`;
+      // No need for limit, page_info, sort, or filter for single order by ID
     } else {
       // Fetch order list
       apiEndpoint = "/orders.json";
+      queryParams.set("limit", String(limit));
 
       if (pageInfo) {
         // If page_info (cursor) is present, only limit and page_info should be sent.
@@ -245,10 +397,12 @@ serve(async (req: Request) => {
 
         // Apply sorting
         let shopifySortKey = sortBy;
-        if (sortBy === 'name') shopifySortKey = 'name';
-        else if (sortBy === 'created_at') shopifySortKey = 'processed_at';
+        if (sortBy === 'name') shopifySortKey = 'name'; // Shopify uses 'name' for order number sorting
+        else if (sortBy === 'created_at') shopifySortKey = 'processed_at'; // 'processed_at' is often more relevant for creation sorting
         else if (sortBy === 'total_price') shopifySortKey = 'total_price';
-        queryParams.set("order", `${shopifySortKey} ${sortOrder.toUpperCase()}`);
+        // Shopify's 'order' param format is "field direction", e.g., "processed_at desc"
+        queryParams.set("order", `${shopifySortKey} ${sortOrder}`);
+
 
         // Apply filtering
         if (paymentStatus) queryParams.set("financial_status", paymentStatus);
@@ -258,17 +412,21 @@ serve(async (req: Request) => {
         
         // Apply search
         if (searchQuery) {
+          // Shopify's 'query' parameter is powerful for general search.
+          // If it's clearly an order number (e.g., starts with # or is all digits),
+          // using the 'name' parameter can be more direct.
           if (/^#?\d+$/.test(searchQuery)) {
-            queryParams.set("name", searchQuery.startsWith('#') ? searchQuery : searchQuery);
+             // Remove # if present, as Shopify's 'name' filter expects just the number.
+            queryParams.set("name", searchQuery.replace(/^#/, ''));
           } else {
-            queryParams.set("query", searchQuery);
+            queryParams.set("query", searchQuery); // General text search
           }
         }
       }
     }
 
     const fullShopifyUrl = `${shopifyApiBaseUrl}${apiEndpoint}?${queryParams.toString()}`;
-    console.log("Requesting Shopify URL:", fullShopifyUrl);
+    console.log("Requesting Shopify URL (non-sync):", fullShopifyUrl);
 
     const shopifyResponse = await fetch(fullShopifyUrl, {
       method: "GET",
@@ -280,8 +438,7 @@ serve(async (req: Request) => {
 
     if (!shopifyResponse.ok) {
       const errorBody = await shopifyResponse.text();
-      // Enhanced logging
-      console.error("Shopify API Request Failed!");
+      console.error("Shopify API Request Failed (non-sync)!");
       console.error("Requested URL:", fullShopifyUrl);
       console.error("Shopify Response Status:", shopifyResponse.status, shopifyResponse.statusText);
       console.error("Shopify Response Body:", errorBody);
@@ -290,8 +447,7 @@ serve(async (req: Request) => {
       try {
         errorJson = JSON.parse(errorBody);
       } catch (e) {
-        console.error("Could not parse Shopify error body as JSON:", e);
-        // Keep errorBody as the primary detail if JSON parsing fails
+        console.error("Could not parse Shopify error body as JSON (non-sync):", e);
         errorJson = { errors: errorBody, message: shopifyResponse.statusText };
       }
 
@@ -307,10 +463,8 @@ serve(async (req: Request) => {
     const responseData = await shopifyResponse.json();
     const responseHeaders = shopifyResponse.headers;
 
-    // --- Data Transformation & Response ---
-    const requestedOrderId = params.order_id || orderId;
-
-    if (requestedOrderId) {
+    // --- Data Transformation & Response (non-sync) ---
+    if (effectiveOrderId) {
       // Single order response
       const order = responseData.order as ShopifyOrder;
       if (!order) {
@@ -320,7 +474,7 @@ serve(async (req: Request) => {
         );
       }
       const transformedOrder: TransformedOrderDetail = {
-        id: order.id, // Added Shopify Order ID
+        id: order.id,
         shopify_order_number: order.name,
         order_date: order.created_at,
         customer_name: getCustomerName(order.customer),
@@ -330,20 +484,9 @@ serve(async (req: Request) => {
         payment_status: order.financial_status,
         fulfillment_status: order.fulfillment_status || null,
         line_items: order.line_items.map(item => {
-          // item.name usually is "Product Title - Variant Title"
-          // item.title is "Product Title"
-          // item.variant_title might be null or the actual variant title.
-          // For simplicity, if item.name is different from item.title, assume item.name contains variant info.
-          const productName = item.name || item.title; // Use item.name as it often includes variant
+          const productName = item.name || item.title;
           let variantTitle: string | null = null;
           if (item.variant_id && item.name !== item.title) {
-            // A simple heuristic: if name and title differ, the "extra" part in name might be the variant.
-            // Shopify's `variant_title` on the line item is the most reliable if present.
-            // The `ShopifyLineItem` interface doesn't explicitly list `variant_title` from the API response,
-            // but it might be there. If not, `item.name` is the best bet.
-            // For now, we'll assume item.name is descriptive enough.
-            // If `item.variant_title` was a direct field on the raw line item, we'd use it.
-            // Let's try to extract it if item.name is "Product Title - Variant"
             const parts = item.name.split(' - ');
             if (parts.length > 1 && item.name.startsWith(item.title)) {
               variantTitle = parts.slice(1).join(' - ');
@@ -351,7 +494,6 @@ serve(async (req: Request) => {
               variantTitle = item.name.replace(item.title, '').trim().replace(/^[\/\-]\s*/, '');
             }
           }
-
           return {
             product_name: productName,
             sku: item.sku || null,
@@ -362,15 +504,15 @@ serve(async (req: Request) => {
           };
         }),
         shipping_address: order.shipping_address ? {
-          ...order.shipping_address, // Spread RawShopifyAddress
-          province: order.shipping_address.province_code, // Map from province_code
-          country: order.shipping_address.country_code,   // Map from country_code
-        } as TransformedShopifyAddress : null, // Cast to TransformedShopifyAddress
+          ...order.shipping_address,
+          province: order.shipping_address.province_code,
+          country: order.shipping_address.country_code,
+        } as TransformedShopifyAddress : null,
         billing_address: order.billing_address ? {
-          ...order.billing_address, // Spread RawShopifyAddress
-          province: order.billing_address.province_code, // Map from province_code
-          country: order.billing_address.country_code,   // Map from country_code
-        } as TransformedShopifyAddress : null, // Cast to TransformedShopifyAddress
+          ...order.billing_address,
+          province: order.billing_address.province_code,
+          country: order.billing_address.country_code,
+        } as TransformedShopifyAddress : null,
         note: order.note,
         tags: order.tags ? order.tags.split(",").map(tag => tag.trim()).filter(tag => tag) : [],
       };
@@ -382,7 +524,7 @@ serve(async (req: Request) => {
       // Order list response
       const orders = responseData.orders as ShopifyOrder[];
       let transformedOrders: TransformedOrderListItem[] = orders.map(order => ({
-        id: order.id, // Added Shopify Order ID
+        id: order.id,
         shopify_order_number: order.name,
         order_date: order.created_at,
         customer_name: getCustomerName(order.customer),
@@ -393,9 +535,6 @@ serve(async (req: Request) => {
         fulfillment_status: order.fulfillment_status || null,
       }));
 
-      // Post-fetch search filtering is removed as Shopify's `query` or `name` parameter should handle it.
-      
-      // Pagination details from headers (Link header for cursor-based)
       const linkHeader = responseHeaders.get("Link");
       let nextCursor: string | null = null;
       let prevCursor: string | null = null;
@@ -419,8 +558,6 @@ serve(async (req: Request) => {
         has_next_page: !!nextCursor,
         has_previous_page: !!prevCursor,
         limit: limit,
-        // total_items and total_pages would require a separate count query or be part of Shopify's response if using offset.
-        // For cursor, these are less common.
       };
 
       return new Response(JSON.stringify({ data: transformedOrders, pagination: paginationInfo } as OrderListResponse), {
