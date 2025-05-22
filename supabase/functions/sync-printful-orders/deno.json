@@ -1,0 +1,28 @@
+{
+  "importMap": "./import_map.json",
+  "tasks": {
+    "start": "deno run --allow-all --watch index.ts",
+    "serve": "deno run --allow-net --allow-env --allow-read index.ts"
+  },
+  "lint": {
+    "files": {
+      "include": ["./*.ts"]
+    },
+    "rules": {
+      "tags": ["recommended"],
+      "include": [],
+      "exclude": ["no-explicit-any"]
+    }
+  },
+  "fmt": {
+    "files": {
+      "include": ["./*.ts"]
+    },
+    "options": {
+      "useTabs": false,
+      "lineWidth": 120,
+      "indentWidth": 2,
+      "singleQuote": false
+    }
+  }
+}

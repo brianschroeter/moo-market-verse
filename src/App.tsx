@@ -27,6 +27,7 @@ import AdminNewsletterSignups from "./pages/admin/newsletter-signups.tsx";
 import AdminGuildSearch from "./pages/admin/AdminGuildSearch";
 import AdminYouTubeScheduleChannels from "./pages/admin/AdminYouTubeScheduleChannels";
 import AdminYouTubeSchedulePage from "./pages/admin/AdminYouTubeSchedulePage";
+import AdminPrintfulOrders from "./pages/admin/AdminPrintfulOrders"; // Added import
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -130,6 +131,12 @@ const App = () => {
                 <Route path="/admin/youtube-schedule/slots" element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminYouTubeSchedulePage />
+                  </ProtectedRoute>
+                } />
+                {/* Printful Orders Admin Route */}
+                <Route path="/admin/printful-orders" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminPrintfulOrders />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<NotFound />} />
