@@ -28,6 +28,7 @@ import AdminGuildSearch from "./pages/admin/AdminGuildSearch";
 import AdminYouTubeScheduleChannels from "./pages/admin/AdminYouTubeScheduleChannels";
 import AdminYouTubeSchedulePage from "./pages/admin/AdminYouTubeSchedulePage";
 import AdminPrintfulOrders from "./pages/admin/AdminPrintfulOrders"; // Added import
+import ShopifyOrdersPage from "./pages/admin/ShopifyOrdersPage"; // Added import
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -137,6 +138,12 @@ const App = () => {
                 <Route path="/admin/printful-orders" element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminPrintfulOrders />
+                  </ProtectedRoute>
+                } />
+                {/* Shopify Orders Admin Route */}
+                <Route path="/admin/shopify-orders" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <ShopifyOrdersPage />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<NotFound />} />
