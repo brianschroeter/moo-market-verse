@@ -47,13 +47,36 @@ const CustomBreakdownTooltip = ({ active, payload, label }: any) => {
 };
 
 const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
+  const [processedDataForDisplay, setProcessedDataForDisplay] = useState<MembershipBreakdownItem[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [totals, setTotals] = useState({ crown: 0, pig: 0, cow: 0 });
 
+  const CROWN_VALUE = 500;
+  const PAYPIG_VALUE = 100;
+  const CASH_COW_VALUE = 5;
+
   useEffect(() => {
     if (data && data.length > 0) {
-      // Transform data for chart display - top 5 only for chart
-      const chartDataTransformed = data
+      // Calculate total value for each item and sort
+      const sortedData = [...data] // Create a shallow copy
+        .map(item => {
+          const totalValue = (item.crownCount * CROWN_VALUE) +
+                             (item.paypigCount * PAYPIG_VALUE) +
+                             (item.cashCowCount * CASH_COW_VALUE);
+          return { ...item, _totalValue: totalValue }; // Store temporary value for sorting
+        })
+        .sort((a, b) => b._totalValue - a._totalValue)
+        .map(item => {
+          // Remove the temporary _totalValue before setting state
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { _totalValue, ...rest } = item;
+          return rest as MembershipBreakdownItem;
+        });
+      
+      setProcessedDataForDisplay(sortedData);
+
+      // Transform data for chart display - top 5 from sorted data
+      const chartDataTransformed = sortedData
         .slice(0, 5)
         .map(item => ({
           name: item.show.startsWith("Lolcow") ? item.show.substring(6) : item.show,
@@ -64,13 +87,14 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
       
       setChartData(chartDataTransformed);
     
-      // Calculate totals for each membership type
+      // Calculate totals for each membership type (can use original data or sortedData, sums are the same)
       const totalCrown = data.reduce((acc, curr) => acc + curr.crownCount, 0);
       const totalPig = data.reduce((acc, curr) => acc + curr.paypigCount, 0);
       const totalCow = data.reduce((acc, curr) => acc + curr.cashCowCount, 0);
       
       setTotals({ crown: totalCrown, pig: totalPig, cow: totalCow });
     } else {
+      setProcessedDataForDisplay([]);
       setChartData([]);
       setTotals({ crown: 0, pig: 0, cow: 0 });
     }
@@ -174,8 +198,8 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
 
         <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 shadow-lg">
           <div className="mb-4 text-lg font-medium text-gray-200">Complete Breakdown</div>
-            <RankingsTable 
-              data={data}
+            <RankingsTable
+              data={processedDataForDisplay}
               columns={["rank", "show", "crownCount", "paypigCount", "cashCowCount"]}
               valueFormatter={{
                 crownCount: (value: number) => value.toLocaleString(),
