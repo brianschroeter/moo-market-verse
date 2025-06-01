@@ -5,11 +5,13 @@ import Footer from "../components/Footer";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
-import { FileText } from "lucide-react";
-import { fetchUserTickets, Ticket, TicketAttachment } from "@/services/ticket";
+import { FileText, UserCheck } from "lucide-react";
+import { Ticket, TicketAttachment } from "@/services/ticket";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { useImpersonationAwareData } from "@/hooks/useImpersonationAwareData";
+import { useAuth } from "@/context/AuthContext";
 
 const TicketStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   let bgColor = "bg-gray-500"; // Default/Closed
@@ -42,12 +44,14 @@ const TicketList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [attachments, setAttachments] = useState<{[key: string]: TicketAttachment[]}>({});
   const { toast } = useToast();
+  const { isAdmin, startImpersonation, isImpersonating } = useAuth();
+  const { getUserTickets } = useImpersonationAwareData();
 
   useEffect(() => {
     const loadTickets = async () => {
       try {
         setLoading(true);
-        const userTickets = await fetchUserTickets();
+        const userTickets = await getUserTickets();
         setTickets(userTickets);
       } catch (error) {
         console.error("Error fetching tickets:", error);
@@ -62,7 +66,7 @@ const TicketList: React.FC = () => {
     };
     
     loadTickets();
-  }, [toast]);
+  }, [getUserTickets, toast]);
 
   const formatDate = (dateString: string) => {
     try {
@@ -70,6 +74,11 @@ const TicketList: React.FC = () => {
     } catch (error) {
       return "Invalid date";
     }
+  };
+
+  const handleImpersonateTicketCreator = async (ticket: Ticket) => {
+    if (!isAdmin) return;
+    await startImpersonation(ticket.user_id);
   };
 
   return (
@@ -111,7 +120,12 @@ const TicketList: React.FC = () => {
                       </TableCell>
                       <TableCell><Skeleton className="h-5 w-16 rounded-full bg-lolcow-lightgray/50" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24 bg-lolcow-lightgray/30" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto bg-lolcow-lightgray/30" /></TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          {isAdmin && <Skeleton className="h-8 w-24 bg-lolcow-lightgray/30" />}
+                          <Skeleton className="h-8 w-16 bg-lolcow-lightgray/30" />
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
@@ -139,18 +153,32 @@ const TicketList: React.FC = () => {
                             {formatDate(ticket.updated_at)}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Link to={`/tickets/${ticket.id}`}>
-                              <Button variant="ghost" size="sm" className="text-lolcow-blue">
-                                View
-                              </Button>
-                            </Link>
+                            <div className="flex justify-end space-x-2">
+                              {isAdmin && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white"
+                                  onClick={() => handleImpersonateTicketCreator(ticket)}
+                                  title="View as ticket creator"
+                                >
+                                  <UserCheck className="h-4 w-4 mr-1" />
+                                  View as User
+                                </Button>
+                              )}
+                              <Link to={`/tickets/${ticket.id}`}>
+                                <Button variant="ghost" size="sm" className="text-lolcow-blue">
+                                  View
+                                </Button>
+                              </Link>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center py-8 text-gray-400">
-                          You haven't created any tickets yet.
+                          {isImpersonating ? "This user hasn't created any tickets yet." : "You haven't created any tickets yet."}
                         </TableCell>
                       </TableRow>
                     )}

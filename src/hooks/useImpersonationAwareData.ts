@@ -1,6 +1,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { YouTubeConnection, YouTubeMembership, Profile, StoredDiscordConnection } from "@/services/types/auth-types";
+import { Ticket } from "@/services/ticket/ticketTypes";
 
 /**
  * Custom hook that provides data fetching functions that respect impersonation state.
@@ -154,6 +155,27 @@ export const useImpersonationAwareData = () => {
     return data as StoredDiscordConnection[];
   };
 
+  const getUserTickets = async (): Promise<Ticket[]> => {
+    const userId = getEffectiveUserId();
+    
+    if (!userId) {
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error("Error fetching user tickets:", error);
+      return [];
+    }
+    
+    return data as Ticket[];
+  };
+
   return {
     getEffectiveUserId,
     getEffectiveSession,
@@ -162,6 +184,7 @@ export const useImpersonationAwareData = () => {
     getYouTubeConnections,
     getYouTubeMemberships,
     getDiscordConnections,
+    getUserTickets,
     isImpersonating
   };
 };
