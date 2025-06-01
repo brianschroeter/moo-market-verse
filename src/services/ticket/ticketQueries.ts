@@ -38,31 +38,38 @@ export async function fetchTicketById(ticketId: string): Promise<{
       throw ticketError;
     }
 
-    // Fetch messages for the ticket with author profiles
+    // Fetch messages for the ticket
     const { data: messages, error: messagesError } = await supabase
       .from('ticket_messages')
-      .select(`
-        id,
-        ticket_id,
-        content:body,
-        from_user,
-        created_at,
-        user_id,
-        author_profile:profiles(
-          id,
-          discord_id,
-          discord_username,
-          discord_avatar,
-          created_at,
-          updated_at
-        )
-      `)
+      .select('*')
       .eq('ticket_id', ticketId)
       .order('created_at', { ascending: true });
 
     if (messagesError) {
       throw messagesError;
     }
+
+    // Fetch profiles for all message authors
+    const authorUserIds = [...new Set((messages || []).map(msg => msg.user_id))];
+    let authorProfiles: Profile[] = [];
+    if (authorUserIds.length > 0) {
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', authorUserIds);
+      
+      if (profilesError) {
+        console.error('Error fetching author profiles:', profilesError);
+      } else {
+        authorProfiles = profilesData || [];
+      }
+    }
+
+    // Map profiles to messages
+    const messagesWithProfiles = (messages || []).map(message => ({
+      ...message,
+      profiles: authorProfiles.find(profile => profile.id === message.user_id) || null
+    }));
 
     // Fetch attachments for the ticket
     const { data: attachments, error: attachmentsError } = await supabase
@@ -93,7 +100,7 @@ export async function fetchTicketById(ticketId: string): Promise<{
 
     return {
       ticket,
-      messages: messages || [],
+      messages: messagesWithProfiles,
       attachments: attachments || [],
       userProfile
     };
