@@ -50,9 +50,11 @@ const ProfileHeader: React.FC = () => {
             {profile.discord_username}
           </h1>
           <p className="text-gray-400 mb-4">ID: {profile.discord_id}</p>
-          <p className="text-gray-300 mb-1">
-            <i className="fa-solid fa-envelope mr-2 text-lolcow-blue"></i> {user.email || "No email provided"}
-          </p>
+          {user.email && (
+            <p className="text-gray-300 mb-1">
+              <i className="fa-solid fa-envelope mr-2 text-lolcow-blue"></i> {user.email}
+            </p>
+          )}
           <p className="text-gray-300">
             <i className="fa-solid fa-calendar mr-2 text-lolcow-red"></i> Joined: {formatJoinDate()}
           </p>

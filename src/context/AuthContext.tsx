@@ -130,6 +130,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // ---- Initialize Auth State ----
     const initializeAuth = async () => {
+      // Check for persisted impersonation state first
+      const persistedImpersonation = localStorage.getItem('impersonation_state');
+      
       if (DEV_MODE) {
         console.warn("--- DEV MODE ACTIVE ---");
         console.log("Dev User ID:", DEV_USER_ID);
@@ -139,6 +142,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // NO AUTOMATIC ADMIN ACCESS - must be granted through proper role system
         setLoading(false);
         console.warn("--- DEV MODE: Auth initialization complete ---");
+        
+        // Restore impersonation state if it exists
+        if (persistedImpersonation) {
+          try {
+            const impersonationData = JSON.parse(persistedImpersonation);
+            setIsImpersonating(true);
+            setImpersonatedProfile(impersonationData.impersonatedProfile);
+            setImpersonatedUserEmail(impersonationData.impersonatedUserEmail);
+            setImpersonatedUserIsAdmin(impersonationData.impersonatedUserIsAdmin);
+            setOriginalProfile(mockProfile);
+            setOriginalUser(mockUser);
+            setOriginalSession(mockSession);
+            console.log("DEV MODE: Restored impersonation state");
+          } catch (error) {
+            console.error("DEV MODE: Error restoring impersonation state:", error);
+            localStorage.removeItem('impersonation_state');
+          }
+        }
         return;
       }
 
@@ -151,6 +172,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log("initializeAuth: Initial session:", initialSession ? initialSession.user?.id : 'null'); 
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
+        
+        // Restore impersonation state if it exists and user is authenticated
+        if (persistedImpersonation && initialSession?.user) {
+          try {
+            const impersonationData = JSON.parse(persistedImpersonation);
+            // Verify the persisted impersonation is still valid for this session
+            if (impersonationData.originalUserId === initialSession.user.id) {
+              setIsImpersonating(true);
+              setImpersonatedProfile(impersonationData.impersonatedProfile);
+              setImpersonatedUserEmail(impersonationData.impersonatedUserEmail);
+              setImpersonatedUserIsAdmin(impersonationData.impersonatedUserIsAdmin);
+              setOriginalUser(initialSession.user);
+              setOriginalSession(initialSession);
+              console.log("Restored impersonation state for user:", initialSession.user.id);
+            } else {
+              console.log("Impersonation state invalid for current user, clearing");
+              localStorage.removeItem('impersonation_state');
+            }
+          } catch (error) {
+            console.error("Error restoring impersonation state:", error);
+            localStorage.removeItem('impersonation_state');
+          }
+        }
       } catch (error) {
         console.error("Error during initializeAuth:", error);
       } finally {
@@ -211,6 +255,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setOriginalProfile(null);
           setOriginalUser(null);
           setOriginalSession(null);
+          localStorage.removeItem('impersonation_state');
           toast({
             title: "Signed Out",
             description: "You have been signed out.",
@@ -424,6 +469,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setImpersonatedUserIsAdmin(targetUserIsAdmin);
       setIsImpersonating(true);
 
+      // Persist impersonation state to localStorage
+      const impersonationData = {
+        impersonatedProfile: targetProfile,
+        impersonatedUserEmail: targetUserEmail,
+        impersonatedUserIsAdmin: targetUserIsAdmin,
+        originalUserId: user?.id,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('impersonation_state', JSON.stringify(impersonationData));
+
       toast({
         title: "Impersonation Started",
         description: `Now viewing as ${targetProfile.discord_username || 'User'}`,
@@ -456,6 +511,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setOriginalUser(null);
     setOriginalSession(null);
 
+    // Clear persisted impersonation state
+    localStorage.removeItem('impersonation_state');
+
     toast({
       title: "Impersonation Ended",
       description: `Stopped viewing as ${impersonatedUser}`,
@@ -479,6 +537,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setOriginalProfile(null);
         setOriginalUser(null);
         setOriginalSession(null);
+        localStorage.removeItem('impersonation_state');
         toast({ title: "Dev Sign Out", description: "Development session cleared."});
         navigate('/login');
         return;
@@ -504,11 +563,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return user;
     }
     
+    
     // Create a modified user object with the impersonated user's ID and email
     return {
       ...originalUser,
       id: impersonatedProfile.id,
-      email: impersonatedUserEmail || originalUser.email,
+      email: impersonatedUserEmail || null, // Don't fall back to admin email
       user_metadata: {
         ...originalUser.user_metadata,
         // Use impersonated user's Discord data if available
