@@ -584,7 +584,11 @@ const TicketDetail: React.FC = () => {
                     <img 
                       src={displayAvatar}
                       alt={displayName} 
-                      className="w-10 h-10 rounded-full"
+                      className={
+                        displayAvatar === "http://localhost:8080/lovable-uploads/logo.png" 
+                          ? "h-[60px] w-auto rounded-lg" 
+                          : "w-10 h-10 rounded-full"
+                      }
                     />
                     <div className="flex-1 relative">
                       <div className="flex justify-between items-center">
