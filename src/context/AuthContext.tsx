@@ -89,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isImpersonating, setIsImpersonating] = useState<boolean>(false);
   const [impersonatedProfile, setImpersonatedProfile] = useState<Profile | null>(null);
   const [impersonatedUserEmail, setImpersonatedUserEmail] = useState<string | null>(null);
+  const [impersonatedUserIsAdmin, setImpersonatedUserIsAdmin] = useState<boolean>(false);
   const [originalProfile, setOriginalProfile] = useState<Profile | null>(null);
   const [originalUser, setOriginalUser] = useState<User | null>(null);
   const [originalSession, setOriginalSession] = useState<Session | null>(null);
@@ -206,6 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsImpersonating(false);
           setImpersonatedProfile(null);
           setImpersonatedUserEmail(null);
+          setImpersonatedUserIsAdmin(false);
           setOriginalProfile(null);
           setOriginalUser(null);
           setOriginalSession(null);
@@ -395,6 +397,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Could not fetch target user email:', emailError);
       }
 
+      // Check if the target user has admin privileges
+      let targetUserIsAdmin = false;
+      try {
+        const { data: targetUserRoles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', targetUserId);
+        
+        if (!rolesError && targetUserRoles) {
+          targetUserIsAdmin = targetUserRoles.some(roleRecord => roleRecord.role === 'admin');
+        }
+      } catch (rolesError) {
+        console.warn('Could not fetch target user roles:', rolesError);
+      }
+
       // Store original data if not already impersonating
       if (!isImpersonating) {
         setOriginalProfile(profile);
@@ -404,6 +421,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setImpersonatedProfile(targetProfile);
       setImpersonatedUserEmail(targetUserEmail);
+      setImpersonatedUserIsAdmin(targetUserIsAdmin);
       setIsImpersonating(true);
 
       toast({
@@ -412,6 +430,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       console.log(`Admin ${profile?.discord_username} started impersonating user ${targetProfile.discord_username}`);
+      
+      // Redirect to profile page to show the impersonated user's perspective
+      navigate('/profile');
     } catch (error) {
       console.error('Error starting impersonation:', error);
       toast({
@@ -430,6 +451,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsImpersonating(false);
     setImpersonatedProfile(null);
     setImpersonatedUserEmail(null);
+    setImpersonatedUserIsAdmin(false);
     setOriginalProfile(null);
     setOriginalUser(null);
     setOriginalSession(null);
@@ -453,6 +475,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsImpersonating(false);
         setImpersonatedProfile(null);
         setImpersonatedUserEmail(null);
+        setImpersonatedUserIsAdmin(false);
         setOriginalProfile(null);
         setOriginalUser(null);
         setOriginalSession(null);
@@ -515,7 +538,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user: getEffectiveUser(),
     profile: isImpersonating ? impersonatedProfile : profile,
     loading,
-    isAdmin,
+    isAdmin: isImpersonating ? impersonatedUserIsAdmin : isAdmin,
     signOut,
     // Impersonation
     isImpersonating,
