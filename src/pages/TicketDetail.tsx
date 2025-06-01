@@ -542,13 +542,7 @@ const TicketDetail: React.FC = () => {
             {messages.map((message, index) => {
               // Use the actual author profile from the message
               const displayProfile = message.author_profile;
-              console.log('Message author debug:', {
-                messageId: message.id,
-                userId: message.user_id,
-                fromUser: message.from_user,
-                profile: displayProfile,
-                discordUsername: displayProfile?.discord_username
-              });
+              // Debug logging removed for cleaner console
               
               // Handle different cases for avatar and name
               let displayAvatar: string;
