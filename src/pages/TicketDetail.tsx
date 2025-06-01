@@ -540,31 +540,42 @@ const TicketDetail: React.FC = () => {
 
           <div className="space-y-6 mb-8">
             {messages.map((message, index) => {
-              // Use the actual author profile from the message
-              const displayProfile = message.author_profile;
-              // Debug logging removed for cleaner console
-              
               // Handle different cases for avatar and name
               let displayAvatar: string;
               let displayName: string;
-              
-              if (message.user_id && displayProfile) {
-                // User has ID and profile - show their Discord info
-                displayAvatar = displayProfile.discord_id && displayProfile.discord_avatar 
-                  ? `https://cdn.discordapp.com/avatars/${displayProfile.discord_id}/${displayProfile.discord_avatar}.png`
-                  : "http://localhost:8080/lovable-uploads/logo.png";
-                displayName = displayProfile.discord_username || `User ${message.user_id.slice(0, 8)}`;
-              } else if (message.user_id && !displayProfile) {
-                // User has ID but no profile found - show fallback
-                displayAvatar = "http://localhost:8080/lovable-uploads/logo.png";
-                displayName = message.from_user ? `User ${message.user_id.slice(0, 8)}` : `Support ${message.user_id.slice(0, 8)}`;
-              } else {
-                // No user_id (legacy records) - show generic Support Team
-                displayAvatar = "http://localhost:8080/lovable-uploads/logo.png";
-                displayName = message.from_user ? "User" : "Support Team";
-              }
-              
               const isFromTicketCreator = message.from_user;
+              
+              if (isFromTicketCreator) {
+                // This is a user message - use the ticket creator's profile
+                if (userProfile) {
+                  displayAvatar = userProfile.discord_id && userProfile.discord_avatar 
+                    ? `https://cdn.discordapp.com/avatars/${userProfile.discord_id}/${userProfile.discord_avatar}.png`
+                    : "http://localhost:8080/lovable-uploads/logo.png";
+                  displayName = userProfile.discord_username || "User";
+                } else {
+                  // Fallback if no user profile
+                  displayAvatar = "http://localhost:8080/lovable-uploads/logo.png";
+                  displayName = "User";
+                }
+              } else {
+                // This is a support message - use the message author's profile
+                const supportProfile = message.author_profile;
+                if (message.user_id && supportProfile) {
+                  // Support staff with profile
+                  displayAvatar = supportProfile.discord_id && supportProfile.discord_avatar 
+                    ? `https://cdn.discordapp.com/avatars/${supportProfile.discord_id}/${supportProfile.discord_avatar}.png`
+                    : "http://localhost:8080/lovable-uploads/logo.png";
+                  displayName = supportProfile.discord_username || `Support ${message.user_id.slice(0, 8)}`;
+                } else if (message.user_id && !supportProfile) {
+                  // Support staff with ID but no profile
+                  displayAvatar = "http://localhost:8080/lovable-uploads/logo.png";
+                  displayName = `Support ${message.user_id.slice(0, 8)}`;
+                } else {
+                  // Legacy support message without user_id
+                  displayAvatar = "http://localhost:8080/lovable-uploads/logo.png";
+                  displayName = "Support Team";
+                }
+              }
               
               // Get attachments for this message from the pre-processed map
               const messageAttachments = attachmentsByMessageId.get(message.id) || [];
