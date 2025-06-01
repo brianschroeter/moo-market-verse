@@ -33,7 +33,8 @@ export async function createTicket(subject: string, message: string, attachments
       .insert({
         ticket_id: ticketData.id,
         content: message,
-        from_user: true
+        from_user: true,
+        user_id: userId
       });
 
     if (messageError) {
@@ -54,13 +55,22 @@ export async function createTicket(subject: string, message: string, attachments
 
 export async function addReplyToTicket(ticketId: string, message: string, isSupportReply: boolean, attachments: File[] = []): Promise<void> {
   try {
+    // Get the current user
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      throw new Error('User not authenticated');
+    }
+    
+    const userId = session.user.id;
+
     // Create the reply message
     const { data: messageData, error: messageError } = await supabase
       .from('ticket_messages')
       .insert({
         ticket_id: ticketId,
         content: message,
-        from_user: !isSupportReply
+        from_user: !isSupportReply,
+        user_id: userId
       })
       .select()
       .single();
