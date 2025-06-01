@@ -4,7 +4,7 @@ import Footer from "../components/Footer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { FileUp, List, User, Edit3, Trash2, MessageSquare, Loader2 } from "lucide-react";
+import { FileUp, List, User, Edit3, Trash2, MessageSquare, Loader2, UserCheck } from "lucide-react";
 import { 
   Ticket, 
   TicketMessage, 
@@ -33,7 +33,7 @@ const getAttachmentUrl = (filePath: string): string => {
 const TicketDetail: React.FC = () => {
   const { ticketId } = useParams<{ ticketId: string }>();
   const { toast } = useToast();
-  const { user, isAdmin, profile: currentUserProfile } = useAuth();
+  const { user, isAdmin, profile: currentUserProfile, startImpersonation } = useAuth();
   const navigate = useNavigate();
   const [ticketData, setTicketData] = useState<{
     ticket: Ticket;
@@ -514,13 +514,22 @@ const TicketDetail: React.FC = () => {
                    <span className="text-gray-400">User Profile ID: </span>
                    <span className="text-white font-mono">{userProfile.id}</span>
                  </div>
-                 <div className="md:col-span-2 mt-2">
+                 <div className="md:col-span-2 mt-2 flex flex-wrap gap-4">
                    <Button
                      variant="link"
                      className="p-0 h-auto text-lolcow-blue hover:text-lolcow-yellow"
                      onClick={() => navigate(`/admin/users?userId=${userProfile?.id}`)}
                    >
                      View Full Profile (Connections, Guilds, etc.)
+                   </Button>
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white"
+                     onClick={() => startImpersonation(userProfile.id)}
+                   >
+                     <UserCheck className="h-4 w-4 mr-1" />
+                     View as this User
                    </Button>
                  </div>
                </div>

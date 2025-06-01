@@ -70,6 +70,11 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   signOut: () => Promise<void>;
+  // Impersonation
+  isImpersonating: boolean;
+  impersonatedProfile: Profile | null;
+  startImpersonation: (targetUserId: string) => Promise<void>;
+  stopImpersonation: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -80,6 +85,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  // Impersonation state
+  const [isImpersonating, setIsImpersonating] = useState<boolean>(false);
+  const [impersonatedProfile, setImpersonatedProfile] = useState<Profile | null>(null);
+  const [originalProfile, setOriginalProfile] = useState<Profile | null>(null);
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -190,6 +199,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
           setIsAdmin(false);
+          // Clear impersonation state on sign out
+          setIsImpersonating(false);
+          setImpersonatedProfile(null);
+          setOriginalProfile(null);
           toast({
             title: "Signed Out",
             description: "You have been signed out.",
@@ -340,6 +353,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const startImpersonation = async (targetUserId: string) => {
+    if (!isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "Only admins can impersonate users.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Fetch the target user's profile
+      const { data: targetProfile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', targetUserId)
+        .single();
+
+      if (error || !targetProfile) {
+        throw new Error('User not found');
+      }
+
+      // Store original profile if not already impersonating
+      if (!isImpersonating) {
+        setOriginalProfile(profile);
+      }
+
+      setImpersonatedProfile(targetProfile);
+      setIsImpersonating(true);
+
+      toast({
+        title: "Impersonation Started",
+        description: `Now viewing as ${targetProfile.discord_username || 'User'}`,
+      });
+
+      console.log(`Admin ${profile?.discord_username} started impersonating user ${targetProfile.discord_username}`);
+    } catch (error) {
+      console.error('Error starting impersonation:', error);
+      toast({
+        title: "Impersonation Failed",
+        description: error instanceof Error ? error.message : "Could not start impersonation.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopImpersonation = () => {
+    if (!isImpersonating) return;
+
+    const impersonatedUser = impersonatedProfile?.discord_username || 'User';
+    
+    setIsImpersonating(false);
+    setImpersonatedProfile(null);
+    setOriginalProfile(null);
+
+    toast({
+      title: "Impersonation Ended",
+      description: `Stopped viewing as ${impersonatedUser}`,
+    });
+
+    console.log('Impersonation ended, returned to original admin view');
+  };
+
   const signOut = async () => {
     if (DEV_MODE) {
         console.warn("--- DEV MODE: Signing out ---");
@@ -347,6 +423,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setProfile(null);
         setIsAdmin(false);
+        // Clear impersonation state
+        setIsImpersonating(false);
+        setImpersonatedProfile(null);
+        setOriginalProfile(null);
         toast({ title: "Dev Sign Out", description: "Development session cleared."});
         navigate('/login');
         return;
@@ -369,10 +449,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const contextValue: AuthContextType = {
     session,
     user,
-    profile,
+    profile: isImpersonating ? impersonatedProfile : profile,
     loading,
     isAdmin,
     signOut,
+    // Impersonation
+    isImpersonating,
+    impersonatedProfile,
+    startImpersonation,
+    stopImpersonation,
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

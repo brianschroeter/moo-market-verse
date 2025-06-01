@@ -2,11 +2,12 @@ import React, { useState, useEffect, ReactNode } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon, Smartphone, PlaySquare } from "lucide-react";
+import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon, Smartphone, PlaySquare, UserCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { assignRole, removeRole } from "@/services/roleService";
+import { useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { useSearchParams } from 'react-router-dom';
 import { ConfirmationDialog } from '@/components/common/ConfirmationDialog';
@@ -326,6 +327,7 @@ const AdminUsers: React.FC = (): ReactNode => {
   const [loading, setLoading] = useState(true);
   const [isAddingConnection, setIsAddingConnection] = useState(false);
   const { toast } = useToast();
+  const { startImpersonation } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -775,11 +777,8 @@ const AdminUsers: React.FC = (): ReactNode => {
     setShowConnectionDialog(true);
   };
 
-  const handleLoginAs = (user: UserData) => {
-    toast({
-      title: "Admin Action",
-      description: `Logged in as ${user.username}`,
-    });
+  const handleImpersonateUser = async (user: UserData) => {
+    await startImpersonation(user.id);
   };
 
   const handleAddConnection = async () => {
@@ -1367,6 +1366,16 @@ const AdminUsers: React.FC = (): ReactNode => {
                   <TableCell className="text-gray-300">{user.joined}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end space-x-2 items-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white"
+                        onClick={() => handleImpersonateUser(user)}
+                        title="Impersonate User"
+                      >
+                        <UserCheck className="h-4 w-4 mr-1" />
+                        Impersonate
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"

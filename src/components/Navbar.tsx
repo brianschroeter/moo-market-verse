@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { getMenuItems, MenuItem } from "@/services/menu/menu.service";
+import ImpersonationBanner from "./ImpersonationBanner";
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -57,7 +58,9 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="bg-lolcow-black border-b border-lolcow-lightgray sticky top-0 z-50">
+    <>
+      <ImpersonationBanner />
+      <nav className="bg-lolcow-black border-b border-lolcow-lightgray sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo and brand name */}
@@ -167,6 +170,7 @@ const Navbar: React.FC = () => {
         </div>
       )}
     </nav>
+    </>
   );
 };
 
