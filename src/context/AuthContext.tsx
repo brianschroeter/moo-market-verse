@@ -8,58 +8,60 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { getUserRoles } from "@/services/roleService";
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 
-// --- START DEV MODE SPOOFING DATA ---
-const DEV_MODE = import.meta.env.VITE_DEVMODE === 'true';
-const SPOOFED_USER_ID = 'f5af7e3e-168c-425f-8243-dd2639e41e04';
-const SPOOFED_DISCORD_ID = '213004748662636554';
+// Development mode configuration - SECURE
+// Only enables dev features when explicitly set AND in development environment
+const DEV_MODE = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
+
+// Development user data - NO HARDCODED ADMIN ACCESS
+const DEV_USER_ID = 'dev-user-id';
+const DEV_DISCORD_ID = 'dev-discord-id';
 
 const mockUser: User | null = DEV_MODE ? {
-  id: SPOOFED_USER_ID,
+  id: DEV_USER_ID,
   app_metadata: { provider: 'discord', providers: ['discord'] },
   user_metadata: {
-    avatar_url: 'https://cdn.discordapp.com/avatars/213004748662636554/a_mock_avatar.png', // Placeholder
-    email: 'dev@example.com',
+    avatar_url: 'https://via.placeholder.com/128',
+    email: 'dev@localhost',
     email_verified: true,
     full_name: 'Dev User',
     iss: 'https://discord.com',
     name: 'Dev User',
-    picture: 'https://cdn.discordapp.com/avatars/213004748662636554/a_mock_avatar.png', // Placeholder
-    provider_id: SPOOFED_DISCORD_ID,
-    sub: SPOOFED_DISCORD_ID,
+    picture: 'https://via.placeholder.com/128',
+    provider_id: DEV_DISCORD_ID,
+    sub: DEV_DISCORD_ID,
   },
   aud: 'authenticated',
   confirmation_sent_at: new Date().toISOString(),
   confirmed_at: new Date().toISOString(),
   created_at: new Date().toISOString(),
-  email: 'dev@example.com',
+  email: 'dev@localhost',
   email_confirmed_at: new Date().toISOString(),
   last_sign_in_at: new Date().toISOString(),
   phone: '',
   role: 'authenticated',
   updated_at: new Date().toISOString(),
-  identities: [], // simplified
+  identities: [],
 } : null;
 
 const mockSession: Session | null = DEV_MODE && mockUser ? {
-  access_token: 'mock-access-token',
-  refresh_token: 'mock-refresh-token',
+  access_token: 'dev-access-token',
+  refresh_token: 'dev-refresh-token',
   token_type: 'bearer',
   expires_in: 3600,
   expires_at: Math.floor(Date.now() / 1000) + 3600,
   user: mockUser,
-  provider_token: 'mock-discord-provider-token', // Added for discord sync
-  provider_refresh_token: 'mock-discord-provider-refresh-token', // Optional
+  provider_token: undefined,
+  provider_refresh_token: undefined,
 } : null;
 
 const mockProfile: Profile | null = DEV_MODE ? {
-  id: SPOOFED_USER_ID,
-  discord_id: SPOOFED_DISCORD_ID,
-  discord_username: 'DevUser#0000', // Placeholder
-  discord_avatar: 'a_mock_avatar', // Placeholder
+  id: DEV_USER_ID,
+  discord_id: DEV_DISCORD_ID,
+  discord_username: 'DevUser#0000',
+  discord_avatar: 'placeholder',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 } : null;
-// --- END DEV MODE SPOOFING DATA ---
 
 interface AuthContextType {
   session: Session | null;
@@ -116,22 +118,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // ---- Initialize Auth State ----
     const initializeAuth = async () => {
       if (DEV_MODE) {
-        console.warn("--- DEV MODE ACTIVE: Spoofing user ---");
-        console.log("Spoofed User ID:", SPOOFED_USER_ID);
-        console.log("Spoofed Discord ID:", SPOOFED_DISCORD_ID);
+        console.warn("--- DEV MODE ACTIVE ---");
+        console.log("Dev User ID:", DEV_USER_ID);
         setSession(mockSession);
         setUser(mockUser);
         setProfile(mockProfile);
-        setIsAdmin(true); // Assume admin in dev mode for convenience
+        // NO AUTOMATIC ADMIN ACCESS - must be granted through proper role system
         setLoading(false);
-        // Optionally trigger post-auth actions if needed for dev setup
-        // if (mockSession && mockUser) {
-        //   await checkAdminRole(); // Will use mock data or need adjustment
-        //   await syncDiscordConnections(mockSession); // Might fail if token is invalid
-        //   await upsertDeviceFingerprint();
-        // }
-        console.warn("--- DEV MODE: Spoofing complete ---");
-        return; // Skip real auth initialization
+        console.warn("--- DEV MODE: Auth initialization complete ---");
+        return;
       }
 
       console.log("initializeAuth: Getting initial session state...");
@@ -156,14 +151,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // ---- Auth State Change Listener ----
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        // Prevent auth listener from overriding spoofed data in dev mode
         if (DEV_MODE) {
            console.log("[onAuthStateChange] Dev mode active, ignoring real auth state changes.");
-           // Ensure spoofed state persists if something tries to clear it
            if (!user && mockUser) setUser(mockUser);
            if (!session && mockSession) setSession(mockSession);
            if (!profile && mockProfile) setProfile(mockProfile);
-           if (!isAdmin) setIsAdmin(true); // Re-assert admin if cleared
            return;
         }
 
@@ -220,10 +212,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []); // Ensures this effect runs only once on mount and cleans up on unmount
 
   const checkAdminRole = async () => {
-    // Use spoofed admin status in dev mode
     if (DEV_MODE) {
-        console.log("Admin role check skipped in dev mode (assumed admin).");
-        setIsAdmin(true); // Ensure admin state is set if called directly
+        console.log("Checking admin role for dev user through proper role system...");
+        // Even in dev mode, use proper role checking (with mock user ID)
+        try {
+          const roles = await getUserRoles();
+          const isAdminUser = roles.some(role => role.role === 'admin');
+          console.log("Dev mode admin role check result:", isAdminUser);
+          setIsAdmin(isAdminUser);
+        } catch (error) {
+          console.error("Dev mode admin role check failed:", error);
+          setIsAdmin(false);
+        }
         return;
     }
     if (adminCheckInProgress.current) {
@@ -341,18 +341,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    // Handle sign out differently in dev mode (e.g., reload or clear mock state)
     if (DEV_MODE) {
-        console.warn("--- DEV MODE: 'Signing out' - Reloading page to clear state ---");
-        // Option 1: Simply reload the page to reset to initial spoofed state
-        window.location.reload();
-
-        // Option 2: Clear state (less effective as listener might re-spoof)
-        // setSession(null);
-        // setUser(null);
-        // setProfile(null);
-        // setIsAdmin(false);
-        // toast({ title: "Dev Sign Out", description: "Cleared mock session. Reload if needed."});
+        console.warn("--- DEV MODE: Signing out ---");
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setIsAdmin(false);
+        toast({ title: "Dev Sign Out", description: "Development session cleared."});
+        navigate('/login');
         return;
     }
 

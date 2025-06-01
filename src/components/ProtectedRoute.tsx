@@ -32,15 +32,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin 
 
   // If route requires admin privileges but user is not an admin
   if (requireAdmin && !isAdmin) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="lolcow-card p-8 text-center">
-          <h2 className="text-2xl font-fredoka text-white mb-4">Access Denied</h2>
-          <p className="text-gray-300 mb-4">You don't have permission to access this page. Admin privileges are required.</p>
-          <Navigate to="/" replace />
-        </div>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   // If authenticated and has required permissions, render the children components

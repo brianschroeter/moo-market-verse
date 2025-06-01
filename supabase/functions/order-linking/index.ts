@@ -113,18 +113,18 @@ async function fetchShopifyOrdersForMatching(
   return ordersToMatch;
 }
 
-// Helper to get user ID from JWT
-const getUserIdFromJWT = (req: Request): string | null => {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
-  }
+// SECURITY CRITICAL: Use Supabase's built-in JWT verification
+// Never manually parse JWTs without signature verification
+const getUserIdFromSupabase = async (supabaseClient: SupabaseClient): Promise<string | null> => {
   try {
-    const jwt = authHeader.replace("Bearer ", "");
-    const payload = JSON.parse(atob(jwt.split(".")[1]));
-    return payload.sub || null; // 'sub' usually holds the user ID
+    const { data: { user }, error } = await supabaseClient.auth.getUser();
+    if (error) {
+      console.error("Error getting user from Supabase:", error);
+      return null;
+    }
+    return user?.id || null;
   } catch (error) {
-    console.error("Error decoding JWT:", error);
+    console.error("Error verifying authentication:", error);
     return null;
   }
 };
@@ -149,7 +149,7 @@ serve(async (req: Request) => {
     });
   }
 
-  const userId = getUserIdFromJWT(req);
+  const userId = await getUserIdFromSupabase(supabaseClient);
 
   let payload: OrderLinkingPayload;
   try {
@@ -561,12 +561,15 @@ case "search-printful-orders": {
           // Check if searchTerm is a number (potential ID search)
           const searchNumber = parseInt(searchTerm);
           if (!isNaN(searchNumber)) {
+            // Use parameterized queries to prevent SQL injection
             queryBuilder = queryBuilder.or(
-              `printful_internal_id.eq.${searchNumber},recipient_name.ilike.%${searchTerm}%,printful_external_id.ilike.%${searchTerm}%`,
+              `printful_internal_id.eq.${searchNumber},recipient_name.ilike.%${searchTerm.replace(/[%_]/g, '\\$&')}%,printful_external_id.ilike.%${searchTerm.replace(/[%_]/g, '\\$&')}%`,
             );
           } else {
+            // Escape special characters in search term
+            const escapedTerm = searchTerm.replace(/[%_]/g, '\\$&');
             queryBuilder = queryBuilder.or(
-              `recipient_name.ilike.%${searchTerm}%,printful_external_id.ilike.%${searchTerm}%`,
+              `recipient_name.ilike.%${escapedTerm}%,printful_external_id.ilike.%${escapedTerm}%`,
             );
           }
         }

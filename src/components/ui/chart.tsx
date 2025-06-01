@@ -74,28 +74,40 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
-      }}
-    />
-  )
+  // Validate and sanitize colors to prevent CSS injection
+  const isValidColor = (color: string): boolean => {
+    // Allow hex colors, rgb/rgba, hsl/hsla, and named colors
+    const colorRegex = /^(#[0-9a-fA-F]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)|rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[0-9.]+\s*\)|hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\)|hsla\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*,\s*[0-9.]+\s*\)|[a-zA-Z]+)$/
+    return colorRegex.test(color.trim())
+  }
+
+  const generateCSS = (): string => {
+    return Object.entries(THEMES)
+      .map(([theme, prefix]) => {
+        const cssVariables = colorConfig
+          .map(([key, itemConfig]) => {
+            const color =
+              itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+              itemConfig.color
+            
+            if (!color || !isValidColor(color)) {
+              console.warn(`Invalid color value detected for key "${key}": ${color}`)
+              return null
+            }
+            
+            // Sanitize key to prevent CSS injection
+            const sanitizedKey = key.replace(/[^a-zA-Z0-9-_]/g, '')
+            return `  --color-${sanitizedKey}: ${color};`
+          })
+          .filter(Boolean)
+          .join("\n")
+
+        return `${prefix} [data-chart="${id}"] {\n${cssVariables}\n}`
+      })
+      .join("\n")
+  }
+
+  return <style>{generateCSS()}</style>
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip
