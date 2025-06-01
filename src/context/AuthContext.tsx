@@ -88,6 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Impersonation state
   const [isImpersonating, setIsImpersonating] = useState<boolean>(false);
   const [impersonatedProfile, setImpersonatedProfile] = useState<Profile | null>(null);
+  const [impersonatedUserEmail, setImpersonatedUserEmail] = useState<string | null>(null);
   const [originalProfile, setOriginalProfile] = useState<Profile | null>(null);
   const [originalUser, setOriginalUser] = useState<User | null>(null);
   const [originalSession, setOriginalSession] = useState<Session | null>(null);
@@ -204,6 +205,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Clear impersonation state on sign out
           setIsImpersonating(false);
           setImpersonatedProfile(null);
+          setImpersonatedUserEmail(null);
           setOriginalProfile(null);
           setOriginalUser(null);
           setOriginalSession(null);
@@ -379,6 +381,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('User not found');
       }
 
+      // Fetch the target user's email from auth.users (admin only)
+      let targetUserEmail = null;
+      try {
+        const { data: allUsers, error: emailError } = await supabase.rpc('get_all_users');
+        if (!emailError && allUsers) {
+          const targetUser = allUsers.find((u: any) => u.id === targetUserId);
+          if (targetUser) {
+            targetUserEmail = targetUser.email;
+          }
+        }
+      } catch (emailError) {
+        console.warn('Could not fetch target user email:', emailError);
+      }
+
       // Store original data if not already impersonating
       if (!isImpersonating) {
         setOriginalProfile(profile);
@@ -387,6 +403,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setImpersonatedProfile(targetProfile);
+      setImpersonatedUserEmail(targetUserEmail);
       setIsImpersonating(true);
 
       toast({
@@ -412,6 +429,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setIsImpersonating(false);
     setImpersonatedProfile(null);
+    setImpersonatedUserEmail(null);
     setOriginalProfile(null);
     setOriginalUser(null);
     setOriginalSession(null);
@@ -434,6 +452,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Clear impersonation state
         setIsImpersonating(false);
         setImpersonatedProfile(null);
+        setImpersonatedUserEmail(null);
         setOriginalProfile(null);
         setOriginalUser(null);
         setOriginalSession(null);
@@ -462,10 +481,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return user;
     }
     
-    // Create a modified user object with the impersonated user's ID
+    // Create a modified user object with the impersonated user's ID and email
     return {
       ...originalUser,
       id: impersonatedProfile.id,
+      email: impersonatedUserEmail || originalUser.email,
       user_metadata: {
         ...originalUser.user_metadata,
         // Use impersonated user's Discord data if available
