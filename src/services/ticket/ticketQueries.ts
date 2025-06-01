@@ -38,10 +38,25 @@ export async function fetchTicketById(ticketId: string): Promise<{
       throw ticketError;
     }
 
-    // Fetch messages for the ticket
+    // Fetch messages for the ticket with author profiles
     const { data: messages, error: messagesError } = await supabase
       .from('ticket_messages')
-      .select('*')
+      .select(`
+        id,
+        ticket_id,
+        content:body,
+        from_user,
+        created_at,
+        user_id,
+        author_profile:profiles(
+          id,
+          discord_id,
+          discord_username,
+          discord_avatar,
+          created_at,
+          updated_at
+        )
+      `)
       .eq('ticket_id', ticketId)
       .order('created_at', { ascending: true });
 

@@ -538,15 +538,13 @@ const TicketDetail: React.FC = () => {
 
           <div className="space-y-6 mb-8">
             {messages.map((message, index) => {
-              // Determine profile and avatar based on who sent the message
+              // Use the actual author profile from the message
+              const displayProfile = message.author_profile;
+              const displayAvatar = displayProfile?.discord_id && displayProfile?.discord_avatar 
+                ? `https://cdn.discordapp.com/avatars/${displayProfile.discord_id}/${displayProfile.discord_avatar}.png`
+                : "https://via.placeholder.com/40";
+              const displayName = displayProfile?.discord_username || (message.from_user ? "User" : "Support Staff");
               const isFromTicketCreator = message.from_user;
-              const displayProfile = isFromTicketCreator ? userProfile : currentUserProfile;
-              const displayAvatar = isFromTicketCreator 
-                ? ticketCreatorAvatar 
-                : (displayProfile?.discord_id && displayProfile?.discord_avatar 
-                    ? `https://cdn.discordapp.com/avatars/${displayProfile.discord_id}/${displayProfile.discord_avatar}.png`
-                    : "https://via.placeholder.com/40"); // Fallback for admin avatar if needed
-              const displayName = displayProfile?.discord_username || (isFromTicketCreator ? "User" : "Support Staff");
               
               // Get attachments for this message from the pre-processed map
               const messageAttachments = attachmentsByMessageId.get(message.id) || [];

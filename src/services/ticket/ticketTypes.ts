@@ -14,6 +14,8 @@ export interface TicketMessage {
   content: string;
   from_user: boolean;
   created_at: string;
+  user_id: string;
+  author_profile?: Profile | null;
 }
 
 export interface TicketAttachment {
