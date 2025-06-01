@@ -12,16 +12,16 @@ export const useImpersonationAwareData = () => {
   const { user, session, isImpersonating } = useAuth();
 
   // Get the effective user ID (impersonated user if impersonating, otherwise current user)
-  const getEffectiveUserId = (): string | null => {
+  const getEffectiveUserId = useCallback((): string | null => {
     return user?.id || null;
-  };
+  }, [user?.id]);
 
-  const getEffectiveSession = () => {
+  const getEffectiveSession = useCallback(() => {
     return session;
-  };
+  }, [session]);
 
   const getProfile = useCallback(async (): Promise<Profile | null> => {
-    const userId = getEffectiveUserId();
+    const userId = user?.id;
     
     if (!userId) {
       return null;
@@ -39,10 +39,10 @@ export const useImpersonationAwareData = () => {
     }
     
     return data as Profile;
-  }, [getEffectiveUserId]);
+  }, [user?.id]);
 
-  const updateProfile = async (profileData: Partial<Profile>): Promise<Profile | null> => {
-    const userId = getEffectiveUserId();
+  const updateProfile = useCallback(async (profileData: Partial<Profile>): Promise<Profile | null> => {
+    const userId = user?.id;
     
     if (!userId) {
       return null;
@@ -61,10 +61,10 @@ export const useImpersonationAwareData = () => {
     }
     
     return data as Profile;
-  };
+  }, [user?.id]);
 
   const getYouTubeConnections = useCallback(async (): Promise<YouTubeConnection[]> => {
-    const userId = getEffectiveUserId();
+    const userId = user?.id;
     
     if (!userId) {
       return [];
@@ -81,10 +81,10 @@ export const useImpersonationAwareData = () => {
     }
     
     return data as YouTubeConnection[];
-  }, [getEffectiveUserId]);
+  }, [user?.id]);
 
   const getYouTubeMemberships = useCallback(async (): Promise<YouTubeMembership[]> => {
-    const userId = getEffectiveUserId();
+    const userId = user?.id;
     
     if (!userId) {
       console.log("[getYouTubeMemberships] No user ID available.");
@@ -134,10 +134,10 @@ export const useImpersonationAwareData = () => {
 
     console.log("[getYouTubeMemberships] Fetched memberships:", memberships);
     return memberships as YouTubeMembership[];
-  }, [getEffectiveUserId]);
+  }, [user?.id]);
 
   const getDiscordConnections = useCallback(async (): Promise<StoredDiscordConnection[]> => {
-    const userId = getEffectiveUserId();
+    const userId = user?.id;
     
     if (!userId) {
       return [];
@@ -154,10 +154,10 @@ export const useImpersonationAwareData = () => {
     }
     
     return data as StoredDiscordConnection[];
-  }, [getEffectiveUserId]);
+  }, [user?.id]);
 
   const getUserTickets = useCallback(async (): Promise<Ticket[]> => {
-    const userId = getEffectiveUserId();
+    const userId = user?.id;
     
     if (!userId) {
       return [];
@@ -175,7 +175,7 @@ export const useImpersonationAwareData = () => {
     }
     
     return data as Ticket[];
-  }, [getEffectiveUserId]);
+  }, [user?.id]);
 
   return {
     getEffectiveUserId,
