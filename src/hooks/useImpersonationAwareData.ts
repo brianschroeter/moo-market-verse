@@ -2,6 +2,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { YouTubeConnection, YouTubeMembership, Profile, StoredDiscordConnection } from "@/services/types/auth-types";
 import { Ticket } from "@/services/ticket/ticketTypes";
+import { useCallback } from "react";
 
 /**
  * Custom hook that provides data fetching functions that respect impersonation state.
@@ -19,7 +20,7 @@ export const useImpersonationAwareData = () => {
     return session;
   };
 
-  const getProfile = async (): Promise<Profile | null> => {
+  const getProfile = useCallback(async (): Promise<Profile | null> => {
     const userId = getEffectiveUserId();
     
     if (!userId) {
@@ -38,7 +39,7 @@ export const useImpersonationAwareData = () => {
     }
     
     return data as Profile;
-  };
+  }, [getEffectiveUserId]);
 
   const updateProfile = async (profileData: Partial<Profile>): Promise<Profile | null> => {
     const userId = getEffectiveUserId();
@@ -62,7 +63,7 @@ export const useImpersonationAwareData = () => {
     return data as Profile;
   };
 
-  const getYouTubeConnections = async (): Promise<YouTubeConnection[]> => {
+  const getYouTubeConnections = useCallback(async (): Promise<YouTubeConnection[]> => {
     const userId = getEffectiveUserId();
     
     if (!userId) {
@@ -80,9 +81,9 @@ export const useImpersonationAwareData = () => {
     }
     
     return data as YouTubeConnection[];
-  };
+  }, [getEffectiveUserId]);
 
-  const getYouTubeMemberships = async (): Promise<YouTubeMembership[]> => {
+  const getYouTubeMemberships = useCallback(async (): Promise<YouTubeMembership[]> => {
     const userId = getEffectiveUserId();
     
     if (!userId) {
@@ -133,9 +134,9 @@ export const useImpersonationAwareData = () => {
 
     console.log("[getYouTubeMemberships] Fetched memberships:", memberships);
     return memberships as YouTubeMembership[];
-  };
+  }, [getEffectiveUserId]);
 
-  const getDiscordConnections = async (): Promise<StoredDiscordConnection[]> => {
+  const getDiscordConnections = useCallback(async (): Promise<StoredDiscordConnection[]> => {
     const userId = getEffectiveUserId();
     
     if (!userId) {
@@ -153,9 +154,9 @@ export const useImpersonationAwareData = () => {
     }
     
     return data as StoredDiscordConnection[];
-  };
+  }, [getEffectiveUserId]);
 
-  const getUserTickets = async (): Promise<Ticket[]> => {
+  const getUserTickets = useCallback(async (): Promise<Ticket[]> => {
     const userId = getEffectiveUserId();
     
     if (!userId) {
@@ -174,7 +175,7 @@ export const useImpersonationAwareData = () => {
     }
     
     return data as Ticket[];
-  };
+  }, [getEffectiveUserId]);
 
   return {
     getEffectiveUserId,
