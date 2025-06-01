@@ -113,6 +113,7 @@ type ChartDataItem = {
 
 const Leaderboard: React.FC = () => {
   const [tabValue, setTabValue] = useState<"superchats" | "gifted" | "breakdown">("superchats");
+  const [showPriorMonth, setShowPriorMonth] = useState(false);
   
   const [superchatsData, setSuperchatsData] = useState<SuperchatLeaderboardItem[]>([]);
   const [giftedMembershipsData, setGiftedMembershipsData] = useState<GiftedMembershipLeaderboardItem[]>([]); // New state for gifted
@@ -127,15 +128,22 @@ const Leaderboard: React.FC = () => {
       setError(null);
       
       const currentDate = new Date();
-      const currentMonth = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-      const currentYear = currentDate.getFullYear().toString();
+      let targetDate = new Date(currentDate);
+      
+      // If showing prior month, go back one month
+      if (showPriorMonth) {
+        targetDate.setMonth(targetDate.getMonth() - 1);
+      }
+      
+      const targetMonth = (targetDate.getMonth() + 1).toString().padStart(2, '0');
+      const targetYear = targetDate.getFullYear().toString();
 
       try {
         // Fetch Superchats data
         const { data: superchatsRaw, error: superchatsError } = await supabase
           .rpc('sum_donations_by_channel_for_month_year', { 
-            p_month: currentMonth, 
-            p_year: currentYear 
+            p_month: targetMonth, 
+            p_year: targetYear 
           });
 
         if (superchatsError) throw superchatsError;
@@ -155,8 +163,8 @@ const Leaderboard: React.FC = () => {
         // Fetch Gifted Memberships data
         const { data: giftedRaw, error: giftedError } = await supabase
           .rpc('sum_gifted_memberships_by_channel_for_month_year', {
-            p_month: currentMonth,
-            p_year: currentYear
+            p_month: targetMonth,
+            p_year: targetYear
           });
         if (giftedError) throw giftedError;
         let processedGifted: GiftedMembershipLeaderboardItem[] = [];
@@ -171,26 +179,28 @@ const Leaderboard: React.FC = () => {
         }
         setGiftedMembershipsData(processedGifted);
 
-        // Fetch Memberships breakdown data
-        const { data: membershipsRaw, error: membershipsError } = await supabase
-          .rpc('get_channel_membership_breakdown'); // No params for now
+        // Fetch Memberships breakdown data (only if we don't have it yet, since it's not month-specific)
+        if (membershipsByLevelData.length === 0) {
+          const { data: membershipsRaw, error: membershipsError } = await supabase
+            .rpc('get_channel_membership_breakdown'); // No params - always current data
 
-        if (membershipsError) throw membershipsError;
-        
-        let processedMemberships: MembershipBreakdownItem[] = [];
-        if (membershipsRaw) {
-           processedMemberships = membershipsRaw.map((item: any) => ({
-            id: item.channel_name,
-            rank: item.rank, // RPC returns rank
-            show: item.channel_name,
-            host: item.channel_name, 
-            crownCount: item.crown_count || 0,
-            paypigCount: item.paypig_count || 0,
-            cashCowCount: item.cash_cow_count || 0,
-            totalMembers: item.total_members_count || 0,
-          }));
+          if (membershipsError) throw membershipsError;
+          
+          let processedMemberships: MembershipBreakdownItem[] = [];
+          if (membershipsRaw) {
+             processedMemberships = membershipsRaw.map((item: any) => ({
+              id: item.channel_name,
+              rank: item.rank, // RPC returns rank
+              show: item.channel_name,
+              host: item.channel_name, 
+              crownCount: item.crown_count || 0,
+              paypigCount: item.paypig_count || 0,
+              cashCowCount: item.cash_cow_count || 0,
+              totalMembers: item.total_members_count || 0,
+            }));
+          }
+          setMembershipsByLevelData(processedMemberships);
         }
-        setMembershipsByLevelData(processedMemberships);
 
         // Set initial chart data (all superchats)
         setChartData(
@@ -208,7 +218,7 @@ const Leaderboard: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [showPriorMonth]);
 
 
   const handleTabChange = (value: string) => {
@@ -234,6 +244,10 @@ const Leaderboard: React.FC = () => {
     }
   };
 
+  const handleTogglePriorMonth = () => {
+    setShowPriorMonth(!showPriorMonth);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen bg-gradient-to-b from-lolcow-black to-lolcow-darkgray text-white justify-center items-center">
@@ -255,7 +269,10 @@ const Leaderboard: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-lolcow-black to-lolcow-darkgray text-white">
       <Navbar />
       <main className="flex-grow container mx-auto px-4 py-8">
-        <LeaderboardHeader />
+        <LeaderboardHeader 
+          showPriorMonth={showPriorMonth}
+          onTogglePriorMonth={handleTogglePriorMonth}
+        />
 
         <Card className="bg-lolcow-black border border-lolcow-lightgray mb-8">
           <CardContent className="pt-6 overflow-hidden">

@@ -113,13 +113,23 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-        <div className="flex items-center mb-4 md:mb-0">
-          <div className="p-2 rounded-lg bg-yellow-500/20 mr-3">
-            <LayoutPanelTop className="h-6 w-6 text-yellow-400" />
+        <div className="flex flex-col">
+          <div className="flex items-center mb-2">
+            <div className="p-2 rounded-lg bg-yellow-500/20 mr-3">
+              <LayoutPanelTop className="h-6 w-6 text-yellow-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-white">
+              Membership <span className="text-yellow-400">Breakdown</span>
+            </h3>
           </div>
-          <h3 className="text-2xl font-bold text-white">
-            Membership <span className="text-yellow-400">Breakdown</span>
-          </h3>
+          <div className="flex flex-col md:flex-row md:items-center gap-2 text-sm">
+            <div className="flex items-center">
+              <span className="h-2.5 w-2.5 bg-green-500 rounded-full mr-1.5"></span>
+              <span className="text-green-400 font-medium">Current Active Memberships</span>
+            </div>
+            <span className="text-gray-500 hidden md:inline">•</span>
+            <span className="text-gray-400">Ranked by total membership value (Crown: $500, PayPig: $100, CashCow: $5)</span>
+          </div>
         </div>
         
         <div className="flex items-center gap-3 bg-gray-800/80 rounded-lg px-4 py-2 border border-gray-700/50">
@@ -143,7 +153,10 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
       
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 min-h-[350px] shadow-lg">
-          <div className="mb-4 text-lg font-medium text-gray-200">Membership Distribution (Top 5)</div>
+          <div className="mb-4">
+            <div className="text-lg font-medium text-gray-200">Membership Distribution (Top 5)</div>
+            <div className="text-xs text-gray-400 mt-1">Stacked by membership counts • Sorted by total value</div>
+          </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart 
               data={chartData} 
@@ -197,7 +210,10 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
         </div>
 
         <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 shadow-lg">
-          <div className="mb-4 text-lg font-medium text-gray-200">Complete Breakdown</div>
+          <div className="mb-4">
+            <div className="text-lg font-medium text-gray-200">Complete Rankings</div>
+            <div className="text-xs text-gray-400 mt-1">Ranked by total membership value • Current active memberships only</div>
+          </div>
             <RankingsTable
               data={processedDataForDisplay}
               columns={["rank", "show", "crownCount", "paypigCount", "cashCowCount"]}
