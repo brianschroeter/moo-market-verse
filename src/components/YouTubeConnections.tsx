@@ -1,12 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  // Types are likely imported separately or from a shared types file
-  getYouTubeConnections, 
-  getYouTubeMemberships,
-  // refreshYouTubeAvatar // No longer used here
-} from "@/services/youtube/youtubeService";
+import { useImpersonationAwareData } from "@/hooks/useImpersonationAwareData";
 import { YouTubeConnection, YouTubeMembership } from "@/services/types/auth-types"; // Import types correctly
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Clock } from "lucide-react";
@@ -32,6 +27,7 @@ const formatTime = (seconds: number): string => {
 const YouTubeConnections: React.FC = () => {
   const { toast } = useToast();
   const { session, user, loading: authLoading } = useAuth(); // Get session, user, and authLoading from AuthContext
+  const { getYouTubeConnections, getYouTubeMemberships, getEffectiveUserId, isImpersonating } = useImpersonationAwareData();
   const [accounts, setAccounts] = useState<YouTubeConnection[]>([]);
   const [memberships, setMemberships] = useState<YouTubeMembership[]>([]);
   const [loading, setLoading] = useState<boolean>(true); // Component's own loading state for data
@@ -129,31 +125,36 @@ const YouTubeConnections: React.FC = () => {
       console.error("Error fetching YouTube display data:", error);
       toast({ title: "Error", description: "Could not load YouTube connections.", variant: "destructive" });
     }
-  }, [toast]);
+  }, [getYouTubeConnections, getYouTubeMemberships, toast]);
 
   useEffect(() => {
+    const effectiveUserId = getEffectiveUserId();
+    
     // Fetch initial data only when auth is no longer loading, a user is present,
     // and the fetch hasn't been done for this specific user yet.
     // Also ensure provider_token is present before attempting fetch, as Profile.tsx uses it for rendering.
-    if (!authLoading && user?.id && session?.provider_token && initialFetchDoneForUser.current !== user.id) {
-      console.log(`YouTubeConnections: Auth loaded, user ${user.id} present, provider_token exists. Fetching display data.`);
-      initialFetchDoneForUser.current = user.id; // Mark fetch as initiated for this user
+    if (!authLoading && effectiveUserId && session?.provider_token && initialFetchDoneForUser.current !== effectiveUserId) {
+      console.log(`YouTubeConnections: Auth loaded, effective user ${effectiveUserId} present, provider_token exists. Fetching display data.`);
+      if (isImpersonating) {
+        console.log("YouTubeConnections: Currently impersonating, fetching data for impersonated user.");
+      }
+      initialFetchDoneForUser.current = effectiveUserId; // Mark fetch as initiated for this user
       setLoading(true); // Set component loading state
       fetchYouTubeDisplayData().finally(() => {
         setLoading(false); // Clear component loading state
-        console.log(`YouTubeConnections: fetchYouTubeDisplayData complete for user ${user.id}.`);
+        console.log(`YouTubeConnections: fetchYouTubeDisplayData complete for user ${effectiveUserId}.`);
       });
     } else if (authLoading) {
       console.log("YouTubeConnections: Waiting for AuthContext to finish loading...");
       setLoading(true); // Keep component loading if auth is still loading
-    } else if (!user?.id || !session?.provider_token) {
-      console.log("YouTubeConnections: No user or no provider_token. Clearing data and not fetching.");
+    } else if (!effectiveUserId || !session?.provider_token) {
+      console.log("YouTubeConnections: No effective user or no provider_token. Clearing data and not fetching.");
       setAccounts([]);
       setMemberships([]);
       setLoading(false); // Not loading if no user/token
       initialFetchDoneForUser.current = null; // Reset if user logs out or token disappears
     }
-  }, [authLoading, user, session, fetchYouTubeDisplayData]); // Dependencies
+  }, [authLoading, user, session, fetchYouTubeDisplayData, getEffectiveUserId, isImpersonating]); // Dependencies
 
   const handleRefreshConnections = async () => {
     // Check cooldown first

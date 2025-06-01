@@ -89,6 +89,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isImpersonating, setIsImpersonating] = useState<boolean>(false);
   const [impersonatedProfile, setImpersonatedProfile] = useState<Profile | null>(null);
   const [originalProfile, setOriginalProfile] = useState<Profile | null>(null);
+  const [originalUser, setOriginalUser] = useState<User | null>(null);
+  const [originalSession, setOriginalSession] = useState<Session | null>(null);
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -203,6 +205,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsImpersonating(false);
           setImpersonatedProfile(null);
           setOriginalProfile(null);
+          setOriginalUser(null);
+          setOriginalSession(null);
           toast({
             title: "Signed Out",
             description: "You have been signed out.",
@@ -375,9 +379,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('User not found');
       }
 
-      // Store original profile if not already impersonating
+      // Store original data if not already impersonating
       if (!isImpersonating) {
         setOriginalProfile(profile);
+        setOriginalUser(user);
+        setOriginalSession(session);
       }
 
       setImpersonatedProfile(targetProfile);
@@ -407,6 +413,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsImpersonating(false);
     setImpersonatedProfile(null);
     setOriginalProfile(null);
+    setOriginalUser(null);
+    setOriginalSession(null);
 
     toast({
       title: "Impersonation Ended",
@@ -427,6 +435,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsImpersonating(false);
         setImpersonatedProfile(null);
         setOriginalProfile(null);
+        setOriginalUser(null);
+        setOriginalSession(null);
         toast({ title: "Dev Sign Out", description: "Development session cleared."});
         navigate('/login');
         return;
@@ -446,9 +456,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Create impersonated user and session objects when impersonating
+  const getEffectiveUser = (): User | null => {
+    if (!isImpersonating || !impersonatedProfile || !originalUser) {
+      return user;
+    }
+    
+    // Create a modified user object with the impersonated user's ID
+    return {
+      ...originalUser,
+      id: impersonatedProfile.id,
+      user_metadata: {
+        ...originalUser.user_metadata,
+        // Use impersonated user's Discord data if available
+        provider_id: impersonatedProfile.discord_id || originalUser.user_metadata?.provider_id,
+        sub: impersonatedProfile.discord_id || originalUser.user_metadata?.sub,
+      }
+    };
+  };
+
+  const getEffectiveSession = (): Session | null => {
+    if (!isImpersonating || !originalSession) {
+      return session;
+    }
+    
+    const effectiveUser = getEffectiveUser();
+    if (!effectiveUser) return session;
+    
+    // Create a modified session object with the impersonated user
+    return {
+      ...originalSession,
+      user: effectiveUser
+    };
+  };
+
   const contextValue: AuthContextType = {
-    session,
-    user,
+    session: getEffectiveSession(),
+    user: getEffectiveUser(),
     profile: isImpersonating ? impersonatedProfile : profile,
     loading,
     isAdmin,

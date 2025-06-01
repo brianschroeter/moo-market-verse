@@ -4,13 +4,12 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useImpersonationAwareData } from "@/hooks/useImpersonationAwareData";
 import { 
   StoredDiscordConnection, 
   getDiscordConnections,
   YouTubeConnection, 
-  YouTubeMembership,
-  getYouTubeConnections,
-  getYouTubeMemberships 
+  YouTubeMembership
 } from "@/services/authService";
 import { useAuth } from "@/context/AuthContext";
 
@@ -21,13 +20,14 @@ const DiscordConnections: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { profile } = useAuth();
+  const { getYouTubeConnections, getYouTubeMemberships, getDiscordConnections: getImpersonationAwareDiscordConnections } = useImpersonationAwareData();
   
   useEffect(() => {
     const fetchConnectionsAndMemberships = async () => {
       setLoading(true);
       try {
         const [discordConnectionData, youtubeConnectionData, membershipData] = await Promise.all([
-          getDiscordConnections(),
+          getImpersonationAwareDiscordConnections(),
           getYouTubeConnections(),
           getYouTubeMemberships()
         ]);
