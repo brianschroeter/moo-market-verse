@@ -166,11 +166,11 @@ const TicketDetail: React.FC = () => {
       const newMessage: TicketMessage = {
           id: tempMessageId, // Use temporary ID
           ticket_id: ticketId,
-          body: reply,
+          content: reply,
           from_user: !isSupportReply, 
           created_at: new Date().toISOString(), // Use current time
           user_id: user.id,
-          profiles: currentUserProfile,
+          author_profile: currentUserProfile,
       };
       
       let newAttachments: TicketAttachment[] = [];
@@ -308,7 +308,7 @@ const TicketDetail: React.FC = () => {
   // Added Edit/Delete Handlers
   const handleOpenEditModal = (message: TicketMessage) => {
     setEditingMessage(message);
-    setEditedContent(message.body);
+    setEditedContent(message.content);
     setShowEditModal(true);
   };
 
@@ -330,7 +330,7 @@ const TicketDetail: React.FC = () => {
         return {
           ...prev,
           messages: prev.messages.map(msg => 
-            msg.id === editingMessage.id ? { ...msg, body: editedContent.trim(), updated_at: new Date().toISOString() } : msg
+            msg.id === editingMessage.id ? { ...msg, content: editedContent.trim(), updated_at: new Date().toISOString() } : msg
           ),
           ticket: { ...prev.ticket, updated_at: new Date().toISOString() } // Also update ticket's updated_at
         };
@@ -541,11 +541,35 @@ const TicketDetail: React.FC = () => {
           <div className="space-y-6 mb-8">
             {messages.map((message, index) => {
               // Use the actual author profile from the message
-              const displayProfile = message.profiles;
-              const displayAvatar = displayProfile?.discord_id && displayProfile?.discord_avatar 
-                ? `https://cdn.discordapp.com/avatars/${displayProfile.discord_id}/${displayProfile.discord_avatar}.png`
-                : "https://via.placeholder.com/40";
-              const displayName = displayProfile?.discord_username || (message.from_user ? "User" : "Support Staff");
+              const displayProfile = message.author_profile;
+              console.log('Message author debug:', {
+                messageId: message.id,
+                userId: message.user_id,
+                fromUser: message.from_user,
+                profile: displayProfile,
+                discordUsername: displayProfile?.discord_username
+              });
+              
+              // Handle different cases for avatar and name
+              let displayAvatar: string;
+              let displayName: string;
+              
+              if (message.user_id && displayProfile) {
+                // User has ID and profile - show their Discord info
+                displayAvatar = displayProfile.discord_id && displayProfile.discord_avatar 
+                  ? `https://cdn.discordapp.com/avatars/${displayProfile.discord_id}/${displayProfile.discord_avatar}.png`
+                  : "http://localhost:8080/lovable-uploads/logo.png";
+                displayName = displayProfile.discord_username || `User ${message.user_id.slice(0, 8)}`;
+              } else if (message.user_id && !displayProfile) {
+                // User has ID but no profile found - show fallback
+                displayAvatar = "http://localhost:8080/lovable-uploads/logo.png";
+                displayName = message.from_user ? `User ${message.user_id.slice(0, 8)}` : `Support ${message.user_id.slice(0, 8)}`;
+              } else {
+                // No user_id (legacy records) - show generic Support Team
+                displayAvatar = "http://localhost:8080/lovable-uploads/logo.png";
+                displayName = message.from_user ? "User" : "Support Team";
+              }
+              
               const isFromTicketCreator = message.from_user;
               
               // Get attachments for this message from the pre-processed map
@@ -616,7 +640,7 @@ const TicketDetail: React.FC = () => {
                         </div>
                       </div>
                       <div className="mt-2 text-gray-300 whitespace-pre-wrap">
-                        {message.body}
+                        {message.content}
                       </div>
                       
                       {/* Render attachments for this message */}
@@ -761,7 +785,7 @@ const TicketDetail: React.FC = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditModal(false)} disabled={isUpdatingResponse}>Cancel</Button>
-            <Button onClick={handleUpdateResponse} disabled={isUpdatingResponse || !editedContent.trim() || editedContent.trim() === editingMessage?.body.trim() } className="bg-lolcow-blue hover:bg-lolcow-blue/90">
+            <Button onClick={handleUpdateResponse} disabled={isUpdatingResponse || !editedContent.trim() || editedContent.trim() === editingMessage?.content.trim() } className="bg-lolcow-blue hover:bg-lolcow-blue/90">
               {isUpdatingResponse && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>

@@ -44,19 +44,34 @@ export async function fetchTicketById(ticketId: string): Promise<{
       .select('*')
       .eq('ticket_id', ticketId)
       .order('created_at', { ascending: true });
+    
+    console.log('Raw messages from database:', messages);
+    console.log('Messages error:', messagesError);
+    
+    // Debug: Check the actual schema of ticket_messages table
+    const { data: schemaInfo } = await supabase
+      .from('information_schema.columns')
+      .select('column_name, data_type')
+      .eq('table_name', 'ticket_messages')
+      .eq('table_schema', 'public');
+    console.log('ticket_messages table schema:', schemaInfo);
 
     if (messagesError) {
       throw messagesError;
     }
 
-    // Fetch profiles for all message authors
-    const authorUserIds = [...new Set((messages || []).map(msg => msg.user_id))];
+    // Fetch profiles for all message authors (excluding null user_ids)
+    const authorUserIds = [...new Set((messages || []).map(msg => msg.user_id).filter(id => id !== null))];
+    console.log('Author user IDs to fetch:', authorUserIds);
     let authorProfiles: Profile[] = [];
     if (authorUserIds.length > 0) {
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .in('id', authorUserIds);
+      
+      console.log('Fetched profiles:', profilesData);
+      console.log('Profiles error:', profilesError);
       
       if (profilesError) {
         console.error('Error fetching author profiles:', profilesError);
@@ -70,6 +85,8 @@ export async function fetchTicketById(ticketId: string): Promise<{
       ...message,
       profiles: authorProfiles.find(profile => profile.id === message.user_id) || null
     }));
+    
+    console.log('Final messages with profiles:', messagesWithProfiles);
 
     // Fetch attachments for the ticket
     const { data: attachments, error: attachmentsError } = await supabase

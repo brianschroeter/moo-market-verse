@@ -11,11 +11,11 @@ export interface Ticket {
 export interface TicketMessage {
   id: string;
   ticket_id: string;
-  body: string;
+  content: string;
   from_user: boolean;
   created_at: string;
-  user_id: string;
-  profiles?: Profile | null;
+  user_id: string | null;
+  author_profile?: Profile | null;
 }
 
 export interface TicketAttachment {
