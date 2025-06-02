@@ -50,18 +50,22 @@ serve(async (req: Request) => {
     }
 
     // Extract client IP address from request headers
-    // Check various headers in order of preference
+    // Optimized for Cloudflare DNS → Vercel setup
     const getClientIP = (request: Request): string | null => {
-      // Vercel/Cloudflare headers
+      // Primary: X-Forwarded-For header (Cloudflare standard)
+      // Contains comma-separated list, first IP is the original client
       const xForwardedFor = request.headers.get('x-forwarded-for');
       if (xForwardedFor) {
-        // x-forwarded-for can be a comma-separated list, take the first (original client)
-        return xForwardedFor.split(',')[0].trim();
+        const firstIP = xForwardedFor.split(',')[0].trim();
+        if (firstIP) return firstIP;
       }
       
-      // Alternative headers
+      // Fallback: CF-Connecting-IP (Cloudflare specific, but less reliable)
+      const cfConnectingIP = request.headers.get('cf-connecting-ip');
+      if (cfConnectingIP) return cfConnectingIP.trim();
+      
+      // Additional fallbacks for other proxy configurations
       return request.headers.get('x-real-ip') || 
-             request.headers.get('cf-connecting-ip') || 
              request.headers.get('x-client-ip') ||
              null;
     };
