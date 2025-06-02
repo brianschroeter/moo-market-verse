@@ -43,28 +43,18 @@ serve(async (req: Request) => {
     }
     const userId = user.id
 
-    // Get enhanced fingerprint data from the request body
-    const { fingerprint, userAgent, fingerprintComponents, confidence } = await req.json()
+    // Get fingerprint and userAgent from the request body
+    const { fingerprint, userAgent } = await req.json()
     if (!fingerprint) {
       throw new Error('Missing fingerprint in request body')
     }
 
-    // Extract client IP address
-    const clientIP = req.headers.get('x-forwarded-for') || 
-                    req.headers.get('x-real-ip') || 
-                    req.headers.get('cf-connecting-ip') ||
-                    'unknown'
-
-    // Prepare enhanced data for upsert
+    // Prepare data for upsert using original schema
     const deviceData = {
       user_id: userId,
       fingerprint: fingerprint,
-      user_agent: userAgent,
-      ip_address: clientIP,
-      fingerprint_components: fingerprintComponents || null,
-      confidence_score: confidence || null,
-      fingerprint_version: '2.0',
-      last_seen_at: new Date().toISOString(),
+      user_agent: userAgent, // Can be null/undefined
+      last_seen_at: new Date().toISOString(), // Update last seen time
     }
 
     // Upsert the device information

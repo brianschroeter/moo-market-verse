@@ -354,45 +354,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log("Device fingerprinting already in progress, skipping.");
       return;
     }
-    console.log("Upserting enhanced device fingerprint...");
+    console.log("Upserting device fingerprint...");
     fingerprintInProgress.current = true;
     try {
       const fp = await FingerprintJS.load();
       const result = await fp.get();
       const visitorId = result.visitorId;
       const userAgent = navigator.userAgent;
-      const confidence = result.confidence?.score || null;
 
-      // Extract detailed fingerprint components for enhanced matching
-      const components = result.components;
-      const fingerprintComponents = {
-        screen: components.screenResolution?.value ? 
-          `${components.screenResolution.value[0]}x${components.screenResolution.value[1]}` : null,
-        timezone: components.timezone?.value || null,
-        language: components.languages?.value?.[0]?.[0] || null,
-        platform: components.platform?.value || null,
-        canvas: components.canvas?.value || null,
-        webgl: components.webgl?.value || null,
-        colorDepth: components.colorDepth?.value || null,
-        deviceMemory: components.deviceMemory?.value || null,
-        hardwareConcurrency: components.hardwareConcurrency?.value || null,
-      };
-
-      console.log("Enhanced fingerprint obtained:", visitorId, "Confidence:", confidence);
+      console.log("Fingerprint obtained:", visitorId);
 
       const { data, error } = await supabase.functions.invoke('upsert-device', {
-        body: { 
-          fingerprint: visitorId, 
-          userAgent: userAgent,
-          fingerprintComponents: fingerprintComponents,
-          confidence: confidence
-        },
+        body: { fingerprint: visitorId, userAgent: userAgent },
       });
 
       if (error) {
         console.error("Error invoking upsert-device function:", error);
       } else {
-        console.log("Successfully invoked enhanced upsert-device function:", data);
+        console.log("Successfully invoked upsert-device function:", data);
       }
     } catch (error) {
       console.error("Error during device fingerprinting:", error);
