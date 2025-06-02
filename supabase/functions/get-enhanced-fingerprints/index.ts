@@ -1,7 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
-import { ensureAdmin } from '../_shared/auth.ts'
 
 console.log(`Function "get-enhanced-fingerprints" up and running!`)
 
@@ -11,20 +10,17 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Ensure the request is from an admin user
-    const authResult = await ensureAdmin(req)
-    if (!authResult.success) {
-      return new Response(JSON.stringify({ error: authResult.error }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401,
-      })
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!serviceRoleKey) {
+        console.error('SUPABASE_SERVICE_ROLE_KEY is not set.');
+        throw new Error('Server configuration error: Service role key missing.');
     }
 
-    // Create admin Supabase client
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    )
+        Deno.env.get('SUPABASE_URL') ?? '',
+        serviceRoleKey,
+        { global: { headers: { Authorization: `Bearer ${serviceRoleKey}` } } }
+    );
 
     // Set default parameters for enhanced fingerprint analysis
     const minConfidence = 70
