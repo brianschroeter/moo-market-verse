@@ -547,8 +547,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await authSignOut();
       console.log("Sign out successful via authService.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error signing out:", error);
+      
+      // If the error is about missing session, just clear the local state and redirect
+      if (error.message?.includes('Auth session missing') || error.message?.includes('session_not_found')) {
+        console.log("Session was already invalid, clearing local state");
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setIsAdmin(false);
+        setIsImpersonating(false);
+        setImpersonatedProfile(null);
+        setImpersonatedUserEmail(null);
+        setImpersonatedUserIsAdmin(false);
+        setOriginalProfile(null);
+        setOriginalUser(null);
+        setOriginalSession(null);
+        localStorage.removeItem('impersonation_state');
+        toast({ title: "Signed Out", description: "You have been signed out." });
+        navigate('/login');
+        return;
+      }
+      
       toast({
         title: "Sign Out Error",
         description: "Could not sign out. Please try again.",

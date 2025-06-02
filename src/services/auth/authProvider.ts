@@ -19,8 +19,23 @@ export const signInWithDiscord = async () => {
 };
 
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      // If the error is about missing session, that's actually fine - user is already signed out
+      if (error.message?.includes('Auth session missing') || error.message?.includes('session_not_found')) {
+        console.log("User was already signed out");
+        return; // Don't throw error for this case
+      }
+      console.error("Sign out error:", error);
+      throw error;
+    }
+  } catch (error: any) {
+    // Handle network errors or other issues gracefully
+    if (error.message?.includes('Auth session missing') || error.message?.includes('session_not_found')) {
+      console.log("User was already signed out");
+      return; // Don't throw error for this case
+    }
     console.error("Sign out error:", error);
     throw error;
   }
