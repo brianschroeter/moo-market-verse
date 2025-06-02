@@ -206,3 +206,9 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - Edge functions require JWT verification (configurable in `supabase/config.toml`)
 - Use the existing service patterns when adding new integrations
 - Follow established component patterns and TypeScript conventions
+
+#### Auth State Management
+- **Auto-cleanup**: The app automatically detects and clears corrupted auth state on initialization
+- **localStorage keys**: Supabase auth keys (`supabase.auth.*`, `sb-*`) are cleared when corruption is detected
+- **Session validation**: Invalid sessions trigger automatic cleanup to prevent user errors
+- **Graceful signout**: Missing sessions during signout are handled gracefully instead of showing errors

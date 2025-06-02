@@ -103,6 +103,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const discordSyncInProgress = useRef<boolean>(false);
   const fingerprintInProgress = useRef<boolean>(false);
 
+  // Helper function to clear corrupted auth state
+  const clearCorruptedAuthState = async () => {
+    try {
+      // Try to get the current session to see if it's valid
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      // If there's an error indicating corrupted state, clear everything
+      if (error && (
+        error.message?.includes('Invalid session') ||
+        error.message?.includes('Auth session missing') ||
+        error.message?.includes('session_not_found') ||
+        error.message?.includes('invalid_token')
+      )) {
+        console.warn('Detected corrupted auth state, clearing localStorage');
+        
+        // Clear all Supabase auth related items from localStorage
+        const authKeys = Object.keys(localStorage).filter(key => 
+          key.startsWith('supabase.auth') || 
+          key.includes('supabase-auth-token') ||
+          key.includes('sb-')
+        );
+        
+        authKeys.forEach(key => {
+          localStorage.removeItem(key);
+        });
+        
+        // Also clear our impersonation state if it exists
+        localStorage.removeItem('impersonation_state');
+        
+        console.log('Cleared corrupted auth state from localStorage');
+      }
+    } catch (error) {
+      console.warn('Error checking auth state, clearing localStorage as precaution:', error);
+      
+      // If we can't even check the session, clear everything as a precaution
+      const authKeys = Object.keys(localStorage).filter(key => 
+        key.startsWith('supabase.auth') || 
+        key.includes('supabase-auth-token') ||
+        key.includes('sb-')
+      );
+      
+      authKeys.forEach(key => {
+        localStorage.removeItem(key);
+      });
+      
+      localStorage.removeItem('impersonation_state');
+    }
+  };
+
   useEffect(() => {
     // Check for auth errors in URL
     const params = new URLSearchParams(location.search);
@@ -132,6 +181,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initializeAuth = async () => {
       // Check for persisted impersonation state first
       const persistedImpersonation = localStorage.getItem('impersonation_state');
+      
+      // Clear any corrupted auth state that might cause issues
+      await clearCorruptedAuthState();
       
       if (DEV_MODE) {
         console.warn("--- DEV MODE ACTIVE ---");
@@ -256,6 +308,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setOriginalUser(null);
           setOriginalSession(null);
           localStorage.removeItem('impersonation_state');
+          
+          // Also clear any remaining auth state as a precaution
+          const authKeys = Object.keys(localStorage).filter(key => 
+            key.startsWith('supabase.auth') || 
+            key.includes('supabase-auth-token') ||
+            key.includes('sb-')
+          );
+          authKeys.forEach(key => {
+            try {
+              localStorage.removeItem(key);
+            } catch (e) {
+              // Ignore errors clearing individual keys
+            }
+          });
+          
           toast({
             title: "Signed Out",
             description: "You have been signed out.",
