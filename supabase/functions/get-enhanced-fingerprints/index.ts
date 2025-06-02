@@ -26,10 +26,9 @@ serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    // Get query parameters
-    const url = new URL(req.url)
-    const minConfidence = parseFloat(url.searchParams.get('minConfidence') || '80')
-    const similarityThreshold = parseFloat(url.searchParams.get('similarityThreshold') || '0.7')
+    // Set default parameters for enhanced fingerprint analysis
+    const minConfidence = 70
+    const similarityThreshold = 0.7
 
     // Get enhanced fingerprint statistics
     const { data: stats, error: statsError } = await supabaseAdmin

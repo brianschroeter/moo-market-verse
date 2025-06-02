@@ -84,10 +84,7 @@ const SharedFingerprintsPage: React.FC = () => {
       setError(null);
       try {
         const { data: functionResponse, error: functionError } = await supabase.functions.invoke(
-          'get-enhanced-fingerprints', 
-          {
-            body: { minConfidence: 70, similarityThreshold: 0.7 }
-          }
+          'get-enhanced-fingerprints'
         );
 
         if (functionError) {
