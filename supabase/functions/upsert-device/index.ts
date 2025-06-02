@@ -49,11 +49,32 @@ serve(async (req: Request) => {
       throw new Error('Missing fingerprint in request body')
     }
 
+    // Extract client IP address from request headers
+    // Check various headers in order of preference
+    const getClientIP = (request: Request): string | null => {
+      // Vercel/Cloudflare headers
+      const xForwardedFor = request.headers.get('x-forwarded-for');
+      if (xForwardedFor) {
+        // x-forwarded-for can be a comma-separated list, take the first (original client)
+        return xForwardedFor.split(',')[0].trim();
+      }
+      
+      // Alternative headers
+      return request.headers.get('x-real-ip') || 
+             request.headers.get('cf-connecting-ip') || 
+             request.headers.get('x-client-ip') ||
+             null;
+    };
+
+    const clientIP = getClientIP(req);
+    console.log('Client IP detected:', clientIP);
+
     // Prepare data for upsert using original schema
     const deviceData = {
       user_id: userId,
       fingerprint: fingerprint,
       user_agent: userAgent, // Can be null/undefined
+      ip_address: clientIP, // Add IP address
       last_seen_at: new Date().toISOString(), // Update last seen time
     }
 
