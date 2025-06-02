@@ -15,7 +15,7 @@ const YouTubeConnectionsList: React.FC<YouTubeConnectionsListProps> = ({ account
       <div>
         <h3 className="text-white text-lg">Connected Accounts</h3>
         <p className="text-sm text-gray-400 mt-1">
-          Channel avatars use colored placeholders with initials as YouTube thumbnails are not always reliable.
+          Channel avatars display real YouTube thumbnails when available, with colored placeholders as fallback.
         </p>
       </div>
       <div className="space-y-3">

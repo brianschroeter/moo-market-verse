@@ -1,5 +1,5 @@
 import React from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { YouTubeConnection } from "@/services/types/auth-types";
 import { getAvatarPlaceholderStyle } from "@/utils/avatarUtils";
 
@@ -15,6 +15,12 @@ const YouTubeConnectionCard: React.FC<YouTubeConnectionCardProps> = ({ account }
     <div className="flex flex-col p-3 bg-lolcow-lightgray rounded-lg">
       <div className="flex items-center">
         <Avatar className="h-10 w-10 mr-3">
+          {account.youtube_avatar && (
+            <AvatarImage 
+              src={account.youtube_avatar} 
+              alt={`${account.youtube_channel_name} avatar`}
+            />
+          )}
           <AvatarFallback 
             style={{
               backgroundColor: placeholderStyle.backgroundColor,
