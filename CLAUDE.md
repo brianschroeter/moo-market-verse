@@ -16,6 +16,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npx supabase db reset` - Reset local database with migrations
 - `npx supabase functions serve` - Serve edge functions locally
 - `npx supabase gen types typescript --local` - Generate TypeScript types from database schema
+- `npx supabase functions deploy` - Deploy all edge functions
+- `npx supabase functions deploy <function-name>` - Deploy specific function
+
+### Type Safety Workflow
+1. After database schema changes: `npx supabase gen types typescript --local`
+2. Types auto-generated to `/src/integrations/supabase/types.ts`
+3. Import database types: `import { Tables } from '@/integrations/supabase/types'`
+4. Service interfaces defined in `/src/services/types/`
+5. All Supabase queries use generated types for compile-time safety
 
 ## Architecture Overview
 
@@ -33,12 +42,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - AuthContext provides global user state (`user`, `session`, `profile`, `isAdmin`)
 - Development mode available with mocked authentication (check `AuthContext.tsx`)
 - Device fingerprinting via FingerprintJS for fraud detection
+- Concurrent operation prevention via useRef flags
+- State persistence: Impersonation state persisted to localStorage
+- Error handling: URL-based auth error detection and toast notifications
+
+#### Development Mode Security
+- `DEV_MODE` only activates when `import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true'`
+- Mock user data in `/src/context/AuthContext.tsx` (NO hardcoded admin access)
+- Admin roles still checked through proper role system even in dev mode
+- Discord sync and fingerprinting disabled in dev mode
+- Development user ID: `dev-user-id`, Discord ID: `dev-discord-id`
+
+#### Admin Impersonation System
+- **Purpose**: Admins can view application from user perspective
+- **Implementation**: `/src/context/AuthContext.tsx` handles state switching
+- **Security**: Only admin users can initiate impersonation
+- **State Management**: Original and impersonated user data stored separately
+- **Persistence**: Impersonation state survives page refreshes via localStorage
+- **Usage**: `startImpersonation(userId)` and `stopImpersonation()` methods
 
 #### Data Management
 - TanStack React Query for all server state (5min stale time)
 - Auto-generated TypeScript types from Supabase schema
 - Row Level Security (RLS) policies on all database tables
 - Service layer pattern for business logic (auth, discord, youtube, tickets)
+- Query configuration: 5-minute stale time, retry disabled globally
+- Client instance: Stable instance created outside component in `App.tsx`
+- Mutation patterns: Use `queryClient.invalidateQueries()` for cache updates
+- Loading states: Handle loading/error states consistently across components
+
+#### Service Layer Patterns
+- **Modular Organization**: Services organized by domain (`/services/auth/`, `/services/discord/`, `/services/ticket/`)
+- **Type Safety**: Each service has corresponding types in `/services/types/`
+- **Error Handling**: Consistent pattern - try/catch with `console.error` + rethrow
+- **Authentication**: Services use `supabase.auth.getSession()` for user context
+- **Example Pattern**: See `/src/services/ticket/ticketOperations.ts` for CRUD operations
 
 #### Component Organization
 - `src/components/ui/` - shadcn/ui component library
@@ -65,6 +103,20 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - Discord/YouTube API integrations
 - Order processing & linking
 - Newsletter subscriptions
+
+#### Edge Function Patterns
+- **Shared Utilities**: `/supabase/functions/_shared/auth.ts` and `cors.ts`
+- **Authentication Pattern**: `ensureAdmin()` utility for admin-only functions
+- **Client Types**: Dual client pattern (user-context vs admin service-role)
+- **Error Handling**: Consistent CORS headers and JSON error responses
+- **Configuration**: Individual function settings in `supabase/config.toml`
+
+#### Row Level Security (RLS) Patterns
+- **All tables use RLS**: Every table has policies for read/write access
+- **Admin Functions**: Database functions like `is_admin()` and `assert_admin()`
+- **User Context**: RLS policies use `auth.uid()` for user-scoped access
+- **Cascading Deletes**: Relationships configured for proper cleanup
+- **Edge Function Access**: Service role key bypasses RLS for admin operations
 
 ### Configuration Files
 
@@ -104,6 +156,25 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 3. Use development mode in AuthContext for testing without Discord auth
 4. Generate types after schema changes: `npx supabase gen types typescript --local`
 
+#### Environment Variables
+- **Required**: `SUPABASE_URL`, `SUPABASE_ANON_KEY` for client
+- **Edge Functions**: `SUPABASE_SERVICE_ROLE_KEY` for admin operations
+- **Development**: `VITE_DEVMODE=true` enables development mode
+- **Discord**: OAuth credentials in `supabase/config.toml`
+
+#### Testing Strategy
+- **Current Approach**: Manual testing with development mode
+- **No Test Framework**: No automated tests currently implemented
+- **Development Testing**: Use `VITE_DEVMODE=true` for isolated testing
+- **Edge Function Testing**: Use `npx supabase functions serve` for local testing
+- **Database Testing**: Use `npx supabase db reset` for clean state
+
+#### Deployment Architecture
+- **Frontend**: Vercel SPA with simple rewrite rule (`vercel.json`)
+- **Backend**: Supabase hosted (PostgreSQL + Auth + Edge Functions)
+- **Build**: `npm run build` creates optimized production bundle
+- **Types**: Auto-generated from Supabase schema, committed to repo
+
 ### Key Integration Points
 
 #### Discord Integration
@@ -115,11 +186,19 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - Membership verification and tracking
 - Connection status monitoring
 - Integration with content delivery
+- Hybrid thumbnail approach: real thumbnails with colored placeholder fallback
 
 #### E-commerce
 - Shopify order tracking
 - Printful integration for product fulfillment
 - Order linking and customer management
+
+#### Integration Error Handling
+- **Discord API**: OAuth with extended scopes, automatic connection sync
+- **YouTube API**: Membership verification with connection status tracking
+- **E-commerce**: Shopify/Printful order linking with edge function processing
+- **Error Recovery**: Graceful degradation when external APIs fail
+- **Rate Limiting**: Built-in handling for API rate limits
 
 ### Development Notes
 - The application includes a development mode with mocked user data for testing
