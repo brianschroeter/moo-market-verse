@@ -2,8 +2,9 @@ import React, { useState, useEffect, ReactNode } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon, Smartphone, PlaySquare, UserCheck } from "lucide-react";
+import { User, Shield, Loader2, Server, Search, Trash2, Link as LinkIcon, Smartphone, PlaySquare, UserCheck, MoreHorizontal } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { assignRole, removeRole } from "@/services/roleService";
@@ -1233,7 +1234,7 @@ const AdminUsers: React.FC = (): ReactNode => {
                 </TableHead>
                 <TableHead className="text-gray-300">Connections</TableHead>
                 <TableHead 
-                  className="text-gray-300 cursor-pointer hover:text-white"
+                  className="text-gray-300 cursor-pointer hover:text-white hidden sm:table-cell"
                   onClick={() => handleSort('guild_count')}
                 >
                   Guilds 
@@ -1241,10 +1242,10 @@ const AdminUsers: React.FC = (): ReactNode => {
                     <span className="ml-1">{sortDirection === 'asc' ? '🔼' : '🔽'}</span>
                   )}
                 </TableHead>
-                <TableHead className="text-gray-300">Memberships</TableHead>
+                <TableHead className="text-gray-300 hidden md:table-cell">Memberships</TableHead>
                 <TableHead className="text-gray-300">Roles</TableHead>
                 <TableHead 
-                  className="text-gray-300 cursor-pointer hover:text-white"
+                  className="text-gray-300 cursor-pointer hover:text-white hidden lg:table-cell"
                   onClick={() => handleSort('created_at')}
                 >
                   Joined 
@@ -1289,41 +1290,22 @@ const AdminUsers: React.FC = (): ReactNode => {
                     <div className="space-y-1">
                       {user.connections.length > 0 ? (
                         user.connections.map((conn, index) => (
-                          <div key={index} className="flex items-center justify-between bg-lolcow-lightgray/20 p-3 rounded">
-                            <div className="flex items-center">
-                              <span className={`w-3 h-3 rounded-full mr-3 ${conn.connected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                              <div>
-                                <span className="font-medium text-white">{conn.platform}: </span>
-                                {conn.connected ? (
-                                  <>
-                                    <span className="text-gray-300">{conn.username}</span>
-                                    {conn.platform === 'YouTube' && conn.connection_id && (
-                                      <span className="ml-1 text-xs text-gray-400">({conn.connection_id})</span>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="text-gray-400">Not connected</span>
-                                )}
-                              </div>
+                          <div key={index} className="flex items-center bg-lolcow-lightgray/20 p-2 rounded text-sm">
+                            <span className={`w-2 h-2 rounded-full mr-2 ${conn.connected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium text-white">{conn.platform}</span>
+                              {conn.connected && (
+                                <div className="text-gray-300 truncate">{conn.username}</div>
+                              )}
                             </div>
-                            {conn.connected && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 hover:text-white hover:bg-red-500"
-                                onClick={() => handleRemoveConnection(conn.connection_id)}
-                              >
-                                Remove
-                              </Button>
-                            )}
                           </div>
                         ))
                       ) : (
-                        <div className="text-gray-400">No connections found</div>
+                        <div className="text-gray-400 text-sm">None</div>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     {/* Display Guild Count - Make it clickable */}
                     {(user.guild_count ?? 0) > 0 ? (
                       <Button 
@@ -1337,7 +1319,7 @@ const AdminUsers: React.FC = (): ReactNode => {
                       <div className="text-gray-400">0</div>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {(user.youtubeMemberships?.length ?? 0) > 0 ? (
                       <Button
                         variant="link"
@@ -1363,64 +1345,62 @@ const AdminUsers: React.FC = (): ReactNode => {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-gray-300">{user.joined}</TableCell>
+                  <TableCell className="text-gray-300 hidden lg:table-cell">{user.joined}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2 items-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white"
-                        onClick={() => handleImpersonateUser(user)}
-                        title="Impersonate User"
-                      >
-                        <UserCheck className="h-4 w-4 mr-1" />
-                        Impersonate
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={`
-                          ${user.roles.includes('admin') 
-                            ? 'border-red-500 text-red-500 hover:bg-red-500'
-                            : 'border-yellow-500 text-yellow-500 hover:bg-yellow-500'
-                          } hover:text-white
-                        `}
-                        onClick={() => handleToggleAdminRole(user)}
-                      >
-                        <Shield className="h-4 w-4 mr-1" />
-                        {user.roles.includes('admin') ? 'Remove Admin' : 'Make Admin'}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="border-lolcow-blue text-lolcow-blue hover:bg-lolcow-blue hover:text-white"
-                        onClick={() => handleEditConnections(user)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleShowDevices(user)} 
-                        title="View Devices"
-                      >
-                        <Smartphone className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteUser(user)}
-                        title="Delete User"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-lolcow-darkgray border-lolcow-lightgray">
+                        <DropdownMenuItem 
+                          onClick={() => handleImpersonateUser(user)}
+                          className="text-green-500 hover:bg-green-500/10 hover:text-green-400"
+                        >
+                          <UserCheck className="h-4 w-4 mr-2" />
+                          Impersonate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleEditConnections(user)}
+                          className="text-lolcow-blue hover:bg-lolcow-blue/10 hover:text-lolcow-blue"
+                        >
+                          <User className="h-4 w-4 mr-2" />
+                          Edit Connections
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleShowDevices(user)}
+                          className="text-gray-300 hover:bg-gray-500/10 hover:text-white"
+                        >
+                          <Smartphone className="h-4 w-4 mr-2" />
+                          View Devices
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-lolcow-lightgray" />
+                        <DropdownMenuItem 
+                          onClick={() => handleToggleAdminRole(user)}
+                          className={`${user.roles.includes('admin') 
+                            ? 'text-red-500 hover:bg-red-500/10 hover:text-red-400'
+                            : 'text-yellow-500 hover:bg-yellow-500/10 hover:text-yellow-400'
+                          }`}
+                        >
+                          <Shield className="h-4 w-4 mr-2" />
+                          {user.roles.includes('admin') ? 'Remove Admin' : 'Make Admin'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteUser(user)}
+                          className="text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
               {filteredUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-400">
+                  <TableCell colSpan={4} className="text-center py-8 text-gray-400 sm:col-span-5 md:col-span-6 lg:col-span-7">
                     {/* Adjust message based on whether a search is active or specific user */}
                     {searchParams.get('userId') && users.length === 0 && !loading ? (
                       `User with ID ${searchParams.get('userId')} not found.`
