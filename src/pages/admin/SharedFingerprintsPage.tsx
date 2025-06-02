@@ -83,9 +83,9 @@ const SharedFingerprintsPage: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        // Temporarily fall back to the original function until enhanced is working
+        // Use the enhanced function which provides proper statistics
         const { data: functionResponse, error: functionError } = await supabase.functions.invoke(
-          'get-shared-fingerprints'
+          'get-enhanced-fingerprints'
         );
 
         if (functionError) {
@@ -98,31 +98,31 @@ const SharedFingerprintsPage: React.FC = () => {
           throw new Error(functionResponse.error.details || functionResponse.error.message || "Function execution failed.");
         }
 
-        // Transform the original response to the enhanced format
-        const originalData = functionResponse?.data || [];
+        // Use the enhanced response format
+        const enhancedResponseData = functionResponse?.data || {};
         setEnhancedData({
-          statistics: {
-            total_devices: originalData.length,
+          statistics: enhancedResponseData.statistics || {
+            total_devices: 0,
             high_confidence_devices: 0,
             unique_users: 0,
-            potential_duplicates: originalData.length,
+            potential_duplicates: 0,
             avg_confidence: 0
           },
-          sharedFingerprints: originalData.map((group: any) => ({
+          sharedFingerprints: (enhancedResponseData.sharedFingerprints || []).map((group: any) => ({
             fingerprint: group.fingerprint,
-            user_count: group.users.length,
-            users: group.users.map((user: any) => ({
+            user_count: group.users?.length || 0,
+            users: (group.users || []).map((user: any) => ({
               user_id: user.user_id,
-              discord_username: user.username,
+              discord_username: user.username || user.discord_username,
               discord_id: user.user_id,
               last_seen_at: user.last_seen_at,
-              confidence_score: 100, // Default for now
-              user_agent: 'Unknown'
+              confidence_score: user.confidence_score || 100,
+              user_agent: user.user_agent || 'Unknown'
             })),
-            avg_confidence: 100,
-            last_activity: group.users[0]?.last_seen_at || new Date().toISOString()
+            avg_confidence: group.avg_confidence || 100,
+            last_activity: group.last_activity || group.users?.[0]?.last_seen_at || new Date().toISOString()
           })),
-          suspiciousDevices: []
+          suspiciousDevices: enhancedResponseData.suspiciousDevices || []
         }); 
       } catch (e: any) {
         console.error("Fetch error:", e);
