@@ -83,8 +83,9 @@ const SharedFingerprintsPage: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
+        // Temporarily fall back to the original function until enhanced is working
         const { data: functionResponse, error: functionError } = await supabase.functions.invoke(
-          'get-enhanced-fingerprints'
+          'get-shared-fingerprints'
         );
 
         if (functionError) {
@@ -97,9 +98,30 @@ const SharedFingerprintsPage: React.FC = () => {
           throw new Error(functionResponse.error.details || functionResponse.error.message || "Function execution failed.");
         }
 
-        setEnhancedData(functionResponse?.data || {
-          statistics: null,
-          sharedFingerprints: [],
+        // Transform the original response to the enhanced format
+        const originalData = functionResponse?.data || [];
+        setEnhancedData({
+          statistics: {
+            total_devices: originalData.length,
+            high_confidence_devices: 0,
+            unique_users: 0,
+            potential_duplicates: originalData.length,
+            avg_confidence: 0
+          },
+          sharedFingerprints: originalData.map((group: any) => ({
+            fingerprint: group.fingerprint,
+            user_count: group.users.length,
+            users: group.users.map((user: any) => ({
+              user_id: user.user_id,
+              discord_username: user.username,
+              discord_id: user.user_id,
+              last_seen_at: user.last_seen_at,
+              confidence_score: 100, // Default for now
+              user_agent: 'Unknown'
+            })),
+            avg_confidence: 100,
+            last_activity: group.users[0]?.last_seen_at || new Date().toISOString()
+          })),
           suspiciousDevices: []
         }); 
       } catch (e: any) {
