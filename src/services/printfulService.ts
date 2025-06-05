@@ -335,6 +335,87 @@ export interface SyncPrintfulOrdersResponse {
  * Syncs Printful orders by calling the sync-printful-orders edge function
  * Works in both development and production environments
  */
+// --- Shopify Sync Service Function ---
+
+export interface SyncShopifyOrdersParams {
+  fullSync?: boolean;
+  maxPages?: number;
+}
+
+export interface SyncShopifyOrdersResponse {
+  success: boolean;
+  message: string;
+  error?: string;
+  ordersSynced?: number;
+}
+
+/**
+ * Syncs Shopify orders by calling the shopify-orders edge function with sync action
+ * Works in both development and production environments
+ */
+export async function syncShopifyOrders(params: SyncShopifyOrdersParams = {}): Promise<SyncShopifyOrdersResponse> {
+  try {
+    // Call the edge function with sync action
+    const { data, error } = await supabase.functions.invoke('shopify-orders', {
+      body: {
+        action: 'sync-orders-to-db',
+        maxPages: params.maxPages || (params.fullSync ? 100 : 10), // Default to 10 pages for incremental, 100 for full
+      }
+    });
+
+    if (error) {
+      console.error('Shopify sync function error:', error);
+      return {
+        success: false,
+        message: 'Failed to sync Shopify orders',
+        error: error.message || 'Unknown error occurred'
+      };
+    }
+
+    if (data?.error) {
+      console.error('Shopify sync function returned error:', data.error);
+      
+      // Handle development mode gracefully
+      if (data.error.includes('missing Shopify credentials') || data.error.includes('SHOPIFY_SHOP_DOMAIN')) {
+        return {
+          success: false,
+          message: 'Development mode: Shopify API not configured',
+          error: 'This sync feature requires Shopify API credentials to be configured in production. In development, you can test the UI functionality without the actual API integration.'
+        };
+      }
+      
+      return {
+        success: false,
+        message: 'Shopify sync failed',
+        error: data.error
+      };
+    }
+
+    // Parse the response message to extract sync statistics if available
+    const message = data?.message || 'Shopify sync completed successfully';
+    let ordersSynced: number | undefined;
+
+    // Try to extract numbers from the message
+    const syncedMatch = message.match(/Synced (\d+) orders/);
+    if (syncedMatch) ordersSynced = parseInt(syncedMatch[1]);
+
+    return {
+      success: true,
+      message,
+      ordersSynced
+    };
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Network error';
+    console.error('Shopify sync request failed:', error);
+    return {
+      success: false,
+      message: 'Failed to connect to Shopify sync service',
+      error: errorMessage
+    };
+  }
+}
+
 export async function syncPrintfulOrders(params: SyncPrintfulOrdersParams = {}): Promise<SyncPrintfulOrdersResponse> {
   try {
     // Call the edge function

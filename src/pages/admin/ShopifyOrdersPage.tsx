@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // import { DatePickerWithRange } from "@/components/ui/date-range-picker"; // Assuming this exists or will be created based on calendar.tsx
 import { DateRange } from "react-day-picker";
-import { ArrowUpDown, Loader2, RefreshCw, Search, Eye, Filter, X, Calendar, Package, User, DollarSign, ShoppingCart, CreditCard, Truck } from 'lucide-react';
+import { ArrowUpDown, Loader2, RefreshCw, Search, Eye, Filter, X, Calendar, Package, User, DollarSign, ShoppingCart, CreditCard, Truck, Download } from 'lucide-react';
 import { toast } from "sonner";
 import { format } from 'date-fns';
 import {
@@ -38,6 +38,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { ShopifyPrintfulLinker } from '@/components/admin/linking/ShopifyPrintfulLinker'; // Added for order linking
+import { syncShopifyOrders, SyncShopifyOrdersResponse } from '@/services/printfulService'; // Import sync functionality
 
 // --- Interfaces based on shopify-orders Edge Function ---
 interface TransformedShopifyOrder {
@@ -115,6 +116,7 @@ const ShopifyOrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<TransformedShopifyOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Detail Modal State
@@ -334,6 +336,38 @@ const ShopifyOrdersPage: React.FC = () => {
     loadOrders(currentPageInfo, true); // Refresh current view
   };
 
+  const handleSyncOrders = async (fullSync: boolean = false) => {
+    setIsSyncing(true);
+    try {
+      const response: SyncShopifyOrdersResponse = await syncShopifyOrders({
+        fullSync,
+        maxPages: fullSync ? 100 : 10
+      });
+
+      if (response.success) {
+        toast.success("Shopify sync completed successfully!", {
+          description: `${response.ordersSynced || 0} orders synced from Shopify`
+        });
+        
+        // Refresh the orders list after successful sync
+        setTimeout(() => {
+          handleRefresh();
+        }, 1000);
+      } else {
+        toast.error("Shopify sync failed", {
+          description: response.error || response.message
+        });
+      }
+    } catch (error: any) {
+      console.error('Shopify sync error:', error);
+      toast.error("Shopify sync failed", {
+        description: error.message || "An unexpected error occurred"
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleSort = (column: ShopifySortableColumns) => {
     if (sortColumn === column) {
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -457,12 +491,27 @@ const ShopifyOrdersPage: React.FC = () => {
     </TableHead>
   );
 
-  if (loading && !isRefreshing) {
+  if (loading && !isRefreshing && !isSyncing) {
     return (
       <AdminLayout>
         <div className="container mx-auto px-4 py-8 flex justify-center items-center h-64">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
           <p className="ml-4 text-lg">Loading Shopify orders...</p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  // Sync loading state
+  if (isSyncing) {
+    return (
+      <AdminLayout>
+        <div className="container mx-auto px-4 py-8 flex justify-center items-center h-64">
+          <Loader2 className="h-12 w-12 animate-spin text-green-600" />
+          <div className="ml-4 text-center">
+            <p className="text-lg font-medium">Syncing Shopify orders...</p>
+            <p className="text-sm text-muted-foreground">This may take a few minutes</p>
+          </div>
         </div>
       </AdminLayout>
     );
@@ -489,7 +538,14 @@ const ShopifyOrdersPage: React.FC = () => {
   return (
     <AdminLayout>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-semibold mb-6">Shopify Orders</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold">Shopify Orders</h1>
+          {import.meta.env.DEV && (
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              Development Mode
+            </Badge>
+          )}
+        </div>
 
         {/* Enhanced Filter and Search UI Section */}
         <Card className="mb-6">
@@ -636,20 +692,49 @@ const ShopifyOrdersPage: React.FC = () => {
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2 items-center justify-between">
                 <div className="flex gap-2">
-                  <Button onClick={handleApplyFilters} disabled={loading || isRefreshing}>
+                  <Button onClick={handleApplyFilters} disabled={loading || isRefreshing || isSyncing}>
                     {(loading && !isRefreshing) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                     Apply Filters
                   </Button>
-                  <Button variant="outline" onClick={handleClearFilters} disabled={loading || isRefreshing}>
+                  <Button variant="outline" onClick={handleClearFilters} disabled={loading || isRefreshing || isSyncing}>
                     <X className="mr-2 h-4 w-4" />
                     Clear All
                   </Button>
                 </div>
                 
-                <Button variant="outline" onClick={handleRefresh} disabled={loading || isRefreshing}>
-                  {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                  Refresh
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleRefresh} disabled={loading || isRefreshing || isSyncing}>
+                    {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                    Refresh
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => handleSyncOrders(false)} 
+                    disabled={loading || isRefreshing || isSyncing}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {isSyncing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    Sync Latest Orders
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleSyncOrders(true)} 
+                    disabled={loading || isRefreshing || isSyncing}
+                    title="Fetch many pages of orders from Shopify (may take several minutes)"
+                  >
+                    {isSyncing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    Full Sync
+                  </Button>
+                </div>
               </div>
               
               {/* Active Filters Display */}
