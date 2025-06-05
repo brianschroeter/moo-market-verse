@@ -495,8 +495,7 @@ const OrderReports: React.FC = () => {
                             'N/A'}
                         </TableCell>
                         <TableCell>
-                          {mapping.mapped_by_profile?.username || 
-                           mapping.mapped_by_profile?.discord_username || 
+                          {mapping.mapped_by_profile?.discord_username || 
                            'System'}
                         </TableCell>
                         <TableCell>

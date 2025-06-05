@@ -69,7 +69,7 @@ export class OrderMappingService {
             order_date
           ),
           mapped_by_profile:profiles!order_mappings_mapped_by_fkey (
-            username,
+            id,
             discord_username
           )
         `, { count: 'exact' });
@@ -193,7 +193,38 @@ export class OrderMappingService {
    */
   private static async findSuggestedShopifyMatches(printfulOrder: any): Promise<SuggestedShopifyMatch[]> {
     try {
-      // Get Shopify orders within a reasonable time range and amount range
+      // First, try to find exact order number match for simple numeric Printful IDs
+      const printfulExternalId = printfulOrder.printful_external_id || '';
+      
+      // Check if this is a simple numeric ID (not PF- prefixed)
+      if (/^\d+$/.test(printfulExternalId)) {
+        const shopifyOrderNumberWithHash = `#${printfulExternalId}`;
+        
+        const { data: exactMatch, error: exactMatchError } = await supabase
+          .from('shopify_orders')
+          .select('*')
+          .eq('shopify_order_number', shopifyOrderNumberWithHash)
+          .single();
+        
+        if (exactMatch && !exactMatchError) {
+          // If we found an exact match, return it with a perfect score
+          const score = this.calculateMatchScore(printfulOrder, exactMatch);
+          const reasons = this.getMatchReasons(printfulOrder, exactMatch);
+          
+          return [{
+            shopify_order_id: exactMatch.id,
+            shopify_order_number: exactMatch.shopify_order_number,
+            customer_name: exactMatch.customer_name,
+            total_amount: exactMatch.total_amount,
+            currency: exactMatch.currency,
+            order_date: exactMatch.order_date,
+            match_score: score,
+            match_reasons: reasons
+          }];
+        }
+      }
+
+      // If no exact match found, fall back to fuzzy matching based on amount, date, and customer
       const orderDate = new Date(printfulOrder.printful_created_at);
       const dateFrom = new Date(orderDate);
       dateFrom.setDate(dateFrom.getDate() - 7); // 7 days before
@@ -247,27 +278,36 @@ export class OrderMappingService {
     let score = 0;
     const factors: { weight: number; matches: boolean }[] = [];
 
-    // Amount matching (most important)
+    // Order number matching (highest priority for numeric Printful IDs)
+    const printfulExternalId = printfulOrder.printful_external_id || '';
+    const shopifyOrderNum = shopifyOrder.shopify_order_number?.replace('#', '') || '';
+    const orderNumberMatch = /^\d+$/.test(printfulExternalId) && printfulExternalId === shopifyOrderNum;
+    factors.push({ weight: 0.5, matches: orderNumberMatch });
+
+    // Amount matching (allow for partial fulfillment scenarios)
     const amountDiff = Math.abs(printfulOrder.total_amount - shopifyOrder.total_amount);
     const amountMatch = amountDiff < 0.01; // Exact match
     const amountClose = amountDiff < 5.00; // Within $5
-    factors.push({ weight: 0.4, matches: amountMatch });
-    factors.push({ weight: 0.2, matches: amountClose && !amountMatch });
+    const amountPartial = printfulOrder.total_amount <= shopifyOrder.total_amount && 
+                          printfulOrder.total_amount >= (shopifyOrder.total_amount * 0.3); // Partial fulfillment (30-100% of Shopify total)
+    factors.push({ weight: 0.15, matches: amountMatch });
+    factors.push({ weight: 0.1, matches: amountClose && !amountMatch });
+    factors.push({ weight: 0.05, matches: amountPartial && !amountMatch && !amountClose });
 
     // Currency matching
-    factors.push({ weight: 0.15, matches: printfulOrder.currency === shopifyOrder.currency });
+    factors.push({ weight: 0.1, matches: printfulOrder.currency === shopifyOrder.currency });
 
-    // Date proximity (orders within 3 days)
+    // Date proximity (allow for processing delays up to 7 days)
     const printfulDate = new Date(printfulOrder.printful_created_at);
     const shopifyDate = new Date(shopifyOrder.order_date);
     const daysDiff = Math.abs((printfulDate.getTime() - shopifyDate.getTime()) / (1000 * 60 * 60 * 24));
-    factors.push({ weight: 0.15, matches: daysDiff <= 3 });
+    factors.push({ weight: 0.05, matches: daysDiff <= 7 });
 
-    // Customer name similarity (basic)
+    // Customer name similarity
     const printfulName = printfulOrder.recipient_name?.toLowerCase() || '';
     const shopifyName = shopifyOrder.customer_name?.toLowerCase() || '';
     const nameMatch = this.calculateStringSimilarity(printfulName, shopifyName) > 0.7;
-    factors.push({ weight: 0.1, matches: nameMatch });
+    factors.push({ weight: 0.05, matches: nameMatch });
 
     // Calculate weighted score
     score = factors.reduce((total, factor) => {
@@ -283,11 +323,21 @@ export class OrderMappingService {
   private static getMatchReasons(printfulOrder: any, shopifyOrder: any): string[] {
     const reasons: string[] = [];
 
+    // Check order number match for numeric Printful IDs
+    const printfulExternalId = printfulOrder.printful_external_id || '';
+    const shopifyOrderNum = shopifyOrder.shopify_order_number?.replace('#', '') || '';
+    if (/^\d+$/.test(printfulExternalId) && printfulExternalId === shopifyOrderNum) {
+      reasons.push('Order number match');
+    }
+
     const amountDiff = Math.abs(printfulOrder.total_amount - shopifyOrder.total_amount);
     if (amountDiff < 0.01) {
       reasons.push('Exact amount match');
     } else if (amountDiff < 5.00) {
       reasons.push('Similar amount');
+    } else if (printfulOrder.total_amount <= shopifyOrder.total_amount && 
+               printfulOrder.total_amount >= (shopifyOrder.total_amount * 0.3)) {
+      reasons.push('Partial fulfillment amount');
     }
 
     if (printfulOrder.currency === shopifyOrder.currency) {
@@ -301,6 +351,8 @@ export class OrderMappingService {
       reasons.push('Same day order');
     } else if (daysDiff <= 3) {
       reasons.push('Close order date');
+    } else if (daysDiff <= 7) {
+      reasons.push('Within processing window');
     }
 
     const printfulName = printfulOrder.recipient_name?.toLowerCase() || '';
@@ -445,7 +497,7 @@ export class OrderMappingService {
       
       for (const order of orders) {
         const bestMatch = order.suggested_shopify_matches?.[0];
-        if (bestMatch && bestMatch.match_score > 0.8) {
+        if (bestMatch && bestMatch.match_score > 0.6) {
           try {
             await this.createOrderMapping({
               printful_order_id: order.printful_internal_id,
