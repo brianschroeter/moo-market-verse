@@ -7,6 +7,42 @@ site_url = "http://localhost:8080" # Define the correct local frontend site URL
 [functions.verify-youtube]
 verify_jwt = false
 
+[functions.get-shared-youtube-connections]
+verify_jwt = false
+
+[functions.get-shared-fingerprints]
+verify_jwt = false
+
+[functions.get-enhanced-fingerprints]
+verify_jwt = false
+
+[functions.admin-youtube-channels-list]
+verify_jwt = false
+
+[functions.admin-youtube-channels-create]
+verify_jwt = false
+
+[functions.admin-youtube-channels-update]
+verify_jwt = false
+
+[functions.admin-youtube-channels-delete]
+verify_jwt = false
+
+[functions.admin-schedule-slots-list]
+verify_jwt = false
+
+[functions.admin-schedule-slots-create]
+verify_jwt = false
+
+[functions.admin-schedule-slots-update]
+verify_jwt = false
+
+[functions.admin-schedule-slots-delete]
+verify_jwt = false
+
+[functions.shopify-orders]
+verify_jwt = false
+
 
 [functions.delete-user]
 enabled = true

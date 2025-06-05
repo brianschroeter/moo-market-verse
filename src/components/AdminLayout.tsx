@@ -1,6 +1,6 @@
 import React, { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { User, Users, List, Link as LinkIcon, Navigation, Megaphone, Mail, Menu, X, Server, Share2, Fingerprint as FingerprintIcon, Youtube as YoutubeIcon, Calendar, ShoppingBag } from "lucide-react"; // Added ShoppingBag
+import { User, Users, List, Link as LinkIcon, Navigation, Megaphone, Mail, Menu, X, Server, Share2, Fingerprint as FingerprintIcon, Youtube as YoutubeIcon, Calendar, ShoppingBag, BarChart3 } from "lucide-react";
 import AdminNavbar from "./admin/AdminNavbar";
 
 interface AdminLayoutProps {
@@ -44,8 +44,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { path: "/admin/navigation", label: "Navigation", icon: <Navigation className="h-5 w-5" /> },
     { path: "/admin/announcements", label: "Announcements", icon: <Megaphone className="h-5 w-5" /> },
     { path: "/admin/newsletter-signups", label: "Newsletter Signups", icon: <Mail className="h-5 w-5" /> },
-    { path: "/admin/printful-orders", label: "Printful Orders", icon: <ShoppingBag className="h-5 w-5" /> }, // Added Printful Orders link
-    { path: "/admin/shopify-orders", label: "Shopify Orders", icon: <ShoppingBag className="h-5 w-5" /> }
+    { path: "/admin/printful-orders", label: "Printful Orders", icon: <ShoppingBag className="h-5 w-5" /> },
+    { path: "/admin/shopify-orders", label: "Shopify Orders", icon: <ShoppingBag className="h-5 w-5" /> },
+    { path: "/admin/order-reports", label: "Order Reports", icon: <BarChart3 className="h-5 w-5" /> }
   ];
   
   return (

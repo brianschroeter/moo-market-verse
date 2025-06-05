@@ -11,10 +11,24 @@ import {
 // --- YouTube Channels (for Schedule) ---
 
 export const getAdminYouTubeChannels = async (): Promise<AdminYouTubeChannel[]> => {
+  console.log('🔍 Calling admin-youtube-channels-list function...');
+  
+  // In development mode, we need to handle authentication differently
+  const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
+  const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
+  
   const { data, error } = await supabase.functions.invoke('admin-youtube-channels-list', {
     method: 'GET', // Specify GET method
+    headers,
   });
-  if (error) throw new Error(error.message);
+  
+  if (error) {
+    console.error('🚨 Function invoke error:', error);
+    console.error('🚨 Error details:', JSON.stringify(error, null, 2));
+    throw new Error(`Function error: ${error.message || 'Unknown error'}`);
+  }
+  
+  console.log('✅ Function response:', data);
   // Ensure data is treated as an array, even if the function returns a single object or null unexpectedly
   return Array.isArray(data) ? data : [];
 };
@@ -81,8 +95,13 @@ export const getYouTubeChannelDetails = async (channelId: string): Promise<YouTu
 // --- Schedule Slots ---
 
 export const getAdminScheduleSlots = async (filters?: { youtube_channel_id?: string }): Promise<AdminScheduleSlot[]> => {
+  // In development mode, we need to handle authentication differently
+  const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
+  const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
+  
   const { data, error } = await supabase.functions.invoke('admin-schedule-slots-list', {
     method: 'GET', // Specify GET method
+    headers,
     body: filters // GET requests can still have a body with Supabase invoke if the function expects it, though often filters are query params
   });
   if (error) throw new Error(error.message);

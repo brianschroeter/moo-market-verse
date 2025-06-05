@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // import { DatePickerWithRange } from "@/components/ui/date-range-picker"; // Assuming this exists or will be created based on calendar.tsx
 import { DateRange } from "react-day-picker";
-import { ArrowUpDown, Loader2, RefreshCw, Search, Eye } from 'lucide-react'; // Added Eye icon
+import { ArrowUpDown, Loader2, RefreshCw, Search, Eye, Filter, X, Calendar, Package, User, DollarSign, ShoppingCart, CreditCard, Truck } from 'lucide-react';
 import { toast } from "sonner";
 import { format } from 'date-fns';
 import {
@@ -34,7 +34,9 @@ import {
   DialogTitle,
   DialogFooter, // Added DialogFooter
 } from "@/components/ui/dialog"; // Added Dialog components
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added Card components
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { ShopifyPrintfulLinker } from '@/components/admin/linking/ShopifyPrintfulLinker'; // Added for order linking
 
 // --- Interfaces based on shopify-orders Edge Function ---
@@ -132,9 +134,13 @@ const ShopifyOrdersPage: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Filtering state
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('');
-  const [fulfillmentStatusFilter, setFulfillmentStatusFilter] = useState<string>('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all_payment_statuses');
+  const [fulfillmentStatusFilter, setFulfillmentStatusFilter] = useState<string>('all_fulfillment_statuses');
   const [dateRangeFilter, setDateRangeFilter] = useState<DateRange | undefined>(undefined);
+  const [showFilters, setShowFilters] = useState<boolean>(true);
+  const [minAmountFilter, setMinAmountFilter] = useState<string>('');
+  const [maxAmountFilter, setMaxAmountFilter] = useState<string>('');
+  const [currencyFilter, setCurrencyFilter] = useState<string>('all');
 
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -170,15 +176,32 @@ const ShopifyOrdersPage: React.FC = () => {
       params.page_info = pageInfoCursor;
     }
 
-    if (paymentStatusFilter) params.payment_status = paymentStatusFilter;
-    if (fulfillmentStatusFilter) params.fulfillment_status = fulfillmentStatusFilter;
+    if (paymentStatusFilter && paymentStatusFilter !== 'all_payment_statuses') params.payment_status = paymentStatusFilter;
+    if (fulfillmentStatusFilter && fulfillmentStatusFilter !== 'all_fulfillment_statuses') params.fulfillment_status = fulfillmentStatusFilter;
+    if (currencyFilter && currencyFilter !== 'all') {
+      // Add currency filter when backend supports it
+      // params.currency = currencyFilter;
+    }
+    if (minAmountFilter) {
+      // Add min amount filter when backend supports it
+      // params.min_amount = minAmountFilter;
+    }
+    if (maxAmountFilter) {
+      // Add max amount filter when backend supports it
+      // params.max_amount = maxAmountFilter;
+    }
     if (dateRangeFilter?.from) params.date_from = dateRangeFilter.from.toISOString();
     if (dateRangeFilter?.to) params.date_to = dateRangeFilter.to.toISOString();
     if (debouncedSearchQuery) params.search_query = debouncedSearchQuery;
 
     try {
+      // In development mode, we need to handle authentication differently
+      const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
+      const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
+      
       const { data: responseData, error: rpcError } = await supabase.functions.invoke('shopify-orders', {
         body: params,
+        headers,
       });
 
       if (rpcError) {
@@ -261,12 +284,14 @@ const ShopifyOrdersPage: React.FC = () => {
   };
 
   const handleClearFilters = () => {
-    setPaymentStatusFilter('');
-    setFulfillmentStatusFilter('');
+    setPaymentStatusFilter('all_payment_statuses');
+    setFulfillmentStatusFilter('all_fulfillment_statuses');
     setDateRangeFilter(undefined);
-    setSearchQuery(''); // This will also clear debouncedSearchQuery via its own useEffect
+    setSearchQuery('');
+    setMinAmountFilter('');
+    setMaxAmountFilter('');
+    setCurrencyFilter('all');
     setCurrentPageInfo(undefined); // Reset to first page
-    // loadOrders will be called by useEffect
   };
 
   const handlePaymentStatusChange = (value: string) => {
@@ -292,8 +317,13 @@ const ShopifyOrdersPage: React.FC = () => {
     setSelectedOrderForDetail(null);
 
     try {
+      // In development mode, we need to handle authentication differently
+      const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
+      const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
+      
       const { data: responseData, error: rpcError } = await supabase.functions.invoke('shopify-orders', {
         body: { order_id: orderId }, // Pass order_id to fetch specific order
+        headers,
       });
 
       if (rpcError) {
@@ -379,75 +409,262 @@ const ShopifyOrdersPage: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-semibold mb-6">Shopify Orders</h1>
 
-        {/* Filter and Search UI Section */}
-        <div className="mb-6 p-4 border rounded-lg bg-card shadow">
-          <h2 className="text-lg font-medium mb-4">Filters & Search</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-            <Input
-              placeholder="Search by Order #, Customer Name, Email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="lg:col-span-1"
-            />
-             <Select value={paymentStatusFilter} onValueChange={handlePaymentStatusChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Payment Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all_payment_statuses">All Payment Statuses</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="refunded">Refunded</SelectItem>
-                <SelectItem value="partially_refunded">Partially Refunded</SelectItem>
-                <SelectItem value="voided">Voided</SelectItem>
-                {/* Add other common Shopify statuses as needed */}
-              </SelectContent>
-            </Select>
-            <Select value={fulfillmentStatusFilter} onValueChange={handleFulfillmentStatusChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Fulfillment Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all_fulfillment_statuses">All Fulfillment Statuses</SelectItem>
-                <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
-                <SelectItem value="partial">Partial</SelectItem>
-                <SelectItem value="restocked">Restocked</SelectItem>
-                 {/* Add other common Shopify statuses as needed */}
-              </SelectContent>
-            </Select>
-            {/* DateRangePicker - Assuming DatePickerWithRange is available and works like shadcn example */}
-            {/*
-            <div className="lg:col-span-2">
-              <DatePickerWithRange
-                date={dateRangeFilter}
-                onDateChange={setDateRangeFilter}
-                className="w-full"
-              />
+        {/* Enhanced Filter and Search UI Section */}
+        <Card className="mb-6">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Filter className="h-5 w-5" />
+                  Advanced Filters & Search
+                </CardTitle>
+                <CardDescription>
+                  Filter and search through Shopify orders with advanced criteria
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                {showFilters ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
+                {showFilters ? 'Hide' : 'Show'} Filters
+              </Button>
             </div>
-            */}
-             <p className="text-sm text-muted-foreground lg:col-span-3">Date Range Picker placeholder. Requires a component like 'DatePickerWithRange'.</p>
-
-          </div>
-          <div className="flex space-x-2 items-center">
-            <Button onClick={handleApplyFilters} disabled={loading || isRefreshing}>
-              { (loading && !isRefreshing) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" /> }
-              Apply Filters / Search
-            </Button>
-            <Button variant="outline" onClick={handleClearFilters} disabled={loading || isRefreshing}>Clear</Button>
-            <Button variant="outline" onClick={handleRefresh} disabled={loading || isRefreshing}>
-              {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-              Refresh
-            </Button>
-          </div>
-        </div>
+          </CardHeader>
+          
+          {showFilters && (
+            <CardContent>
+              {/* Quick Search Row */}
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by Order #, Customer Name, Email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              
+              {/* Advanced Filters Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Payment Status
+                  </label>
+                  <Select value={paymentStatusFilter} onValueChange={handlePaymentStatusChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All payment statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_payment_statuses">All Payment Statuses</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="refunded">Refunded</SelectItem>
+                      <SelectItem value="partially_refunded">Partially Refunded</SelectItem>
+                      <SelectItem value="voided">Voided</SelectItem>
+                      <SelectItem value="authorized">Authorized</SelectItem>
+                      <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Truck className="h-4 w-4" />
+                    Fulfillment Status
+                  </label>
+                  <Select value={fulfillmentStatusFilter} onValueChange={handleFulfillmentStatusChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All fulfillment statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_fulfillment_statuses">All Fulfillment Statuses</SelectItem>
+                      <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                      <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
+                      <SelectItem value="partial">Partial</SelectItem>
+                      <SelectItem value="restocked">Restocked</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Currency</label>
+                  <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All currencies" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All currencies</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                      <SelectItem value="CAD">CAD</SelectItem>
+                      <SelectItem value="AUD">AUD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Min Amount
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={minAmountFilter}
+                    onChange={(e) => setMinAmountFilter(e.target.value)}
+                    step="0.01"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Max Amount
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="999.99"
+                    value={maxAmountFilter}
+                    onChange={(e) => setMaxAmountFilter(e.target.value)}
+                    step="0.01"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Date Range
+                  </label>
+                  <DatePickerWithRange
+                    date={dateRangeFilter}
+                    onDateChange={setDateRangeFilter}
+                    placeholder="Select date range"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2 items-center justify-between">
+                <div className="flex gap-2">
+                  <Button onClick={handleApplyFilters} disabled={loading || isRefreshing}>
+                    {(loading && !isRefreshing) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                    Apply Filters
+                  </Button>
+                  <Button variant="outline" onClick={handleClearFilters} disabled={loading || isRefreshing}>
+                    <X className="mr-2 h-4 w-4" />
+                    Clear All
+                  </Button>
+                </div>
+                
+                <Button variant="outline" onClick={handleRefresh} disabled={loading || isRefreshing}>
+                  {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  Refresh
+                </Button>
+              </div>
+              
+              {/* Active Filters Display */}
+              {(searchQuery || (paymentStatusFilter && paymentStatusFilter !== 'all_payment_statuses') || (fulfillmentStatusFilter && fulfillmentStatusFilter !== 'all_fulfillment_statuses') || minAmountFilter || maxAmountFilter || (currencyFilter && currencyFilter !== 'all') || dateRangeFilter) && (
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm font-medium mb-2">Active Filters:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {searchQuery && (
+                      <Badge variant="secondary" className="gap-1">
+                        Search: {searchQuery}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchQuery('')} />
+                      </Badge>
+                    )}
+                    {paymentStatusFilter && paymentStatusFilter !== 'all_payment_statuses' && (
+                      <Badge variant="secondary" className="gap-1">
+                        Payment: {paymentStatusFilter}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setPaymentStatusFilter('all_payment_statuses')} />
+                      </Badge>
+                    )}
+                    {fulfillmentStatusFilter && fulfillmentStatusFilter !== 'all_fulfillment_statuses' && (
+                      <Badge variant="secondary" className="gap-1">
+                        Fulfillment: {fulfillmentStatusFilter}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setFulfillmentStatusFilter('all_fulfillment_statuses')} />
+                      </Badge>
+                    )}
+                    {(minAmountFilter || maxAmountFilter) && (
+                      <Badge variant="secondary" className="gap-1">
+                        Amount: {minAmountFilter || '0'} - {maxAmountFilter || '∞'}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => { setMinAmountFilter(''); setMaxAmountFilter(''); }} />
+                      </Badge>
+                    )}
+                    {currencyFilter && currencyFilter !== 'all' && (
+                      <Badge variant="secondary" className="gap-1">
+                        Currency: {currencyFilter}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setCurrencyFilter('all')} />
+                      </Badge>
+                    )}
+                    {dateRangeFilter && (dateRangeFilter.from || dateRangeFilter.to) && (
+                      <Badge variant="secondary" className="gap-1">
+                        Date: {dateRangeFilter.from ? format(dateRangeFilter.from, 'MMM dd') : 'Start'} - {dateRangeFilter.to ? format(dateRangeFilter.to, 'MMM dd') : 'End'}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setDateRangeFilter(undefined)} />
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
 
         {/* Orders Table */}
-        { (loading && isRefreshing) && <div className="py-4 text-center"><Loader2 className="h-6 w-6 animate-spin inline-block" /> Refreshing data...</div> }
+        {(loading && isRefreshing) && (
+          <div className="py-4 text-center">
+            <Loader2 className="h-6 w-6 animate-spin inline-block" /> 
+            Refreshing data...
+          </div>
+        )}
         
-        <Table>
-          <TableCaption>{!loading && !isRefreshing && orders.length === 0 ? "No Shopify orders found matching your criteria." : "A list of Shopify orders."}</TableCaption>
-          <TableHeader>
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  Shopify Orders
+                </CardTitle>
+                <CardDescription>
+                  {orders.length > 0 ? (
+                    `Showing ${orders.length} orders ${paginationDetails?.has_next_page ? '(more available)' : ''}`
+                  ) : (
+                    !loading && !isRefreshing ? 'No orders found matching your criteria' : 'Loading orders...'
+                  )}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={String(itemsPerPage)}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPageInfo(undefined);
+                  }}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 20, 50, 100].map(size => (
+                      <SelectItem key={size} value={String(size)}>{size} / page</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
             <TableRow>
               <SortableHeader column="name" title="Shopify Order #" />
               <SortableHeader column="created_at" title="Order Date" />
@@ -467,8 +684,32 @@ const ShopifyOrdersPage: React.FC = () => {
                 <TableCell>{order.customer_name}</TableCell>
                 <TableCell>{order.customer_email || 'N/A'}</TableCell>
                 <TableCell>{formatCurrency(order.total_amount, order.currency)}</TableCell>
-                <TableCell>{order.payment_status}</TableCell>
-                <TableCell>{order.fulfillment_status || 'N/A'}</TableCell>
+                <TableCell>
+                  <Badge 
+                    variant={
+                      order.payment_status === 'paid' ? 'default' :
+                      order.payment_status === 'pending' ? 'outline' :
+                      order.payment_status === 'refunded' ? 'destructive' :
+                      order.payment_status === 'partially_refunded' ? 'secondary' :
+                      'outline'
+                    }
+                  >
+                    {order.payment_status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge 
+                    variant={
+                      order.fulfillment_status === 'fulfilled' ? 'default' :
+                      order.fulfillment_status === 'unfulfilled' ? 'outline' :
+                      order.fulfillment_status === 'partial' ? 'secondary' :
+                      order.fulfillment_status === 'cancelled' ? 'destructive' :
+                      'outline'
+                    }
+                  >
+                    {order.fulfillment_status || 'N/A'}
+                  </Badge>
+                </TableCell>
                 <TableCell>
                   <Button variant="outline" size="sm" onClick={() => handleViewOrderClick(order.id)}>
                     <Eye className="mr-2 h-4 w-4" /> View
@@ -476,8 +717,10 @@ const ShopifyOrdersPage: React.FC = () => {
                 </TableCell>
               </TableRow>
             ))}
-          </TableBody>
-        </Table>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
         
         {/* Order Detail Modal */}
         {selectedOrderForDetail && !detailLoading && (
@@ -646,30 +889,73 @@ const ShopifyOrdersPage: React.FC = () => {
             </PaginationContent>
           </Pagination>
         )}
-         <div className="mt-4 flex justify-between items-center text-sm text-muted-foreground">
-            <div>
-                Showing {orders.length > 0 ? '1' : '0'} to {orders.length} of many results (total unknown with cursor pagination).
-            </div>
-            <div className="flex items-center space-x-2">
-                <span>Rows per page:</span>
-                <Select
-                    value={String(itemsPerPage)}
-                    onValueChange={(value) => {
-                        setItemsPerPage(Number(value));
-                        setCurrentPageInfo(undefined); // Reset to first page
-                    }}
-                >
-                    <SelectTrigger className="w-[70px]">
-                        <SelectValue placeholder={String(itemsPerPage)} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {[10, 20, 50, 100].map(size => (
-                            <SelectItem key={size} value={String(size)}>{size}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-        </div>
+        {/* Summary Cards */}
+        {orders.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Current Page</p>
+                    <p className="text-2xl font-bold">{orders.length}</p>
+                  </div>
+                  <ShoppingCart className="h-8 w-8 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Value</p>
+                    <p className="text-2xl font-bold">
+                      {formatCurrency(
+                        orders.reduce((sum, order) => sum + order.total_amount, 0),
+                        orders[0]?.currency || 'USD'
+                      )}
+                    </p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Avg. Order Value</p>
+                    <p className="text-2xl font-bold">
+                      {orders.length > 0 ? 
+                        formatCurrency(
+                          orders.reduce((sum, order) => sum + order.total_amount, 0) / orders.length,
+                          orders[0]?.currency || 'USD'
+                        ) : 
+                        '$0.00'
+                      }
+                    </p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Paid Orders</p>
+                    <p className="text-2xl font-bold">
+                      {orders.filter(order => order.payment_status === 'paid').length}
+                    </p>
+                  </div>
+                  <CreditCard className="h-8 w-8 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
       </div>
     </AdminLayout>

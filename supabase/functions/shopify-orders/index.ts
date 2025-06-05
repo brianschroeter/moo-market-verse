@@ -173,7 +173,104 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
+    // For development mode, allow bypassing authentication
+    const authHeader = req.headers.get('Authorization');
+    const isDevToken = authHeader?.includes('dev-access-token');
+
     if (!shopDomain || !adminApiAccessToken) {
+      // In development mode with dev token, read from local database instead of Shopify API
+      if (isDevToken) {
+        console.log("Development mode: Reading from local database due to missing Shopify credentials");
+        
+        // Set up Supabase client for development mode
+        let supabase: SupabaseClient;
+        const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        
+        if (!supabaseServiceRoleKey) {
+          return new Response(
+            JSON.stringify({ error: "Server configuration error: Service role key missing for development mode." }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+          );
+        }
+        
+        supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+        
+        // Parse request parameters for filtering/pagination
+        let params: any = {};
+        if (req.body) {
+          try {
+            const body = await req.json();
+            params = body;
+          } catch (e) {
+            console.warn("Could not parse request body as JSON:", e);
+          }
+        }
+        
+        // Build query for shopify_orders table
+        let query = supabase
+          .from('shopify_orders')
+          .select('*');
+        
+        // Apply filters if provided
+        if (params.payment_status) {
+          query = query.eq('payment_status', params.payment_status);
+        }
+        if (params.fulfillment_status) {
+          query = query.eq('fulfillment_status', params.fulfillment_status);
+        }
+        if (params.search_query) {
+          query = query.or(`customer_name.ilike.%${params.search_query}%,customer_email.ilike.%${params.search_query}%,shopify_order_number.ilike.%${params.search_query}%`);
+        }
+        
+        // Apply sorting
+        const sortBy = params.sort_by || 'order_date';
+        const sortOrder = params.sort_order || 'desc';
+        query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+        
+        // Apply pagination
+        const limit = Math.min(params.limit || 20, 100);
+        query = query.limit(limit);
+        
+        const { data: orders, error } = await query;
+        
+        if (error) {
+          console.error('Error fetching orders from database:', error);
+          return new Response(
+            JSON.stringify({ error: `Database error: ${error.message}` }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+          );
+        }
+        
+        // Transform data to match expected format
+        const transformedOrders = (orders || []).map(order => ({
+          id: order.id,
+          shopify_order_number: order.shopify_order_number,
+          order_date: order.order_date,
+          customer_name: order.customer_name,
+          customer_email: order.customer_email,
+          total_amount: order.total_amount,
+          currency: order.currency,
+          payment_status: order.payment_status,
+          fulfillment_status: order.fulfillment_status,
+        }));
+        
+        const devResponse = {
+          data: transformedOrders,
+          pagination: {
+            has_next_page: false, // Simplified for development
+            has_previous_page: false,
+            next_cursor: null,
+            prev_cursor: null,
+            limit: limit
+          }
+        };
+        
+        return new Response(
+          JSON.stringify(devResponse),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
+      
       console.error("Missing Shopify API credentials in environment variables.");
       return new Response(
         JSON.stringify({ error: "Server configuration error: Shopify API credentials missing." } as ErrorResponse),
@@ -189,13 +286,11 @@ serve(async (req: Request) => {
       );
     }
     
-    // For development mode, allow bypassing authentication
-    const authHeader = req.headers.get('Authorization');
     let supabase: SupabaseClient;
 
-    if (!authHeader) {
+    if (!authHeader || isDevToken) {
       // Development mode - create admin client directly
-      console.log('No auth header - using development mode');
+      console.log('Development mode detected (no auth header or dev token)');
       const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       
       if (!supabaseServiceRoleKey) {

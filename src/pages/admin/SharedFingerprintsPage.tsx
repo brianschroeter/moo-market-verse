@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, User, AlertTriangle, Fingerprint as FingerprintIcon, Copy, BarChart3, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
@@ -218,7 +217,12 @@ const SharedFingerprintsPage: React.FC = () => {
                   <CardTitle className="text-sm text-gray-400">Avg Confidence</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl font-bold text-purple-400">{enhancedData.statistics.avg_confidence}%</p>
+                  <p className="text-2xl font-bold text-purple-400">
+                    {enhancedData.statistics.avg_confidence !== null 
+                      ? `${enhancedData.statistics.avg_confidence % 1 === 0 ? Math.round(enhancedData.statistics.avg_confidence) : enhancedData.statistics.avg_confidence.toFixed(1)}%` 
+                      : '0%'
+                    }
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -236,9 +240,8 @@ const SharedFingerprintsPage: React.FC = () => {
           {enhancedData.sharedFingerprints.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold text-white mb-4">Shared Fingerprints (High Confidence)</h2>
-              <ScrollArea className="h-[calc(50vh-100px)]">
-                <div className="space-y-4">
-                  {enhancedData.sharedFingerprints.map((group) => (
+              <div className="space-y-4">
+                {enhancedData.sharedFingerprints.map((group) => (
                     <div key={group.fingerprint} className="lolcow-card rounded-lg overflow-hidden">
                       <div className="p-4 border-b border-lolcow-lightgray flex items-center justify-between space-x-3 bg-lolcow-lightgray/10">
                         <div className='flex items-center space-x-3'>
@@ -247,7 +250,9 @@ const SharedFingerprintsPage: React.FC = () => {
                             <h3 className="text-lg font-semibold text-white truncate" title={group.fingerprint}>
                               {group.fingerprint}
                             </h3>
-                            <p className="text-xs text-gray-400">Confidence: {group.avg_confidence}% | Last: {formatDate(group.last_activity)}</p>
+                            <p className="text-xs text-gray-400">
+                              Confidence: {group.avg_confidence !== null ? `${group.avg_confidence % 1 === 0 ? Math.round(group.avg_confidence) : group.avg_confidence.toFixed(1)}%` : '0%'} | Last: {formatDate(group.last_activity)}
+                            </p>
                           </div>
                         </div>
                         <div className='flex items-center space-x-2'>
@@ -267,7 +272,9 @@ const SharedFingerprintsPage: React.FC = () => {
                               <div className="flex-grow">
                                 <p className="text-white font-medium">{user.discord_username}</p>
                                 <p className="text-xs text-gray-500 font-mono">ID: {user.discord_id}</p>
-                                <p className="text-xs text-gray-400">Confidence: {user.confidence_score}% | Last: {formatDate(user.last_seen_at)}</p>
+                                <p className="text-xs text-gray-400">
+                                  Confidence: {user.confidence_score !== null ? `${user.confidence_score % 1 === 0 ? Math.round(user.confidence_score) : user.confidence_score.toFixed(1)}%` : '0%'} | Last: {formatDate(user.last_seen_at)}
+                                </p>
                               </div>
                               <Button variant="outline" size="sm" asChild className="border-lolcow-blue text-lolcow-blue hover:bg-lolcow-blue hover:text-white">
                                 <Link to={`/admin/users?userId=${user.user_id}`} className="flex items-center">
@@ -280,8 +287,7 @@ const SharedFingerprintsPage: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                </div>
-              </ScrollArea>
+              </div>
             </div>
           )}
 
@@ -289,8 +295,7 @@ const SharedFingerprintsPage: React.FC = () => {
           {enhancedData.suspiciousDevices.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold text-white mb-4">Recent Suspicious Activity</h2>
-              <ScrollArea className="h-[calc(50vh-100px)]">
-                <div className="space-y-4">
+              <div className="space-y-4">
                   {enhancedData.suspiciousDevices.map((device) => (
                     <div key={device.fingerprint} className="lolcow-card rounded-lg overflow-hidden border-yellow-600/50">
                       <div className="p-4 border-b border-lolcow-lightgray flex items-center justify-between space-x-3 bg-yellow-900/20">
@@ -316,8 +321,7 @@ const SharedFingerprintsPage: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                </div>
-              </ScrollArea>
+              </div>
             </div>
           )}
         </div>

@@ -27,8 +27,9 @@ import AdminNewsletterSignups from "./pages/admin/newsletter-signups.tsx";
 import AdminGuildSearch from "./pages/admin/AdminGuildSearch";
 import AdminYouTubeScheduleChannels from "./pages/admin/AdminYouTubeScheduleChannels";
 import AdminYouTubeSchedulePage from "./pages/admin/AdminYouTubeSchedulePage";
-import AdminPrintfulOrders from "./pages/admin/AdminPrintfulOrders"; // Added import
-import ShopifyOrdersPage from "./pages/admin/ShopifyOrdersPage"; // Added import
+import AdminPrintfulOrders from "./pages/admin/AdminPrintfulOrders";
+import ShopifyOrdersPage from "./pages/admin/ShopifyOrdersPage";
+import OrderReports from "./pages/admin/OrderReports";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -144,6 +145,12 @@ const App = () => {
                 <Route path="/admin/shopify-orders" element={
                   <ProtectedRoute requireAdmin={true}>
                     <ShopifyOrdersPage />
+                  </ProtectedRoute>
+                } />
+                {/* Order Reports Admin Route */}
+                <Route path="/admin/order-reports" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <OrderReports />
                   </ProtectedRoute>
                 } />
                 <Route path="*" element={<NotFound />} />

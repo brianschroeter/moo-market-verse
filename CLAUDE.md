@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Primary Development
-- `npm run dev` - Start development server on http://localhost:8080
+- `npm run dev` - Start development server (auto-finds available port starting from 8080)
 - `npm run build` - Production build
 - `npm run build:dev` - Development build
 - `npm run lint` - Run ESLint
@@ -141,7 +141,7 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 
 #### Database Interactions
 - Use TanStack Query for all data fetching
-- Auto-generated types from `npm run generate-types`
+- Auto-generated types from `npx supabase gen types typescript --local`
 - Service layer functions for complex operations
 - RLS policies for data security
 
@@ -157,10 +157,11 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 4. Generate types after schema changes: `npx supabase gen types typescript --local`
 
 #### Environment Variables
-- **Required**: `SUPABASE_URL`, `SUPABASE_ANON_KEY` for client
-- **Edge Functions**: `SUPABASE_SERVICE_ROLE_KEY` for admin operations
+- **Required**: `VITE_PUBLIC_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` for client
+- **Edge Functions**: `SUPABASE_SERVICE_ROLE_KEY` for admin operations (server-side only)
 - **Development**: `VITE_DEVMODE=true` enables development mode
 - **Discord**: OAuth credentials in `supabase/config.toml`
+- **Security**: Service role key intentionally removed from client `.env` file
 
 #### Testing Strategy
 - **Current Approach**: Manual testing with development mode
