@@ -10,10 +10,10 @@ import FingerprintJS from '@fingerprintjs/fingerprintjs';
 
 // Development mode configuration - SECURE
 // Only enables dev features when explicitly set AND in development environment
-const DEV_MODE = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
+export const DEV_MODE = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
 
 // Development user data - NO HARDCODED ADMIN ACCESS
-const DEV_USER_ID = 'dev-user-id';
+export const DEV_USER_ID = '00000000-0000-0000-0000-000000000001';
 const DEV_DISCORD_ID = 'dev-discord-id';
 
 const mockUser: User | null = DEV_MODE ? {
@@ -50,8 +50,8 @@ const mockSession: Session | null = DEV_MODE && mockUser ? {
   expires_in: 3600,
   expires_at: Math.floor(Date.now() / 1000) + 3600,
   user: mockUser,
-  provider_token: undefined,
-  provider_refresh_token: undefined,
+  provider_token: 'dev-provider-token',
+  provider_refresh_token: 'dev-provider-refresh-token',
 } : null;
 
 const mockProfile: Profile | null = DEV_MODE ? {
@@ -186,14 +186,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await clearCorruptedAuthState();
       
       if (DEV_MODE) {
-        console.warn("--- DEV MODE ACTIVE ---");
-        console.log("Dev User ID:", DEV_USER_ID);
+        console.warn("🔧 DEV MODE ACTIVE");
         setSession(mockSession);
         setUser(mockUser);
         setProfile(mockProfile);
         // NO AUTOMATIC ADMIN ACCESS - must be granted through proper role system
         setLoading(false);
-        console.warn("--- DEV MODE: Auth initialization complete ---");
+        // Check admin role immediately after setting up dev mode
+        setTimeout(() => {
+          checkAdminRole();
+        }, 100);
         
         // Restore impersonation state if it exists
         if (persistedImpersonation) {
@@ -261,7 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         if (DEV_MODE) {
-           console.log("[onAuthStateChange] Dev mode active, ignoring real auth state changes.");
+           // Dev mode active, ignoring real auth state changes
            if (!user && mockUser) setUser(mockUser);
            if (!session && mockSession) setSession(mockSession);
            if (!profile && mockProfile) setProfile(mockProfile);
@@ -346,12 +348,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkAdminRole = async () => {
     if (DEV_MODE) {
-        console.log("Checking admin role for dev user through proper role system...");
         // Even in dev mode, use proper role checking (with mock user ID)
         try {
           const roles = await getUserRoles();
           const isAdminUser = roles.some(role => role.role === 'admin');
-          console.log("Dev mode admin role check result:", isAdminUser);
           setIsAdmin(isAdminUser);
         } catch (error) {
           console.error("Dev mode admin role check failed:", error);

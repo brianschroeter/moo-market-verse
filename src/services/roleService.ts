@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { DEV_MODE, DEV_USER_ID } from "@/context/AuthContext";
 
 export interface UserRole {
   id: string;
@@ -13,16 +14,25 @@ export interface UserRole {
  */
 export const hasRole = async (role: 'admin' | 'user'): Promise<boolean> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    let userId: string;
     
-    if (!session?.user) {
-      return false;
+    if (DEV_MODE) {
+      // In dev mode, use the dev user ID directly
+      userId = DEV_USER_ID;
+    } else {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        return false;
+      }
+      
+      userId = session.user.id;
     }
     
     // Call the has_role function we defined in the database
     const { data, error } = await supabase
       .rpc('has_role', { 
-        _user_id: session.user.id,
+        _user_id: userId,
         _role: role 
       });
     
@@ -42,23 +52,67 @@ export const hasRole = async (role: 'admin' | 'user'): Promise<boolean> => {
  * Get all roles for the current user
  */
 export const getUserRoles = async (): Promise<UserRole[]> => {
-  const { data: { session } } = await supabase.auth.getSession();
+  let userId: string;
   
-  if (!session?.user) {
-    return [];
-  }
-  
-  const { data, error } = await supabase
-    .from('user_roles')
-    .select('*')
-    .eq('user_id', session.user.id);
+  if (DEV_MODE) {
+    // In dev mode, use the dev user ID directly
+    userId = DEV_USER_ID;
+    // Using dev user ID in development mode
+  } else {
+    const { data: { session } } = await supabase.auth.getSession();
     
-  if (error) {
-    console.error('Error fetching user roles:', error);
-    return [];
+    if (!session?.user) {
+      return [];
+    }
+    
+    userId = session.user.id;
   }
   
-  return data as UserRole[];
+  // Check each role individually using the RPC function since RLS blocks direct access
+  const roles: UserRole[] = [];
+  
+  try {
+    // Check admin role
+    const { data: isAdmin, error: adminError } = await supabase
+      .rpc('has_role', { 
+        _user_id: userId,
+        _role: 'admin' 
+      });
+    
+    if (adminError) {
+      console.error('Error checking admin role:', adminError);
+    } else if (isAdmin) {
+      roles.push({
+        id: 'admin-role',
+        user_id: userId,
+        role: 'admin',
+        created_at: new Date().toISOString()
+      });
+    }
+    
+    // Check user role
+    const { data: isUser, error: userError } = await supabase
+      .rpc('has_role', { 
+        _user_id: userId,
+        _role: 'user' 
+      });
+    
+    if (userError) {
+      console.error('Error checking user role:', userError);
+    } else if (isUser) {
+      roles.push({
+        id: 'user-role',
+        user_id: userId,
+        role: 'user',
+        created_at: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('Error in getUserRoles RPC calls:', error);
+  }
+  
+  // Found roles for user
+  return roles;
 };
 
 /**
