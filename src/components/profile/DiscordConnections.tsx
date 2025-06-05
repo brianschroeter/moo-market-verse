@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useImpersonationAwareData } from "@/hooks/useImpersonationAwareData";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { getDiscordAvatarUrl } from "@/utils/avatarUtils";
 import { 
   StoredDiscordConnection, 
   getDiscordConnections,
@@ -51,12 +52,7 @@ const DiscordConnections: React.FC = () => {
     fetchConnectionsAndMemberships();
   }, [toast]);
 
-  const getDiscordAvatarUrl = () => {
-    if (profile?.discord_id && profile?.discord_avatar) {
-      return `https://cdn.discordapp.com/avatars/${profile.discord_id}/${profile.discord_avatar}.png?size=128`;
-    }
-    return null;
-  };
+  const avatarUrl = getDiscordAvatarUrl(profile?.discord_id || '', profile?.discord_avatar);
 
   // Determine if Discord access should be shown
   const hasYouTubeConnection = youtubeConnections.length > 0;
@@ -91,15 +87,12 @@ const DiscordConnections: React.FC = () => {
           <div className="flex items-center justify-between py-2 border-b border-lolcow-lightgray last:border-0">
             <div className="flex items-center">
               {profile && (
-                <Avatar className="h-8 w-8 mr-3">
-                  <AvatarImage
-                    src={getDiscordAvatarUrl() || undefined}
-                    alt={profile.discord_username}
-                  />
-                  <AvatarFallback className="bg-lolcow-darkgray text-white">
-                    {profile.discord_username?.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <UserAvatar 
+                  avatarUrl={avatarUrl}
+                  displayName={profile.discord_username || 'User'}
+                  size="h-8 w-8"
+                  className="mr-3"
+                />
               )}
               <div className="flex flex-col">
                 <span className="text-gray-300">{profile?.discord_username || 'Connected'}</span>

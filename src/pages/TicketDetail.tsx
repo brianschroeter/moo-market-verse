@@ -20,9 +20,72 @@ import { Profile } from "@/services/ticket";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useAvatarFallback, getDiscordAvatarUrl } from "@/utils/avatarUtils";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
+
+// MessageAvatar component for handling ticket message avatars
+const MessageAvatar: React.FC<{
+  profile: Profile | null | undefined;
+  displayName: string;
+  isSupport?: boolean;
+}> = ({ profile, displayName, isSupport }) => {
+  const avatarUrl = profile?.discord_id && profile?.discord_avatar 
+    ? getDiscordAvatarUrl(profile.discord_id, profile.discord_avatar)
+    : null;
+  
+  const { imageSrc, handleError, showFallback, fallbackProps } = useAvatarFallback(avatarUrl, displayName);
+
+  // If this is for the logo fallback, use a different approach
+  if (!profile || (!profile.discord_id && !profile.discord_avatar)) {
+    return (
+      <img 
+        src="/lovable-uploads/logo.png"
+        alt={displayName} 
+        className="h-[60px] w-auto rounded-lg"
+        onError={(e) => {
+          // If logo fails, show initials avatar
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+          // Show fallback avatar instead
+          const parent = target.parentElement;
+          if (parent) {
+            parent.innerHTML = `
+              <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold" 
+                   style="background-color: ${fallbackProps.backgroundColor}">
+                ${fallbackProps.initials}
+              </div>
+            `;
+          }
+        }}
+      />
+    );
+  }
+
+  return (
+    <Avatar className="w-10 h-10 rounded-full">
+      {!showFallback && imageSrc && (
+        <AvatarImage 
+          src={imageSrc}
+          alt={displayName}
+          onError={handleError}
+          className="object-cover"
+        />
+      )}
+      <AvatarFallback 
+        className="text-white font-semibold"
+        style={{
+          backgroundColor: fallbackProps.backgroundColor,
+          color: fallbackProps.color
+        }}
+      >
+        {fallbackProps.initials}
+      </AvatarFallback>
+    </Avatar>
+  );
+};
 
 // Helper to get public URL for Supabase Storage
 const getAttachmentUrl = (filePath: string): string => {
@@ -442,10 +505,6 @@ const TicketDetail: React.FC = () => {
   // Destructure after the checks and hook calls
   const { ticket, messages, userProfile } = ticketData; 
 
-  // Avatar URL for the ticket creator
-  const ticketCreatorAvatar = userProfile?.discord_id && userProfile?.discord_avatar 
-    ? `https://cdn.discordapp.com/avatars/${userProfile.discord_id}/${userProfile.discord_avatar}.png`
-    : "https://via.placeholder.com/40";
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -541,38 +600,28 @@ const TicketDetail: React.FC = () => {
           <div className="space-y-6 mb-8">
             {messages.map((message, index) => {
               // Handle different cases for avatar and name
-              let displayAvatar: string;
+              let displayProfile: Profile | null | undefined;
               let displayName: string;
               const isFromTicketCreator = message.from_user;
               
               if (isFromTicketCreator) {
                 // This is a user message - use the ticket creator's profile
-                if (userProfile) {
-                  displayAvatar = userProfile.discord_id && userProfile.discord_avatar 
-                    ? `https://cdn.discordapp.com/avatars/${userProfile.discord_id}/${userProfile.discord_avatar}.png`
-                    : "http://localhost:8080/lovable-uploads/logo.png";
-                  displayName = userProfile.discord_username || "User";
-                } else {
-                  // Fallback if no user profile
-                  displayAvatar = "http://localhost:8080/lovable-uploads/logo.png";
-                  displayName = "User";
-                }
+                displayProfile = userProfile;
+                displayName = userProfile?.discord_username || "User";
               } else {
                 // This is a support message - use the message author's profile
                 const supportProfile = message.author_profile;
                 if (message.user_id && supportProfile) {
                   // Support staff with profile
-                  displayAvatar = supportProfile.discord_id && supportProfile.discord_avatar 
-                    ? `https://cdn.discordapp.com/avatars/${supportProfile.discord_id}/${supportProfile.discord_avatar}.png`
-                    : "http://localhost:8080/lovable-uploads/logo.png";
+                  displayProfile = supportProfile;
                   displayName = supportProfile.discord_username || `Support ${message.user_id.slice(0, 8)}`;
                 } else if (message.user_id && !supportProfile) {
                   // Support staff with ID but no profile
-                  displayAvatar = "http://localhost:8080/lovable-uploads/logo.png";
+                  displayProfile = null;
                   displayName = `Support ${message.user_id.slice(0, 8)}`;
                 } else {
                   // Legacy support message without user_id
-                  displayAvatar = "http://localhost:8080/lovable-uploads/logo.png";
+                  displayProfile = null;
                   displayName = "Support Team";
                 }
               }
@@ -586,14 +635,10 @@ const TicketDetail: React.FC = () => {
                   className={`lolcow-card group ${!isFromTicketCreator ? "border-l-4 border-l-lolcow-blue" : ""}`}
                 >
                   <div className="flex items-start space-x-4">
-                    <img 
-                      src={displayAvatar}
-                      alt={displayName} 
-                      className={
-                        displayAvatar === "http://localhost:8080/lovable-uploads/logo.png" 
-                          ? "h-[60px] w-auto rounded-lg" 
-                          : "w-10 h-10 rounded-full"
-                      }
+                    <MessageAvatar 
+                      profile={displayProfile}
+                      displayName={displayName}
+                      isSupport={!isFromTicketCreator}
                     />
                     <div className="flex-1 relative">
                       <div className="flex justify-between items-center">

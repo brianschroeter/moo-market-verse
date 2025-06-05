@@ -1,7 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { getDiscordAvatarUrl } from "@/utils/avatarUtils";
 
 const ProfileHeader: React.FC = () => {
   const { user, profile } = useAuth();
@@ -10,12 +11,7 @@ const ProfileHeader: React.FC = () => {
     return <div>Loading profile...</div>;
   }
 
-  const getDiscordAvatarUrl = () => {
-    if (profile.discord_id && profile.discord_avatar) {
-      return `https://cdn.discordapp.com/avatars/${profile.discord_id}/${profile.discord_avatar}.png?size=128`;
-    }
-    return "https://placehold.co/128x128";
-  };
+  const avatarUrl = getDiscordAvatarUrl(profile.discord_id || '', profile.discord_avatar);
 
   const formatJoinDate = () => {
     const date = new Date(profile.created_at);
@@ -31,16 +27,12 @@ const ProfileHeader: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
         {/* Avatar */}
         <div className="relative">
-          <Avatar className="w-32 h-32 border-4 border-lolcow-blue">
-            <AvatarImage 
-              src={getDiscordAvatarUrl()} 
-              alt={profile.discord_username}
-              className="object-cover"
-            />
-            <AvatarFallback className="bg-lolcow-darkgray text-white text-4xl">
-              {profile.discord_username.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar 
+            avatarUrl={avatarUrl}
+            displayName={profile.discord_username}
+            size="w-32 h-32"
+            className="border-4 border-lolcow-blue text-4xl"
+          />
           <div className="absolute bottom-0 right-0 bg-green-500 w-6 h-6 rounded-full border-4 border-lolcow-darkgray"></div>
         </div>
 

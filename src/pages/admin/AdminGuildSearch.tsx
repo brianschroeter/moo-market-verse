@@ -9,6 +9,8 @@ import AdminLayout from '@/components/AdminLayout';
 import { Server } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link as RouterLink } from 'react-router-dom';
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { getDiscordAvatarUrl } from "@/utils/avatarUtils";
 
 interface GuildSearchResult {
   guild_id: string;
@@ -65,12 +67,6 @@ export default function AdminGuildSearch() {
     }
   };
 
-  const constructAvatarUrl = (discordId: string | null, avatarHash: string | null) => {
-    if (discordId && avatarHash) {
-      return `https://cdn.discordapp.com/avatars/${discordId}/${avatarHash}.png`;
-    }
-    return "https://placehold.co/40x40";
-  };
 
   return (
     <AdminLayout>
@@ -132,18 +128,12 @@ export default function AdminGuildSearch() {
                     </TableCell>
                     <TableCell className="py-3">
                         <div className="flex items-center">
-                            <img 
-                                src={constructAvatarUrl(item.user_discord_id, item.user_discord_avatar)}
-                                alt={item.user_discord_username || 'User'}
-                                className="w-10 h-10 rounded-full mr-3"
-                                onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    if (!target.src.includes('placehold.co')) {
-                                        target.src = "https://placehold.co/40x40";
-                                    }
-                                }}
+                            <UserAvatar 
+                                avatarUrl={getDiscordAvatarUrl(item.user_discord_id || '', item.user_discord_avatar)}
+                                displayName={item.user_discord_username || item.user_discord_id || "Unknown User"}
+                                size="w-10 h-10"
                             />
-                            <div>
+                            <div className="ml-3">
                                 <RouterLink 
                                     to={`/admin/users?userId=${item.user_profile_id}`}
                                     className="font-medium text-lolcow-blue hover:underline"

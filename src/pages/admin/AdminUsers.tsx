@@ -17,6 +17,8 @@ import { format } from 'date-fns';
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { YouTubeMembership } from "@/services/types/auth-types";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { getDiscordAvatarUrl } from "@/utils/avatarUtils";
 
 // ---- Added: Interface for User Device ----
 interface UserDevice {
@@ -532,7 +534,6 @@ const AdminUsers: React.FC = (): ReactNode => {
       }
       
       const profileIds = profiles.map(p => p.id);
-      console.log("[AdminUsers] Profile IDs for current page:", profileIds);
 
       // Fetch roles for the current page's users
       const { data: roles, error: rolesError } = await supabase
@@ -577,7 +578,6 @@ const AdminUsers: React.FC = (): ReactNode => {
         .select('id, user_id') // Select youtube_connection_id (as id) and user_id
         .in('user_id', profileIds);
       
-      console.log("[AdminUsers] Fetched YouTube Connections:", userYoutubeConnections, "Error:", ytConnectionsError);
 
       if (ytConnectionsError) {
         console.error("Error fetching YouTube connections:", ytConnectionsError);
@@ -588,14 +588,12 @@ const AdminUsers: React.FC = (): ReactNode => {
         });
       } else if (userYoutubeConnections && userYoutubeConnections.length > 0) {
         const youtubeConnectionIds = userYoutubeConnections.map(conn => conn.id);
-        console.log("[AdminUsers] YouTube Connection IDs for memberships query:", youtubeConnectionIds);
 
         const { data: fetchedMemberships, error: ytMembershipsError } = await supabase
           .from('youtube_memberships')
           .select('*, youtube_connection_id') // youtube_connection_id is crucial for mapping back
           .in('youtube_connection_id', youtubeConnectionIds);
         
-        console.log("[AdminUsers] Fetched YouTube Memberships:", fetchedMemberships, "Error:", ytMembershipsError);
 
         if (ytMembershipsError) {
           console.error("Error fetching YouTube memberships:", ytMembershipsError);
@@ -613,7 +611,6 @@ const AdminUsers: React.FC = (): ReactNode => {
               user_id: connection ? connection.user_id : null // Add user_id
             };
           }).filter(mem => mem.user_id !== null) as (YouTubeMembership & { user_id: string })[];
-          console.log("[AdminUsers] Processed allYoutubeMemberships (with user_id):", allYoutubeMemberships);
         }
       }
       // ---- End YouTube Memberships Fetching ----
@@ -622,13 +619,17 @@ const AdminUsers: React.FC = (): ReactNode => {
       const userMap = new Map<string, UserData>();
 
       profiles.forEach(profile => {
-        // Log the profile data for debugging
-        // console.log("Processing profile:", profile);
-
-        // Construct the full avatar URL using discord_id
-        const avatarUrl = profile.discord_avatar && profile.discord_id 
-                        ? `https://cdn.discordapp.com/avatars/${profile.discord_id}/${profile.discord_avatar}.png` 
-                        : null; // Set to null if no avatar hash or discord_id
+        // Construct the avatar URL properly to avoid 404s
+        let avatarUrl = null;
+        if (profile.discord_avatar) {
+          if (profile.discord_avatar.startsWith('http')) {
+            // Already a full URL (e.g., default Discord avatar)
+            avatarUrl = profile.discord_avatar;
+          } else if (profile.discord_id) {
+            // It's an avatar hash, use the proper utility function
+            avatarUrl = getDiscordAvatarUrl(profile.discord_id, profile.discord_avatar);
+          }
+        }
 
         userMap.set(profile.id, { // Keep using profile.id (UUID) as the map key
           id: profile.id,
@@ -1264,20 +1265,12 @@ const AdminUsers: React.FC = (): ReactNode => {
                 >
                   <TableCell className="py-4">
                     <div className="flex items-center">
-                      <img 
-                        src={user.avatar || "https://placehold.co/40x40"} 
-                        alt={user.username} 
-                        className="w-10 h-10 rounded-full mr-3"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          if (target.src.includes('placehold.co')) {
-                            target.style.display = 'none';
-                          } else {
-                            target.src = "https://placehold.co/40x40";
-                          }
-                        }}
+                      <UserAvatar 
+                        avatarUrl={user.avatar}
+                        displayName={user.username}
+                        size="w-10 h-10"
                       />
-                      <div>
+                      <div className="ml-3">
                         <div className="font-medium text-white">{user.username}</div>
                         {user.discord_id && (
                           <div className="text-xs text-gray-500">Discord ID: {user.discord_id}</div>
