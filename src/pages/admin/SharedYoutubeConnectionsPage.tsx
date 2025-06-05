@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface UserProfile {
   user_id: string;
@@ -124,19 +125,10 @@ const SharedYoutubeConnectionsPage: React.FC = () => {
                   <ul className="space-y-3">
                     {group.users.map((user) => (
                       <li key={user.user_id} className="flex items-center space-x-3 p-3 bg-lolcow-lightgray/5 rounded-md hover:bg-lolcow-lightgray/10 transition-colors">
-                        <img
-                          src={user.avatar_url || "https://placehold.co/40x40"}
-                          alt={user.username || 'User Avatar'}
-                          className="w-10 h-10 rounded-full bg-lolcow-lightgray/20"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            if (target.src.includes('placehold.co')) {
-                              // Optionally, display initials or a generic icon if placeholder fails
-                              // For now, just hide if it's already the placeholder to prevent loops
-                            } else {
-                              target.src = "https://placehold.co/40x40";
-                            }
-                          }}
+                        <UserAvatar
+                          avatarUrl={user.avatar_url}
+                          displayName={user.username || 'User'}
+                          size="w-10 h-10"
                         />
                         <div className="flex-grow">
                           <p className="text-white font-medium">{user.username || 'Unknown User'}</p>

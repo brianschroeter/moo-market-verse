@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 -- Table for storing main Printful order details
-CREATE TABLE printful_orders (
+CREATE TABLE IF NOT EXISTS printful_orders (
     printful_internal_id BIGINT PRIMARY KEY,
     printful_external_id TEXT UNIQUE NOT NULL,
     recipient_name TEXT NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE printful_orders (
 );
 
 -- Table for storing individual line items for each Printful order
-CREATE TABLE printful_order_items (
+CREATE TABLE IF NOT EXISTS printful_order_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_printful_internal_id BIGINT NOT NULL,
     printful_line_item_id BIGINT NOT NULL,
@@ -37,17 +37,17 @@ CREATE TABLE printful_order_items (
 );
 
 -- Suggested Initial Indexes
-CREATE INDEX idx_printful_orders_recipient_name ON printful_orders USING GIN (recipient_name gin_trgm_ops);
-CREATE INDEX idx_printful_orders_status ON printful_orders (status);
-CREATE INDEX idx_printful_orders_printful_created_at ON printful_orders (printful_created_at DESC);
-CREATE INDEX idx_printful_orders_total_amount ON printful_orders (total_amount);
-CREATE INDEX idx_printful_orders_last_synced_at ON printful_orders (last_synced_at);
-CREATE INDEX idx_printful_orders_printful_updated_at ON printful_orders (printful_updated_at);
-CREATE INDEX idx_printful_orders_recipient_email_jsonb ON printful_orders USING GIN ((shipping_details -> 'email'));
-CREATE INDEX idx_printful_order_items_order_id ON printful_order_items (order_printful_internal_id);
-CREATE INDEX idx_printful_order_items_sku ON printful_order_items (sku);
-CREATE INDEX idx_printful_order_items_printful_product_id ON printful_order_items (printful_product_id);
-CREATE INDEX idx_printful_order_items_printful_variant_id ON printful_order_items (printful_variant_id);
+CREATE INDEX IF NOT EXISTS idx_printful_orders_recipient_name ON printful_orders USING GIN (recipient_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_printful_orders_status ON printful_orders (status);
+CREATE INDEX IF NOT EXISTS idx_printful_orders_printful_created_at ON printful_orders (printful_created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_printful_orders_total_amount ON printful_orders (total_amount);
+CREATE INDEX IF NOT EXISTS idx_printful_orders_last_synced_at ON printful_orders (last_synced_at);
+CREATE INDEX IF NOT EXISTS idx_printful_orders_printful_updated_at ON printful_orders (printful_updated_at);
+CREATE INDEX IF NOT EXISTS idx_printful_orders_recipient_email_jsonb ON printful_orders USING GIN ((shipping_details -> 'email'));
+CREATE INDEX IF NOT EXISTS idx_printful_order_items_order_id ON printful_order_items (order_printful_internal_id);
+CREATE INDEX IF NOT EXISTS idx_printful_order_items_sku ON printful_order_items (sku);
+CREATE INDEX IF NOT EXISTS idx_printful_order_items_printful_product_id ON printful_order_items (printful_product_id);
+CREATE INDEX IF NOT EXISTS idx_printful_order_items_printful_variant_id ON printful_order_items (printful_variant_id);
 
 -- Ensure pgcrypto and pg_trgm extensions are enabled if not already.
 -- Supabase typically has them, but good to note.

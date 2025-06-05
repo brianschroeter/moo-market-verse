@@ -64,10 +64,17 @@ serve(async (req) => {
         };
       }
       
-      // Construct avatar URL (same logic as in AdminUsers.tsx)
-      const avatarUrl = discord_id && discord_avatar
-        ? `https://cdn.discordapp.com/avatars/${discord_id}/${discord_avatar}.png`
-        : null;
+      // Construct avatar URL with proper fallback handling
+      let avatarUrl = null;
+      if (discord_avatar) {
+        if (discord_avatar.startsWith('http')) {
+          // Already a full URL (e.g., default Discord avatar)
+          avatarUrl = discord_avatar;
+        } else if (discord_id) {
+          // It's an avatar hash, construct the URL
+          avatarUrl = `https://cdn.discordapp.com/avatars/${discord_id}/${discord_avatar}.png`;
+        }
+      }
 
       groups[youtube_channel_id].users.push({
         user_id,

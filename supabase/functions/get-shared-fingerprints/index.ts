@@ -48,32 +48,29 @@ serve(async (req) => {
     }
     
     const result: SharedFingerprintGroup[] = [];
-    const groups: Record<string, SharedFingerprintGroup> = {};
 
     (data as any[]).forEach(row => {
-      const { fingerprint, user_id, username, discord_id, discord_avatar, last_seen_at, first_seen_at } = row;
+      const { fingerprint, users } = row;
       
-      if (!groups[fingerprint]) {
-        groups[fingerprint] = {
-          fingerprint,
-          users: [],
-        };
-      }
-      
-      const avatarUrl = discord_id && discord_avatar
-        ? `https://cdn.discordapp.com/avatars/${discord_id}/${discord_avatar}.png`
-        : null;
+      const processedUsers = users.map((user: any) => {
+        const avatarUrl = user.discord_id && user.discord_avatar
+          ? `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.discord_avatar}.png`
+          : null;
 
-      groups[fingerprint].users.push({
-        user_id,
-        username: username || 'Unknown',
-        avatar_url: avatarUrl,
-        last_seen_at,
-        first_seen_at
+        return {
+          user_id: user.user_id,
+          username: user.discord_username || 'Unknown',
+          avatar_url: avatarUrl,
+          last_seen_at: user.last_seen_at,
+          first_seen_at: user.first_seen_at
+        };
+      });
+
+      result.push({
+        fingerprint,
+        users: processedUsers
       });
     });
-
-    Object.values(groups).forEach(group => result.push(group));
 
     return new Response(JSON.stringify({ data: result }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

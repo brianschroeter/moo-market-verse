@@ -152,7 +152,29 @@ create table "public"."newsletter_signups" (
 
 alter table "public"."user_roles" alter column role type "public"."user_role" using role::text::"public"."user_role";
 
-alter table "public"."user_roles" alter column "role" set default None;
+alter table "public"."user_roles" alter column "role" drop default;
+
+-- Drop the old function that depends on the old type
+DROP FUNCTION IF EXISTS assign_admin_role(uuid, user_role__old_version_to_be_dropped);
+
+-- Update the assign_admin_role function to use the new type
+CREATE OR REPLACE FUNCTION assign_admin_role(target_user_id uuid, target_role public.user_role)
+RETURNS VOID AS $$
+BEGIN
+  -- Only allow admins to run this function
+  IF NOT (auth.uid() IS NOT NULL AND is_admin()) THEN
+    RAISE EXCEPTION 'Only admins can assign roles';
+  END IF;
+
+  -- Insert or update the user role
+  INSERT INTO user_roles (user_id, role, assigned_by)
+  VALUES (target_user_id, target_role, auth.uid())
+  ON CONFLICT (user_id) 
+  DO UPDATE SET 
+    role = EXCLUDED.role,
+    assigned_by = EXCLUDED.assigned_by;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 drop type "public"."user_role__old_version_to_be_dropped";
 
@@ -192,9 +214,9 @@ alter table "public"."support_tickets" drop column "priority";
 
 alter table "public"."support_tickets" drop column "resolved_at";
 
-alter table "public"."support_tickets" alter column "status" set default 'open'::text;
-
 alter table "public"."support_tickets" alter column "status" set data type text using "status"::text;
+
+alter table "public"."support_tickets" alter column "status" set default 'open';
 
 alter table "public"."ticket_attachments" drop column "file_size_bytes";
 

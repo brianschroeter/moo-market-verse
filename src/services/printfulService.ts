@@ -122,6 +122,8 @@ export interface FetchSyncedPrintfulOrdersParams {
   shippingAddressName?: string; // Filters shipping_details->>'name'
   sortBy?: keyof Pick<DbPrintfulOrder, 'printful_created_at' | 'recipient_name' | 'status' | 'total_amount' | 'printful_internal_id'>; // Allowed sortable columns
   sortAscending?: boolean;
+  dateFrom?: string; // ISO date string for filtering from date
+  dateTo?: string; // ISO date string for filtering to date
 }
 
 export interface SyncedPrintfulOrdersData {
@@ -214,6 +216,8 @@ export const fetchSyncedPrintfulOrdersFromDB = async (
     shippingAddressName,
     sortBy = 'printful_created_at',
     sortAscending = false,
+    dateFrom,
+    dateTo,
   } = params;
 
   let query = supabase
@@ -235,6 +239,17 @@ export const fetchSyncedPrintfulOrdersFromDB = async (
   if (shippingAddressName) {
     // This assumes 'name' is a top-level key in shipping_details JSON
     query = query.ilike('shipping_details->>name', `%${shippingAddressName}%`);
+  }
+
+  // Date filtering
+  if (dateFrom) {
+    query = query.gte('printful_created_at', dateFrom);
+  }
+  if (dateTo) {
+    // Add one day to include the end date
+    const endDate = new Date(dateTo);
+    endDate.setDate(endDate.getDate() + 1);
+    query = query.lt('printful_created_at', endDate.toISOString());
   }
 
   // Filtering by itemsOrdered (product_name in printful_order_items)

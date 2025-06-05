@@ -44,10 +44,28 @@ serve(async (req: Request) => {
     const userId = user.id
 
     // Get fingerprint and userAgent from the request body
-    const { fingerprint, userAgent } = await req.json()
+    const { fingerprint, userAgent, components } = await req.json()
     if (!fingerprint) {
       throw new Error('Missing fingerprint in request body')
     }
+
+    // Calculate confidence score based on available data
+    let confidenceScore = 50; // Base score
+    
+    if (userAgent && userAgent.length > 10) confidenceScore += 15;
+    if (clientIP) confidenceScore += 10;
+    if (components) {
+      // Add points for each available component
+      if (components.screen) confidenceScore += 5;
+      if (components.timezone) confidenceScore += 5;
+      if (components.language) confidenceScore += 5;
+      if (components.platform) confidenceScore += 5;
+      if (components.canvas) confidenceScore += 3;
+      if (components.webgl) confidenceScore += 2;
+    }
+    
+    // Cap at 100
+    confidenceScore = Math.min(confidenceScore, 100);
 
     // Extract client IP address from request headers
     // Optimized for Cloudflare DNS → Vercel setup
@@ -79,6 +97,8 @@ serve(async (req: Request) => {
       fingerprint: fingerprint,
       user_agent: userAgent, // Can be null/undefined
       ip_address: clientIP, // Add IP address
+      confidence_score: confidenceScore, // Add calculated confidence score
+      fingerprint_components: components || null, // Store components if provided
       last_seen_at: new Date().toISOString(), // Update last seen time
     }
 

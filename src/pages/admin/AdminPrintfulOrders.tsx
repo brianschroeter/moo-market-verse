@@ -13,6 +13,12 @@ import {
   ShippingAddress, // Import if not already implicitly available via TransformedPrintfulOrder
 } from '@/services/printfulService';
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -41,7 +47,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, Loader2, RefreshCw, Eye } from 'lucide-react';
+import { ArrowUpDown, Loader2, RefreshCw, Eye, Filter, X, Calendar, Package, User, DollarSign, Search } from 'lucide-react';
 import { toast } from "sonner";
 
 // Define a type for the order object that includes the fields mentioned in the prompt
@@ -105,12 +111,23 @@ const AdminPrintfulOrders: React.FC = () => {
   const [itemsOrderedFilter, setItemsOrderedFilter] = useState<string>('');
   const [printfulOrderNumberFilter, setPrintfulOrderNumberFilter] = useState<string>('');
   const [shippingAddressFilter, setShippingAddressFilter] = useState<string>(''); // This will be used for email or name
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [minAmountFilter, setMinAmountFilter] = useState<string>('');
+  const [maxAmountFilter, setMaxAmountFilter] = useState<string>('');
+  const [showFilters, setShowFilters] = useState<boolean>(true);
+  const [currencyFilter, setCurrencyFilter] = useState<string>('all');
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRange | undefined>(undefined);
 
   // Debounced filter states for triggering API calls
   const [debouncedCustomerNameFilter, setDebouncedCustomerNameFilter] = useState<string>('');
   const [debouncedItemsOrderedFilter, setDebouncedItemsOrderedFilter] = useState<string>('');
   const [debouncedPrintfulOrderNumberFilter, setDebouncedPrintfulOrderNumberFilter] = useState<string>('');
   const [debouncedShippingAddressFilter, setDebouncedShippingAddressFilter] = useState<string>('');
+  const [debouncedStatusFilter, setDebouncedStatusFilter] = useState<string>('');
+  const [debouncedMinAmountFilter, setDebouncedMinAmountFilter] = useState<string>('');
+  const [debouncedMaxAmountFilter, setDebouncedMaxAmountFilter] = useState<string>('');
+  const [debouncedCurrencyFilter, setDebouncedCurrencyFilter] = useState<string>('');
+  const [debouncedDateRangeFilter, setDebouncedDateRangeFilter] = useState<DateRange | undefined>(undefined);
 
 
   const loadOrders = useCallback(async (
@@ -141,6 +158,24 @@ const AdminPrintfulOrders: React.FC = () => {
       if (currentFilters?.customerName) params.customerName = currentFilters.customerName;
       if (currentFilters?.itemsOrdered) params.itemsOrdered = currentFilters.itemsOrdered;
       if (currentFilters?.orderNumber) params.orderNumber = currentFilters.orderNumber;
+      
+      // Date range filtering
+      if (debouncedDateRangeFilter?.from) {
+        params.dateFrom = debouncedDateRangeFilter.from.toISOString();
+      }
+      if (debouncedDateRangeFilter?.to) {
+        params.dateTo = debouncedDateRangeFilter.to.toISOString();
+      }
+      
+      // Only pass status and currency filters if they're not 'all'
+      if (statusFilter && statusFilter !== 'all') {
+        // Add status filter to params when backend supports it
+        // params.status = statusFilter;
+      }
+      if (currencyFilter && currencyFilter !== 'all') {
+        // Add currency filter to params when backend supports it
+        // params.currency = currencyFilter;
+      }
       
       // Handle shippingAddressFilter: try email first, then name
       if (currentFilters?.shippingAddress) {
@@ -208,15 +243,17 @@ const AdminPrintfulOrders: React.FC = () => {
       setDebouncedItemsOrderedFilter(itemsOrderedFilter);
       setDebouncedPrintfulOrderNumberFilter(printfulOrderNumberFilter);
       setDebouncedShippingAddressFilter(shippingAddressFilter);
-      // When debounced filters change, we might want to reset to page 1
-      // This is often desired behavior for new filter applications.
-      // setCurrentPage(1); // Consider if this should be here or in loadOrders/useEffect below
+      setDebouncedStatusFilter(statusFilter);
+      setDebouncedMinAmountFilter(minAmountFilter);
+      setDebouncedMaxAmountFilter(maxAmountFilter);
+      setDebouncedCurrencyFilter(currencyFilter);
+      setDebouncedDateRangeFilter(dateRangeFilter);
     }, 500); // 500ms debounce delay
 
     return () => {
       clearTimeout(handler);
     };
-  }, [customerNameFilter, itemsOrderedFilter, printfulOrderNumberFilter, shippingAddressFilter]);
+  }, [customerNameFilter, itemsOrderedFilter, printfulOrderNumberFilter, shippingAddressFilter, statusFilter, minAmountFilter, maxAmountFilter, currencyFilter, dateRangeFilter]);
 
 
   // Effect to load orders when debounced filters, pagination, or sorting changes
@@ -230,7 +267,7 @@ const AdminPrintfulOrders: React.FC = () => {
       orderNumber: debouncedPrintfulOrderNumberFilter || undefined,
       shippingAddress: debouncedShippingAddressFilter || undefined,
     });
-  }, [loadOrders, debouncedCustomerNameFilter, debouncedItemsOrderedFilter, debouncedPrintfulOrderNumberFilter, debouncedShippingAddressFilter, currentPage, itemsPerPage, sortColumn, sortDirection]);
+  }, [loadOrders, debouncedCustomerNameFilter, debouncedItemsOrderedFilter, debouncedPrintfulOrderNumberFilter, debouncedShippingAddressFilter, debouncedStatusFilter, debouncedMinAmountFilter, debouncedMaxAmountFilter, debouncedCurrencyFilter, debouncedDateRangeFilter, currentPage, itemsPerPage, sortColumn, sortDirection]);
 
   const handleApplyFilters = () => {
     setCurrentPage(1);
@@ -256,10 +293,12 @@ const AdminPrintfulOrders: React.FC = () => {
     setItemsOrderedFilter('');
     setPrintfulOrderNumberFilter('');
     setShippingAddressFilter('');
+    setStatusFilter('all');
+    setMinAmountFilter('');
+    setMaxAmountFilter('');
+    setCurrencyFilter('all');
+    setDateRangeFilter(undefined);
     setCurrentPage(1); // Reset to page 1
-    // Explicitly call loadOrders with no filters.
-    // This will also be picked up by the debounced useEffect if we clear debounced states too,
-    // or we can call loadOrders directly.
     loadOrders({}); // Call with empty filters
   };
 
@@ -435,81 +474,266 @@ const AdminPrintfulOrders: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-2xl font-semibold mb-6">Printful Orders Management</h1>
 
-        {/* Filter UI Section */}
-        <form onSubmit={(e) => e.preventDefault()} className="contents">
-          {/* Using "contents" to avoid introducing an extra div that might break styling,
-              assuming the original div was primarily for grouping and styling.
-              If the div itself was a flex/grid container for layout beyond just its children,
-              then the form should wrap the original div, or the div's styles moved.
-              For now, assuming the div was a simple wrapper.
-              A safer alternative if styling is an issue:
-              <form onSubmit={(e) => e.preventDefault()}>
-                <div className="mb-6 p-4 border rounded-lg bg-card shadow"> ... </div>
-              </form>
-              Let's go with wrapping the div for safety.
-          */}
-        </form>
-        <form onSubmit={(e) => e.preventDefault()}>
-          <div className="mb-6 p-4 border rounded-lg bg-card shadow">
-            <h2 className="text-lg font-medium mb-4">Filters</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Input
-                placeholder="Customer Name"
-                value={customerNameFilter}
-                onChange={(e) => setCustomerNameFilter(e.target.value)}
-                className="max-w-sm"
-              />
-              <Input
-                placeholder="Items Ordered (product name)"
-                value={itemsOrderedFilter}
-                onChange={(e) => setItemsOrderedFilter(e.target.value)}
-                className="max-w-sm"
-              />
-              <Input
-                placeholder="Printful Order Number (exact)"
-                value={printfulOrderNumberFilter}
-                onChange={(e) => setPrintfulOrderNumberFilter(e.target.value)}
-                className="max-w-sm"
-              />
-              <Input
-                placeholder="Shipping Address"
-                value={shippingAddressFilter}
-                onChange={(e) => setShippingAddressFilter(e.target.value)}
-                className="max-w-sm"
-              />
-            </div>
-            <div className="mt-4 flex space-x-2 items-center">
-              <Button type="button" onClick={handleApplyFilters} disabled={isRefreshing || loading}>Apply Filters</Button>
-              <Button type="button" variant="outline" onClick={handleClearFilters} disabled={isRefreshing || loading}>Clear Filters</Button>
-              <Button type="button" variant="outline" onClick={handleRefresh} disabled={isRefreshing || loading}>
-                {isRefreshing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                )}
-                Refresh Data
+        {/* Enhanced Filter UI Section */}
+        <Card className="mb-6">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Filter className="h-5 w-5" />
+                  Advanced Filters
+                </CardTitle>
+                <CardDescription>
+                  Filter and search through {totalOrders} printful orders
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                {showFilters ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
+                {showFilters ? 'Hide' : 'Show'} Filters
               </Button>
             </div>
-          </div>
-        </form>
+          </CardHeader>
+          
+          {showFilters && (
+            <CardContent>
+              <form onSubmit={(e) => e.preventDefault()}>
+                {/* Quick Search Row */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Quick search by customer name, order number, or shipping address..."
+                      value={customerNameFilter}
+                      onChange={(e) => setCustomerNameFilter(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                
+                {/* Advanced Filters Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Items Ordered
+                    </label>
+                    <Input
+                      placeholder="Product name..."
+                      value={itemsOrderedFilter}
+                      onChange={(e) => setItemsOrderedFilter(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Order Number</label>
+                    <Input
+                      placeholder="Exact order ID..."
+                      value={printfulOrderNumberFilter}
+                      onChange={(e) => setPrintfulOrderNumberFilter(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Fulfillment Status</label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All statuses</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                        <SelectItem value="shipped">Shipped</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="failed">Failed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      Min Amount
+                    </label>
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      value={minAmountFilter}
+                      onChange={(e) => setMinAmountFilter(e.target.value)}
+                      step="0.01"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      Max Amount
+                    </label>
+                    <Input
+                      type="number"
+                      placeholder="999.99"
+                      value={maxAmountFilter}
+                      onChange={(e) => setMaxAmountFilter(e.target.value)}
+                      step="0.01"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Currency</label>
+                    <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All currencies" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All currencies</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="GBP">GBP</SelectItem>
+                        <SelectItem value="CAD">CAD</SelectItem>
+                        <SelectItem value="AUD">AUD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Date Range
+                    </label>
+                    <DatePickerWithRange
+                      date={dateRangeFilter}
+                      onDateChange={setDateRangeFilter}
+                      placeholder="Select date range"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-2 items-center justify-between">
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={handleApplyFilters} disabled={isRefreshing || loading}>
+                      <Search className="mr-2 h-4 w-4" />
+                      Apply Filters
+                    </Button>
+                    <Button type="button" variant="outline" onClick={handleClearFilters} disabled={isRefreshing || loading}>
+                      <X className="mr-2 h-4 w-4" />
+                      Clear All
+                    </Button>
+                  </div>
+                  
+                  <Button type="button" variant="outline" onClick={handleRefresh} disabled={isRefreshing || loading}>
+                    {isRefreshing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    Refresh Data
+                  </Button>
+                </div>
+                
+                {/* Active Filters Display */}
+                {(customerNameFilter || itemsOrderedFilter || printfulOrderNumberFilter || (statusFilter && statusFilter !== 'all') || minAmountFilter || maxAmountFilter || (currencyFilter && currencyFilter !== 'all') || dateRangeFilter) && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-sm font-medium mb-2">Active Filters:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {customerNameFilter && (
+                        <Badge variant="secondary" className="gap-1">
+                          Customer: {customerNameFilter}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => setCustomerNameFilter('')} />
+                        </Badge>
+                      )}
+                      {itemsOrderedFilter && (
+                        <Badge variant="secondary" className="gap-1">
+                          Items: {itemsOrderedFilter}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => setItemsOrderedFilter('')} />
+                        </Badge>
+                      )}
+                      {statusFilter && statusFilter !== 'all' && (
+                        <Badge variant="secondary" className="gap-1">
+                          Status: {statusFilter}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => setStatusFilter('all')} />
+                        </Badge>
+                      )}
+                      {(minAmountFilter || maxAmountFilter) && (
+                        <Badge variant="secondary" className="gap-1">
+                          Amount: {minAmountFilter || '0'} - {maxAmountFilter || '∞'}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => { setMinAmountFilter(''); setMaxAmountFilter(''); }} />
+                        </Badge>
+                      )}
+                      {currencyFilter && currencyFilter !== 'all' && (
+                        <Badge variant="secondary" className="gap-1">
+                          Currency: {currencyFilter}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => setCurrencyFilter('all')} />
+                        </Badge>
+                      )}
+                      {dateRangeFilter && (dateRangeFilter.from || dateRangeFilter.to) && (
+                        <Badge variant="secondary" className="gap-1">
+                          Date: {dateRangeFilter.from ? format(dateRangeFilter.from, 'MMM dd') : 'Start'} - {dateRangeFilter.to ? format(dateRangeFilter.to, 'MMM dd') : 'End'}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => setDateRangeFilter(undefined)} />
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </form>
+            </CardContent>
+          )}
+        </Card>
 
-        {/* Display "No orders found" or the table, considering loading/refreshing states */}
-        { !loading && !isRefreshing && sortedOrders.length === 0 && !error && (
-            <p className="text-center py-4">No orders found matching your criteria.</p>
-        )}
-
-        { (sortedOrders.length > 0 || loading || isRefreshing) && (
+        {/* Orders Table - Always show the card structure */}
           <>
-            <Table>
-              <TableCaption>A list of your Printful orders. Currently showing page {currentPage} of {totalPages}. Total Orders: {totalOrders}</TableCaption>
-              <TableHeader>
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="h-5 w-5" />
+                      Printful Orders
+                    </CardTitle>
+                    <CardDescription>
+                      {totalOrders > 0 ? (
+                        `Showing page ${currentPage} of ${totalPages} • ${totalOrders} total orders`
+                      ) : (
+                        'No orders found matching your criteria'
+                      )}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={String(itemsPerPage)}
+                      onValueChange={(value) => {
+                        setItemsPerPage(Number(value));
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[10, 20, 50, 100].map(size => (
+                          <SelectItem key={size} value={String(size)}>{size} / page</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
                 <TableRow>
                   <SortableHeader displayColumn="displayOrderId" dbColumn="printful_internal_id" title="Printful Order ID" />
                   <SortableHeader displayColumn="customerName" dbColumn="recipient_name" title="Customer Name" />
                   <SortableHeader displayColumn="orderDate" dbColumn="printful_created_at" title="Order Date" />
                   <SortableHeader displayColumn="fulfillmentStatus" dbColumn="status" title="Fulfillment Status" />
                   <SortableHeader displayColumn="totalAmount" dbColumn="total_amount" title="Total Amount" />
-                  <TableHead>Items</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -518,24 +742,50 @@ const AdminPrintfulOrders: React.FC = () => {
                     <TableCell>{order.displayOrderId}</TableCell>
                     <TableCell>{order.customerName}</TableCell>
                     <TableCell>{order.orderDate}</TableCell>
-                    <TableCell>{order.fulfillmentStatus}</TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={
+                          order.fulfillmentStatus === 'fulfilled' ? 'default' :
+                          order.fulfillmentStatus === 'shipped' ? 'secondary' :
+                          order.fulfillmentStatus === 'pending' ? 'outline' :
+                          order.fulfillmentStatus === 'cancelled' ? 'destructive' :
+                          'outline'
+                        }
+                      >
+                        {order.fulfillmentStatus}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{formatCurrency(order.totalAmount, order.currencyCode)}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setCurrentOrderForModal(order);
-                          setIsViewModalOpen(true);
-                        }}
-                      >
-                        <Eye className="mr-2 h-4 w-4" /> View Items ({order.detailedItems.length})
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCurrentOrderForModal(order);
+                            setIsViewModalOpen(true);
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" /> 
+                          View ({order.detailedItems.length})
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
-              </TableBody>
-            </Table>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* No orders message */}
+            {!loading && !isRefreshing && sortedOrders.length === 0 && !error && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg">No orders found matching your criteria</p>
+                <p className="text-sm">Try adjusting your filters or search terms</p>
+              </div>
+            )}
 
             {/* Modal for Viewing Order Items */}
             {currentOrderForModal && (
@@ -599,22 +849,69 @@ const AdminPrintfulOrders: React.FC = () => {
               </Pagination>
             )}
           </>
+
+        {/* Summary Cards */}
+        {orders.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
+                    <p className="text-2xl font-bold">{totalOrders}</p>
+                  </div>
+                  <Package className="h-8 w-8 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Current Page</p>
+                    <p className="text-2xl font-bold">{orders.length}</p>
+                  </div>
+                  <Eye className="h-8 w-8 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Avg. Order Value</p>
+                    <p className="text-2xl font-bold">
+                      {orders.length > 0 ? 
+                        formatCurrency(
+                          orders.reduce((sum, order) => sum + order.totalAmount, 0) / orders.length,
+                          orders[0]?.currencyCode || 'USD'
+                        ) : 
+                        '$0.00'
+                      }
+                    </p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Items</p>
+                    <p className="text-2xl font-bold">
+                      {orders.reduce((sum, order) => sum + order.detailedItems.reduce((itemSum, item) => itemSum + item.quantity, 0), 0)}
+                    </p>
+                  </div>
+                  <Package className="h-8 w-8 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
-         <div className="mt-4 text-sm text-muted-foreground">
-            Items per page:
-            <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1); // Reset to first page
-                }}
-                className="ml-2 p-1 border rounded bg-background text-foreground"
-            >
-                {[10, 20, 50, 100].map(size => (
-                    <option key={size} value={size}>{size}</option>
-                ))}
-            </select>
-        </div>
       </div>
     </AdminLayout>
   );

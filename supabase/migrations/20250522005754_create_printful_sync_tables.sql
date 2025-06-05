@@ -1,3 +1,6 @@
+-- Enable pg_trgm extension for trigram indexes
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- Table for storing main Printful order details
 CREATE TABLE printful_orders (
     printful_internal_id BIGINT PRIMARY KEY,

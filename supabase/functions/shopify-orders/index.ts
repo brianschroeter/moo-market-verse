@@ -363,12 +363,12 @@ serve(async (req: Request) => {
         currentSyncQueryParams.set("status", "any"); // Fetch orders of any status
         // Omitting created_at_min to fetch all historical orders for initial sync
         currentSyncQueryParams.set("limit", syncLimit);
-        currentSyncQueryParams.set("order", "created_at asc"); // Process oldest orders first
+        currentSyncQueryParams.set("order", "created_at desc"); // Process newest orders first for faster initial sync
 
         let allShopifyOrders: ShopifyOrder[] = [];
         let nextPageInfo: string | null = null;
         let pageCount = 0;
-        const maxPages = 50; // Increased safety break for pagination for initial full sync
+        const maxPages = 200; // Increased limit for full sync (200 * 250 = 50,000 orders max)
         let fetchedOrdersOnThisPage: ShopifyOrder[] = [];
 
         do {
@@ -411,7 +411,7 @@ serve(async (req: Request) => {
               }
             }
           }
-          console.log(`Fetched ${fetchedOrdersOnThisPage.length} orders on page ${pageCount}. Next page_info: ${nextPageInfo}`);
+          console.log(`Fetched ${fetchedOrdersOnThisPage.length} orders on page ${pageCount}. Next page_info: ${nextPageInfo ? nextPageInfo.substring(0, 20) + '...' : 'null'}`);
 
           if (nextPageInfo) {
             // For the next iteration, Shopify expects only limit and page_info
@@ -420,9 +420,20 @@ serve(async (req: Request) => {
             currentSyncQueryParams.set("page_info", nextPageInfo);
           }
 
+          // Add logging for debugging
+          if (fetchedOrdersOnThisPage.length > 0) {
+            const firstOrder = fetchedOrdersOnThisPage[0];
+            const lastOrder = fetchedOrdersOnThisPage[fetchedOrdersOnThisPage.length - 1];
+            console.log(`Page ${pageCount} order range: ${firstOrder.name} to ${lastOrder.name}`);
+          }
+
         } while (nextPageInfo && fetchedOrdersOnThisPage.length > 0 && pageCount < maxPages);
         
         console.log(`Total Shopify orders fetched for sync after ${pageCount} page(s): ${allShopifyOrders.length}`);
+        
+        if (pageCount >= maxPages && nextPageInfo) {
+          console.log(`WARNING: Reached max page limit (${maxPages}). There may be more orders to sync.`);
+        }
 
         if (allShopifyOrders.length === 0) {
           return new Response(
@@ -437,6 +448,8 @@ serve(async (req: Request) => {
         }
 
 
+        console.log(`Preparing to upsert ${allShopifyOrders.length} orders to database...`);
+        
         const ordersToUpsert = allShopifyOrders.map(order => ({
           id: order.id, // Shopify Order ID
           shopify_order_number: order.name,
@@ -451,14 +464,24 @@ serve(async (req: Request) => {
           last_shopify_sync_at: new Date().toISOString(),
         }));
 
+        // Log sample of orders being upserted
+        if (ordersToUpsert.length > 0) {
+          const firstOrder = ordersToUpsert[0];
+          const lastOrder = ordersToUpsert[ordersToUpsert.length - 1];
+          console.log(`Upserting orders from ${firstOrder.shopify_order_number} to ${lastOrder.shopify_order_number}`);
+        }
+
         const { data: upsertedData, error: upsertError } = await supabase
           .from("shopify_orders")
           .upsert(ordersToUpsert, { onConflict: "id", ignoreDuplicates: false }); // Ensure `id` is the PK
 
         if (upsertError) {
           console.error("Error upserting Shopify orders to Supabase:", upsertError);
+          console.error("First few orders that failed:", JSON.stringify(ordersToUpsert.slice(0, 3), null, 2));
           throw new Error(`Supabase upsert error: ${upsertError.message}`);
         }
+
+        console.log(`Successfully upserted ${allShopifyOrders.length} orders to database`);
 
         console.log("Successfully upserted Shopify orders to database:", upsertedData);
         return new Response(
