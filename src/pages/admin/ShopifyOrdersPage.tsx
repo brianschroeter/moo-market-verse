@@ -166,63 +166,145 @@ const ShopifyOrdersPage: React.FC = () => {
     }
     setError(null);
 
-    const params: any = {
-      limit: itemsPerPage,
-      sort_by: sortColumn,
-      sort_order: sortDirection,
-    };
-
-    if (pageInfoCursor) {
-      params.page_info = pageInfoCursor;
-    }
-
-    if (paymentStatusFilter && paymentStatusFilter !== 'all_payment_statuses') params.payment_status = paymentStatusFilter;
-    if (fulfillmentStatusFilter && fulfillmentStatusFilter !== 'all_fulfillment_statuses') params.fulfillment_status = fulfillmentStatusFilter;
-    if (currencyFilter && currencyFilter !== 'all') {
-      // Add currency filter when backend supports it
-      // params.currency = currencyFilter;
-    }
-    if (minAmountFilter) {
-      // Add min amount filter when backend supports it
-      // params.min_amount = minAmountFilter;
-    }
-    if (maxAmountFilter) {
-      // Add max amount filter when backend supports it
-      // params.max_amount = maxAmountFilter;
-    }
-    if (dateRangeFilter?.from) params.date_from = dateRangeFilter.from.toISOString();
-    if (dateRangeFilter?.to) params.date_to = dateRangeFilter.to.toISOString();
-    if (debouncedSearchQuery) params.search_query = debouncedSearchQuery;
+    // Check if we're in development mode
+    const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
+    const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
 
     try {
-      // In development mode, we need to handle authentication differently
-      const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
-      const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
-      
-      const { data: responseData, error: rpcError } = await supabase.functions.invoke('shopify-orders', {
-        body: params,
-        headers,
-      });
+      if (isDev) {
+        // In development mode, query the database directly via Supabase
+        let query = supabase
+          .from('shopify_orders')
+          .select('*');
 
-      if (rpcError) {
-        throw rpcError;
-      }
+        // Apply filters
+        if (paymentStatusFilter && paymentStatusFilter !== 'all_payment_statuses') {
+          query = query.eq('payment_status', paymentStatusFilter);
+        }
+        if (fulfillmentStatusFilter && fulfillmentStatusFilter !== 'all_fulfillment_statuses') {
+          query = query.eq('fulfillment_status', fulfillmentStatusFilter);
+        }
+        if (debouncedSearchQuery) {
+          query = query.or(`customer_name.ilike.%${debouncedSearchQuery}%,customer_email.ilike.%${debouncedSearchQuery}%,shopify_order_number.ilike.%${debouncedSearchQuery}%`);
+        }
+        if (dateRangeFilter?.from) {
+          query = query.gte('order_date', dateRangeFilter.from.toISOString());
+        }
+        if (dateRangeFilter?.to) {
+          query = query.lte('order_date', dateRangeFilter.to.toISOString());
+        }
 
-      const apiResponse = responseData as ShopifyOrdersApiResponse;
+        // Apply sorting - map to database column names
+        const dbSortColumn = sortColumn === 'name' ? 'shopify_order_number' : 
+                           sortColumn === 'created_at' ? 'order_date' :
+                           sortColumn === 'total_price' ? 'total_amount' : 'order_date';
+        
+        query = query.order(dbSortColumn, { ascending: sortDirection === 'asc' });
 
-      if (apiResponse.error) {
-        console.error("Error from shopify-orders function:", apiResponse.error);
-        toast.error(`Failed to fetch orders: ${apiResponse.error}`);
-        setError(apiResponse.error);
-        setOrders([]);
-        setPaginationDetails(null);
-      } else if (apiResponse.data) {
-        setOrders(apiResponse.data);
-        setPaginationDetails(apiResponse.pagination);
+        // Apply pagination
+        const offset = pageInfoCursor ? parseInt(pageInfoCursor) : 0;
+        
+        // Get total count first for pagination
+        const countQuery = supabase
+          .from('shopify_orders')
+          .select('*', { count: 'exact', head: true });
+        
+        // Apply same filters to count query
+        if (paymentStatusFilter && paymentStatusFilter !== 'all_payment_statuses') {
+          countQuery.eq('payment_status', paymentStatusFilter);
+        }
+        if (fulfillmentStatusFilter && fulfillmentStatusFilter !== 'all_fulfillment_statuses') {
+          countQuery.eq('fulfillment_status', fulfillmentStatusFilter);
+        }
+        if (debouncedSearchQuery) {
+          countQuery.or(`customer_name.ilike.%${debouncedSearchQuery}%,customer_email.ilike.%${debouncedSearchQuery}%,shopify_order_number.ilike.%${debouncedSearchQuery}%`);
+        }
+        if (dateRangeFilter?.from) {
+          countQuery.gte('order_date', dateRangeFilter.from.toISOString());
+        }
+        if (dateRangeFilter?.to) {
+          countQuery.lte('order_date', dateRangeFilter.to.toISOString());
+        }
+
+        const { count } = await countQuery;
+        
+        query = query.range(offset, offset + itemsPerPage - 1);
+        const { data: dbOrders, error: dbError } = await query;
+
+        if (dbError) {
+          throw dbError;
+        }
+
+        // Transform database results to match API format
+        const transformedOrders = (dbOrders || []).map(order => ({
+          id: order.id,
+          shopify_order_number: order.shopify_order_number,
+          order_date: order.order_date,
+          customer_name: order.customer_name,
+          customer_email: order.customer_email,
+          total_amount: order.total_amount,
+          currency: order.currency,
+          payment_status: order.payment_status,
+          fulfillment_status: order.fulfillment_status,
+        }));
+
+        // Create pagination info
+        const nextOffset = offset + itemsPerPage;
+        const hasNextPage = (count || 0) > nextOffset;
+        const hasPrevPage = offset > 0;
+
+        setOrders(transformedOrders);
+        setPaginationDetails({
+          has_next_page: hasNextPage,
+          has_previous_page: hasPrevPage,
+          next_cursor: hasNextPage ? String(nextOffset) : null,
+          prev_cursor: hasPrevPage ? String(Math.max(0, offset - itemsPerPage)) : null,
+          limit: itemsPerPage,
+        });
+
       } else {
-        setError('Received an unexpected response structure from the server.');
-        setOrders([]);
-        setPaginationDetails(null);
+        // Production mode - use Shopify API via edge function
+        const params: any = {
+          limit: itemsPerPage,
+          sort_by: sortColumn,
+          sort_order: sortDirection,
+        };
+
+        if (pageInfoCursor) {
+          params.page_info = pageInfoCursor;
+        }
+
+        if (paymentStatusFilter && paymentStatusFilter !== 'all_payment_statuses') params.payment_status = paymentStatusFilter;
+        if (fulfillmentStatusFilter && fulfillmentStatusFilter !== 'all_fulfillment_statuses') params.fulfillment_status = fulfillmentStatusFilter;
+        if (dateRangeFilter?.from) params.date_from = dateRangeFilter.from.toISOString();
+        if (dateRangeFilter?.to) params.date_to = dateRangeFilter.to.toISOString();
+        if (debouncedSearchQuery) params.search_query = debouncedSearchQuery;
+
+        const { data: responseData, error: rpcError } = await supabase.functions.invoke('shopify-orders', {
+          body: params,
+          headers,
+        });
+
+        if (rpcError) {
+          throw rpcError;
+        }
+
+        const apiResponse = responseData as ShopifyOrdersApiResponse;
+
+        if (apiResponse.error) {
+          console.error("Error from shopify-orders function:", apiResponse.error);
+          toast.error(`Failed to fetch orders: ${apiResponse.error}`);
+          setError(apiResponse.error);
+          setOrders([]);
+          setPaginationDetails(null);
+        } else if (apiResponse.data) {
+          setOrders(apiResponse.data);
+          setPaginationDetails(apiResponse.pagination);
+        } else {
+          setError('Received an unexpected response structure from the server.');
+          setOrders([]);
+          setPaginationDetails(null);
+        }
       }
     } catch (err: any) {
       console.error("Failed to fetch Shopify orders:", err);
@@ -866,25 +948,36 @@ const ShopifyOrdersPage: React.FC = () => {
           <Pagination className="mt-8">
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(e) => { e.preventDefault(); handlePreviousPage(); }}
-                  // @ts-ignore // isActive is not a standard prop for PaginationPrevious
-                  isActive={paginationDetails.has_previous_page}
-                  aria-disabled={!paginationDetails.has_previous_page}
-                  className={!paginationDetails.has_previous_page ? "pointer-events-none opacity-50" : ""}
-                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePreviousPage}
+                  disabled={!paginationDetails.has_previous_page}
+                  className="flex items-center gap-2"
+                >
+                  Previous
+                </Button>
               </PaginationItem>
-              {/* We don't have page numbers with cursor pagination from Shopify directly */}
+              
               <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(e) => { e.preventDefault(); handleNextPage(); }}
-                  // @ts-ignore
-                  isActive={paginationDetails.has_next_page}
-                  aria-disabled={!paginationDetails.has_next_page}
-                  className={!paginationDetails.has_next_page ? "pointer-events-none opacity-50" : ""}
-                />
+                <span className="text-sm text-muted-foreground px-4">
+                  {paginationDetails.has_previous_page || paginationDetails.has_next_page ? 
+                    `Showing ${orders.length} orders` : 
+                    `${orders.length} orders`
+                  }
+                </span>
+              </PaginationItem>
+              
+              <PaginationItem>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextPage}
+                  disabled={!paginationDetails.has_next_page}
+                  className="flex items-center gap-2"
+                >
+                  Next
+                </Button>
               </PaginationItem>
             </PaginationContent>
           </Pagination>

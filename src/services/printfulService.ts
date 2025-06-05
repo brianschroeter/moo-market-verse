@@ -120,7 +120,7 @@ export interface FetchSyncedPrintfulOrdersParams {
   orderNumber?: string; // Filters printful_external_id or printful_internal_id
   shippingAddressEmail?: string; // Filters shipping_details->>'email'
   shippingAddressName?: string; // Filters shipping_details->>'name'
-  sortBy?: keyof Pick<DbPrintfulOrder, 'printful_created_at' | 'recipient_name' | 'status' | 'total_amount' | 'printful_internal_id'>; // Allowed sortable columns
+  sortBy?: keyof Pick<DbPrintfulOrder, 'printful_created_at' | 'recipient_name' | 'status' | 'total_amount' | 'printful_internal_id' | 'printful_external_id'>; // Allowed sortable columns
   sortAscending?: boolean;
   dateFrom?: string; // ISO date string for filtering from date
   dateTo?: string; // ISO date string for filtering to date

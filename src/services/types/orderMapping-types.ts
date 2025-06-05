@@ -30,7 +30,7 @@ export interface OrderMappingWithDetails extends OrderMapping {
     order_date: string;
   };
   mapped_by_profile?: {
-    display_name: string | null;
+    username: string | null;
     discord_username: string | null;
   };
 }

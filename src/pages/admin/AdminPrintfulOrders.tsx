@@ -99,7 +99,7 @@ const AdminPrintfulOrders: React.FC = () => {
   const [error, setError] = useState<string | null>(null); // For critical on-page errors
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10); // Default items per page
-  const [sortColumn, setSortColumn] = useState<SortableDbColumns>('printful_created_at'); // Default to DB column
+  const [sortColumn, setSortColumn] = useState<SortableDbColumns>('printful_external_id'); // Default to external ID
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Modal state for viewing order items
@@ -327,7 +327,7 @@ const AdminPrintfulOrders: React.FC = () => {
     switch (column) {
         case 'orderDate': dbSortColumn = 'printful_created_at'; break;
         case 'fulfillmentStatus': dbSortColumn = 'status'; break;
-        case 'displayOrderId': dbSortColumn = 'printful_internal_id'; break; // Or external_id if preferred
+        case 'displayOrderId': dbSortColumn = 'printful_external_id'; break;
         case 'customerName': dbSortColumn = 'recipient_name'; break;
         case 'totalAmount': dbSortColumn = 'total_amount'; break;
         default: dbSortColumn = 'printful_created_at'; // Fallback
@@ -422,17 +422,21 @@ const AdminPrintfulOrders: React.FC = () => {
 
 
   const SortableHeader: React.FC<{ displayColumn: SortableDisplayColumns; dbColumn: SortableDbColumns; title: string }> =
-    ({ displayColumn, dbColumn, title }) => (
-    <TableHead onClick={() => handleSort(displayColumn)} className="cursor-pointer">
-      <div className="flex items-center">
-        {title}
-        {sortColumn === dbColumn && ( // Compare with the actual DB sort column
-          <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === 'asc' ? 'rotate-180 text-primary' : 'text-primary'}`} />
-        )}
-        {sortColumn !== dbColumn && <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/50" />}
-      </div>
-    </TableHead>
-  );
+    ({ displayColumn, dbColumn, title }) => {
+    const isCurrentSortColumn = sortColumn === dbColumn;
+    return (
+      <TableHead onClick={() => handleSort(displayColumn)} className="cursor-pointer">
+        <div className="flex items-center">
+          {title}
+          {isCurrentSortColumn ? (
+            <ArrowUpDown className={`ml-2 h-4 w-4 text-primary ${sortDirection === 'asc' ? 'rotate-180' : ''}`} />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/50" />
+          )}
+        </div>
+      </TableHead>
+    );
+  };
 
 
   // Initial loading state
@@ -728,7 +732,7 @@ const AdminPrintfulOrders: React.FC = () => {
                 <Table>
                   <TableHeader>
                 <TableRow>
-                  <SortableHeader displayColumn="displayOrderId" dbColumn="printful_internal_id" title="Printful Order ID" />
+                  <SortableHeader displayColumn="displayOrderId" dbColumn="printful_external_id" title="Printful Order ID" />
                   <SortableHeader displayColumn="customerName" dbColumn="recipient_name" title="Customer Name" />
                   <SortableHeader displayColumn="orderDate" dbColumn="printful_created_at" title="Order Date" />
                   <SortableHeader displayColumn="fulfillmentStatus" dbColumn="status" title="Fulfillment Status" />

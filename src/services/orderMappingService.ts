@@ -52,7 +52,7 @@ export class OrderMappingService {
         .from('order_mappings')
         .select(`
           *,
-          printful_order:printful_orders!printful_order_id (
+          printful_order:printful_orders!order_mappings_printful_order_id_fkey (
             printful_external_id,
             recipient_name,
             total_amount,
@@ -60,7 +60,7 @@ export class OrderMappingService {
             status,
             printful_created_at
           ),
-          shopify_order:shopify_orders!shopify_order_id (
+          shopify_order:shopify_orders!fk_order_mappings_shopify_order (
             shopify_order_number,
             customer_name,
             total_amount,
@@ -68,8 +68,8 @@ export class OrderMappingService {
             payment_status,
             order_date
           ),
-          mapped_by_profile:profiles!mapped_by (
-            display_name,
+          mapped_by_profile:profiles!order_mappings_mapped_by_fkey (
+            username,
             discord_username
           )
         `, { count: 'exact' });
