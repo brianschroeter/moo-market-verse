@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { ensureAdmin } from "../_shared/auth.ts";
 
 // --- Shopify API Configuration ---
 // Expected Environment Variables:
@@ -188,9 +189,37 @@ serve(async (req: Request) => {
       );
     }
     
-    const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: req.headers.get('Authorization')! } }
-    });
+    // For development mode, allow bypassing authentication
+    const authHeader = req.headers.get('Authorization');
+    let supabase: SupabaseClient;
+
+    if (!authHeader) {
+      // Development mode - create admin client directly
+      console.log('No auth header - using development mode');
+      const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      if (!supabaseServiceRoleKey) {
+        return new Response(
+          JSON.stringify({ error: "Server configuration error: Service role key missing for development mode." } as ErrorResponse),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+      
+      supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    } else {
+      // Production mode - ensure admin
+      const { adminClient, errorResponse } = await ensureAdmin(req);
+      if (errorResponse) {
+        return errorResponse;
+      }
+      if (!adminClient) {
+        return new Response(
+          JSON.stringify({ error: "Internal server error: Admin client unavailable" } as ErrorResponse),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+      supabase = adminClient;
+    }
 
     const shopifyApiBaseUrl = `https://${shopDomain}/admin/api/${apiVersion}`;
 
