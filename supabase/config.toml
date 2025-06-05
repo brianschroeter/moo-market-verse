@@ -43,6 +43,9 @@ verify_jwt = false
 [functions.shopify-orders]
 verify_jwt = false
 
+[functions.sync-printful-orders]
+verify_jwt = false
+
 
 [functions.delete-user]
 enabled = true

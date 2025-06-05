@@ -70,11 +70,47 @@ serve(async (req: Request) => {
 
   try {
     console.log("Function invoked via:", req.method);
+    
+    // Parse request body for full sync options
+    let requestBody: { fullSync?: boolean; forceAllOrders?: boolean } = {};
+    if (req.method === "POST") {
+      try {
+        const bodyText = await req.text();
+        if (bodyText) {
+          requestBody = JSON.parse(bodyText);
+        }
+      } catch (parseError) {
+        console.warn("Failed to parse request body, using defaults:", parseError);
+      }
+    }
+    
+    const isFullSync = requestBody.fullSync || requestBody.forceAllOrders;
+    console.log(`Sync mode: ${isFullSync ? 'FULL SYNC' : 'incremental sync'}`);
+    if (isFullSync) {
+      console.log("Full sync requested - will fetch ALL orders from Printful");
+    }
 
     // 1. Securely get Printful API Key
     const printfulApiKey = Deno.env.get("PRINTFUL_API_KEY");
+    const isLocalDev = Deno.env.get("SUPABASE_URL")?.includes("localhost") || 
+                       Deno.env.get("SUPABASE_URL")?.includes("127.0.0.1");
+    
     if (!printfulApiKey) {
       console.error("PRINTFUL_API_KEY not set in Supabase secrets.");
+      
+      if (isLocalDev) {
+        // In local development, return a helpful message instead of an error
+        console.log("Local development mode detected - no Printful API key available");
+        return new Response(JSON.stringify({ 
+          message: "Development mode: Printful API key not configured. Sync completed successfully (mock response).",
+          ordersSynced: 0,
+          itemsSynced: 0
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
       return new Response(JSON.stringify({ error: "Printful API key is not configured." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -97,43 +133,49 @@ serve(async (req: Request) => {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 
-    // 3. API Interaction & Data Fetching (Incremental Sync Logic)
-    console.log("Fetching last sync timestamp...");
+    // 3. API Interaction & Data Fetching (Incremental or Full Sync Logic)
     let lastSyncTimestamp = 0; // Default to fetch all if no previous sync
-
-    const { data: lastOrder, error: lastOrderError } = await supabaseAdmin
-      .from("printful_orders")
-      .select("printful_updated_at, printful_created_at")
-      .order("printful_updated_at", { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (lastOrderError) {
-      console.error("Error fetching last sync timestamp:", lastOrderError.message);
-      // Decide if to proceed or return error. For now, we'll try to sync all.
-    }
-
-    if (lastOrder && lastOrder.printful_updated_at) {
-      // Printful API might expect Unix timestamp in seconds.
-      // The 'updated' field from Printful is a Unix timestamp.
-      // We store printful_updated_at as ISO string, so convert it back if needed or use a raw 'updated' value.
-      // For simplicity, let's assume we need to fetch orders updated *after* this timestamp.
-      // Printful's API might not have a direct "updated_since".
-      // We might need to fetch recent orders and filter, or use created_at if more suitable.
-      // Let's assume Printful API uses 'offset' and 'limit' for pagination and we might filter by date range.
-      // For now, we'll fetch recent orders. A more robust solution would check Printful API docs for date filters.
-      // Example: fetch orders created in the last 7 days if no specific 'updated_since'
-      const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
-      lastSyncTimestamp = lastOrder.printful_updated_at ? Math.floor(new Date(lastOrder.printful_updated_at).getTime() / 1000) : sevenDaysAgo;
-      console.log(`Last sync timestamp (from printful_updated_at): ${new Date(lastSyncTimestamp * 1000).toISOString()}`);
-    } else if (lastOrder && lastOrder.printful_created_at) {
-        lastSyncTimestamp = Math.floor(new Date(lastOrder.printful_created_at).getTime() / 1000);
-        console.log(`Last sync timestamp (from printful_created_at): ${new Date(lastSyncTimestamp * 1000).toISOString()}`);
+    
+    if (isFullSync) {
+      console.log("Full sync mode: Setting timestamp to 0 to fetch ALL orders");
+      lastSyncTimestamp = 0;
     } else {
-        console.log("No previous sync timestamp found, will attempt to fetch recent/all orders based on Printful API capabilities.");
-        // Default to a reasonable lookback, e.g., 30 days, or rely on Printful's default order list (often most recent)
-        const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
-        lastSyncTimestamp = thirtyDaysAgo; // Fallback if no orders yet
+      console.log("Incremental sync mode: Fetching last sync timestamp...");
+      
+      const { data: lastOrder, error: lastOrderError } = await supabaseAdmin
+        .from("printful_orders")
+        .select("printful_updated_at, printful_created_at")
+        .order("printful_updated_at", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastOrderError) {
+        console.error("Error fetching last sync timestamp:", lastOrderError.message);
+        // Decide if to proceed or return error. For now, we'll try to sync all.
+      }
+
+      if (lastOrder && lastOrder.printful_updated_at) {
+        // Printful API might expect Unix timestamp in seconds.
+        // The 'updated' field from Printful is a Unix timestamp.
+        // We store printful_updated_at as ISO string, so convert it back if needed or use a raw 'updated' value.
+        // For simplicity, let's assume we need to fetch orders updated *after* this timestamp.
+        // Printful's API might not have a direct "updated_since".
+        // We might need to fetch recent orders and filter, or use created_at if more suitable.
+        // Let's assume Printful API uses 'offset' and 'limit' for pagination and we might filter by date range.
+        // For now, we'll fetch recent orders. A more robust solution would check Printful API docs for date filters.
+        // Example: fetch orders created in the last 7 days if no specific 'updated_since'
+        const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+        lastSyncTimestamp = lastOrder.printful_updated_at ? Math.floor(new Date(lastOrder.printful_updated_at).getTime() / 1000) : sevenDaysAgo;
+        console.log(`Last sync timestamp (from printful_updated_at): ${new Date(lastSyncTimestamp * 1000).toISOString()}`);
+      } else if (lastOrder && lastOrder.printful_created_at) {
+          lastSyncTimestamp = Math.floor(new Date(lastOrder.printful_created_at).getTime() / 1000);
+          console.log(`Last sync timestamp (from printful_created_at): ${new Date(lastSyncTimestamp * 1000).toISOString()}`);
+      } else {
+          console.log("No previous sync timestamp found, will attempt to fetch recent/all orders based on Printful API capabilities.");
+          // Default to a reasonable lookback, e.g., 30 days, or rely on Printful's default order list (often most recent)
+          const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+          lastSyncTimestamp = thirtyDaysAgo; // Fallback if no orders yet
+      }
     }
 
     const printfulApiUrl = "https://api.printful.com/orders";
@@ -169,13 +211,22 @@ serve(async (req: Request) => {
       console.log(`Fetched ${data.result.length} orders from Printful. Total available according to this page: ${data.paging.total}`);
 
       if (data.result && data.result.length > 0) {
-        // Filter orders based on 'updated' timestamp if API didn't do it.
-        // Printful 'updated' is a Unix timestamp (seconds).
-        const newOrders = data.result.filter(order => order.updated > lastSyncTimestamp || order.created > lastSyncTimestamp);
-        if (newOrders.length < data.result.length) {
-            console.log(`Filtered down to ${newOrders.length} orders based on lastSyncTimestamp.`);
+        let ordersToProcess: PrintfulOrder[];
+        
+        if (isFullSync) {
+          // For full sync, include ALL orders without filtering
+          ordersToProcess = data.result;
+          console.log(`Full sync: Processing all ${data.result.length} orders from this page`);
+        } else {
+          // Filter orders based on 'updated' timestamp if API didn't do it.
+          // Printful 'updated' is a Unix timestamp (seconds).
+          ordersToProcess = data.result.filter(order => order.updated > lastSyncTimestamp || order.created > lastSyncTimestamp);
+          if (ordersToProcess.length < data.result.length) {
+              console.log(`Incremental sync: Filtered down to ${ordersToProcess.length} orders based on lastSyncTimestamp.`);
+          }
         }
-        allFetchedOrders.push(...newOrders);
+        
+        allFetchedOrders.push(...ordersToProcess);
 
         if (allFetchedOrders.length >= data.paging.total || data.result.length < limit) {
           hasMore = false; // No more pages or fetched all relevant
@@ -185,10 +236,16 @@ serve(async (req: Request) => {
       } else {
         hasMore = false; // No results on this page
       }
-      // Safety break for very large initial syncs if not filtering well by date
-      if (offset > 10000 && Deno.env.get("ENV_TYPE") !== "PRODUCTION") { // Example safety break
-          console.warn("Reached offset limit during development sync, stopping early.");
+      
+      // Safety break only for non-full sync mode in development
+      if (!isFullSync && offset > 10000 && Deno.env.get("ENV_TYPE") !== "PRODUCTION") {
+          console.warn("Reached offset limit during development incremental sync, stopping early.");
           hasMore = false;
+      }
+      
+      // For full sync, add extra logging
+      if (isFullSync && offset % 1000 === 0) {
+        console.log(`Full sync progress: Fetched ${allFetchedOrders.length} orders so far, offset: ${offset}`);
       }
     }
     console.log(`Total orders fetched and filtered from Printful: ${allFetchedOrders.length}`);

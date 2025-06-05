@@ -11,6 +11,8 @@ import {
   SyncedPrintfulOrdersResponse, // New
   DbPrintfulOrder, // For sort key reference
   ShippingAddress, // Import if not already implicitly available via TransformedPrintfulOrder
+  syncPrintfulOrders, // New sync function
+  SyncPrintfulOrdersResponse, // Response type for sync
 } from '@/services/printfulService';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -47,7 +49,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, Loader2, RefreshCw, Eye, Filter, X, Calendar, Package, User, DollarSign, Search } from 'lucide-react';
+import { ArrowUpDown, Loader2, RefreshCw, Eye, Filter, X, Calendar, Package, User, DollarSign, Search, Download } from 'lucide-react';
 import { toast } from "sonner";
 
 // Define a type for the order object that includes the fields mentioned in the prompt
@@ -96,6 +98,7 @@ const AdminPrintfulOrders: React.FC = () => {
   const [totalOrders, setTotalOrders] = useState<number>(0); // For total count from new service
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null); // For critical on-page errors
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10); // Default items per page
@@ -312,6 +315,38 @@ const AdminPrintfulOrders: React.FC = () => {
     }, true);
   };
 
+  const handleSyncOrders = async (fullSync: boolean = false) => {
+    setIsSyncing(true);
+    try {
+      const response: SyncPrintfulOrdersResponse = await syncPrintfulOrders({
+        fullSync,
+        forceAllOrders: fullSync
+      });
+
+      if (response.success) {
+        toast.success("Sync completed successfully!", {
+          description: `${response.ordersSynced || 0} orders and ${response.itemsSynced || 0} items synced`
+        });
+        
+        // Refresh the orders list after successful sync
+        setTimeout(() => {
+          handleRefresh();
+        }, 1000);
+      } else {
+        toast.error("Sync failed", {
+          description: response.error || response.message
+        });
+      }
+    } catch (error: any) {
+      console.error('Sync error:', error);
+      toast.error("Sync failed", {
+        description: error.message || "An unexpected error occurred"
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Server-side sorting is implemented for these synced orders (fetched from the local database).
   // This means the `orders` state variable is already sorted according to `sortColumn` and `sortDirection`.
   // The "Total Amount" column is sortable via the `handleSort` function, which maps it to the `total_amount` DB field.
@@ -440,12 +475,27 @@ const AdminPrintfulOrders: React.FC = () => {
 
 
   // Initial loading state
-  if (loading && !isRefreshing) {
+  if (loading && !isRefreshing && !isSyncing) {
     return (
       <AdminLayout>
         <div className="container mx-auto px-4 py-8 flex justify-center items-center h-64">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
           <p className="ml-4 text-lg">Loading orders...</p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  // Sync loading state
+  if (isSyncing) {
+    return (
+      <AdminLayout>
+        <div className="container mx-auto px-4 py-8 flex justify-center items-center h-64">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+          <div className="ml-4 text-center">
+            <p className="text-lg font-medium">Syncing Printful orders...</p>
+            <p className="text-sm text-muted-foreground">This may take a few minutes</p>
+          </div>
         </div>
       </AdminLayout>
     );
@@ -476,7 +526,14 @@ const AdminPrintfulOrders: React.FC = () => {
   return (
     <AdminLayout>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-semibold mb-6">Printful Orders Management</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold">Printful Orders Management</h1>
+          {import.meta.env.DEV && (
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              Development Mode
+            </Badge>
+          )}
+        </div>
 
         {/* Enhanced Filter UI Section */}
         <Card className="mb-6">
@@ -621,24 +678,55 @@ const AdminPrintfulOrders: React.FC = () => {
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-2 items-center justify-between">
                   <div className="flex gap-2">
-                    <Button type="button" onClick={handleApplyFilters} disabled={isRefreshing || loading}>
+                    <Button type="button" onClick={handleApplyFilters} disabled={isRefreshing || loading || isSyncing}>
                       <Search className="mr-2 h-4 w-4" />
                       Apply Filters
                     </Button>
-                    <Button type="button" variant="outline" onClick={handleClearFilters} disabled={isRefreshing || loading}>
+                    <Button type="button" variant="outline" onClick={handleClearFilters} disabled={isRefreshing || loading || isSyncing}>
                       <X className="mr-2 h-4 w-4" />
                       Clear All
                     </Button>
                   </div>
                   
-                  <Button type="button" variant="outline" onClick={handleRefresh} disabled={isRefreshing || loading}>
-                    {isRefreshing ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                    )}
-                    Refresh Data
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={handleRefresh} disabled={isRefreshing || loading || isSyncing}>
+                      {isRefreshing ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                      )}
+                      Refresh Data
+                    </Button>
+                    
+                    <Button 
+                      type="button" 
+                      onClick={() => handleSyncOrders(false)} 
+                      disabled={isRefreshing || loading || isSyncing}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      {isSyncing ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      Sync Latest Orders
+                    </Button>
+                    
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={() => handleSyncOrders(true)} 
+                      disabled={isRefreshing || loading || isSyncing}
+                      title="Fetch ALL orders from Printful (may take several minutes)"
+                    >
+                      {isSyncing ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      Full Sync
+                    </Button>
+                  </div>
                 </div>
                 
                 {/* Active Filters Display */}

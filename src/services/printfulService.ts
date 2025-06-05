@@ -63,7 +63,7 @@ export interface PrintfulError {
   error: true;
   message: string;
   statusCode?: number;
-  details?: any;
+  details?: unknown;
 }
 
 export type PrintfulOrdersResponse = PrintfulOrdersSuccessResponse | PrintfulOrdersErrorResponse;
@@ -87,7 +87,7 @@ export interface DbPrintfulOrderItem {
   printful_line_item_id: number;
   printful_external_line_item_id: string | null;
   product_name: string;
-  variant_details: Record<string, any> | null; // JSONB
+  variant_details: Record<string, unknown> | null; // JSONB
   quantity: number;
   item_retail_price: number;
   item_cost: number | null;
@@ -176,7 +176,7 @@ export const fetchPrintfulOrders = async (
   params: FetchPrintfulOrdersParams = {}
 ): Promise<PrintfulOrdersResponse> => {
   // Construct the body object with all provided parameters
-  const bodyParams: { [key: string]: any } = {};
+  const bodyParams: { [key: string]: unknown } = {};
   if (params.limit !== undefined) bodyParams.limit = params.limit;
   if (params.offset !== undefined) bodyParams.offset = params.offset;
   if (params.customerName) bodyParams.customerName = params.customerName;
@@ -315,3 +315,87 @@ export const fetchSyncedPrintfulOrdersFromDB = async (
     error: null,
   };
 };
+
+// --- Sync Service Function ---
+
+export interface SyncPrintfulOrdersParams {
+  fullSync?: boolean;
+  forceAllOrders?: boolean;
+}
+
+export interface SyncPrintfulOrdersResponse {
+  success: boolean;
+  message: string;
+  error?: string;
+  ordersSynced?: number;
+  itemsSynced?: number;
+}
+
+/**
+ * Syncs Printful orders by calling the sync-printful-orders edge function
+ * Works in both development and production environments
+ */
+export async function syncPrintfulOrders(params: SyncPrintfulOrdersParams = {}): Promise<SyncPrintfulOrdersResponse> {
+  try {
+    // Call the edge function
+    const { data, error } = await supabase.functions.invoke('sync-printful-orders', {
+      body: params
+    });
+
+    if (error) {
+      console.error('Sync function error:', error);
+      return {
+        success: false,
+        message: 'Failed to sync Printful orders',
+        error: error.message || 'Unknown error occurred'
+      };
+    }
+
+    if (data?.error) {
+      console.error('Sync function returned error:', data.error);
+      
+      // Handle development mode gracefully
+      if (data.error.includes('Printful API key is not configured')) {
+        return {
+          success: false,
+          message: 'Development mode: Printful API not configured',
+          error: 'This sync feature requires the Printful API key to be configured in production. In development, you can test the UI functionality without the actual API integration.'
+        };
+      }
+      
+      return {
+        success: false,
+        message: 'Sync failed',
+        error: data.error
+      };
+    }
+
+    // Parse the response message to extract sync statistics if available
+    const message = data?.message || 'Sync completed successfully';
+    let ordersSynced: number | undefined;
+    let itemsSynced: number | undefined;
+
+    // Try to extract numbers from the message
+    const ordersMatch = message.match(/Orders processed\/upserted: (\d+)/);
+    const itemsMatch = message.match(/Items processed\/upserted: (\d+)/);
+    
+    if (ordersMatch) ordersSynced = parseInt(ordersMatch[1]);
+    if (itemsMatch) itemsSynced = parseInt(itemsMatch[1]);
+
+    return {
+      success: true,
+      message,
+      ordersSynced,
+      itemsSynced
+    };
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Network error';
+    console.error('Sync request failed:', error);
+    return {
+      success: false,
+      message: 'Failed to connect to sync service',
+      error: errorMessage
+    };
+  }
+}
