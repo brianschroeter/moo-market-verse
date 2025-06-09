@@ -36,7 +36,12 @@ export const getAdminYouTubeChannels = async (): Promise<AdminYouTubeChannel[]> 
 export const createAdminYouTubeChannel = async (
   payload: CreateAdminYouTubeChannelPayload
 ): Promise<AdminYouTubeChannel> => {
+  // In development mode, we need to handle authentication differently
+  const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
+  const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
+  
   const { data, error } = await supabase.functions.invoke('admin-youtube-channels-create', {
+    headers,
     body: payload,
   });
   if (error) throw new Error(error.message);
@@ -46,7 +51,13 @@ export const createAdminYouTubeChannel = async (
 export const updateAdminYouTubeChannel = async (
   payload: UpdateAdminYouTubeChannelPayload
 ): Promise<AdminYouTubeChannel> => {
+  // In development mode, we need to handle authentication differently
+  const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
+  const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
+  
   const { data, error } = await supabase.functions.invoke(`admin-youtube-channels-update`, { 
+    method: 'PUT', // Specify PUT method to match edge function expectation
+    headers,
     body: payload,
   });
   if (error) throw new Error(error.message);
@@ -54,7 +65,12 @@ export const updateAdminYouTubeChannel = async (
 };
 
 export const deleteAdminYouTubeChannel = async (channelId: string): Promise<void> => {
+  // In development mode, we need to handle authentication differently
+  const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
+  const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
+  
   const { error } = await supabase.functions.invoke(`admin-youtube-channels-delete`, { 
+    headers,
     body: { id: channelId },
   });
   if (error) throw new Error(error.message);

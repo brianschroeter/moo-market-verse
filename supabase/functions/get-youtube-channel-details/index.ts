@@ -111,7 +111,7 @@ serve(async (req: Request) => {
       })
     }
 
-    const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY')
+    const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY') || 'AIzaSyDXWUdOgsZMacMshvvlGT6oscCkdrUngFY'
     if (!YOUTUBE_API_KEY) {
         return new Response(JSON.stringify({ error: 'YouTube API key is not configured' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

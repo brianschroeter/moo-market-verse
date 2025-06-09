@@ -46,6 +46,18 @@ verify_jwt = false
 [functions.sync-printful-orders]
 verify_jwt = false
 
+[functions.sync-youtube-streams]
+verify_jwt = false
+
+[functions.shopify-storefront]
+verify_jwt = false
+
+[functions.get-schedule]
+verify_jwt = false
+
+[functions.get-youtube-channel-details]
+verify_jwt = false
+
 
 [functions.delete-user]
 enabled = true

@@ -102,6 +102,47 @@
   .product-card-description {
     @apply text-sm text-gray-300 mb-4;
   }
+  
+  /* Custom styles for product description tables */
+  .prose table {
+    width: 100% !important;
+    table-layout: auto;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  .prose thead tr {
+    border-bottom-width: 2px;
+  }
+  
+  .prose th:first-child,
+  .prose td:first-child {
+    padding-left: 1.5rem;
+  }
+  
+  .prose th:last-child,
+  .prose td:last-child {
+    padding-right: 1.5rem;
+  }
+  
+  /* Better table responsiveness */
+  @media (max-width: 640px) {
+    .prose table {
+      font-size: 0.875rem;
+    }
+    .prose th,
+    .prose td {
+      padding: 0.75rem 1rem !important;
+    }
+    .prose th:first-child,
+    .prose td:first-child {
+      padding-left: 1rem !important;
+    }
+    .prose th:last-child,
+    .prose td:last-child {
+      padding-right: 1rem !important;
+    }
+  }
 }
 
 .glass-card {

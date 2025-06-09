@@ -14,6 +14,7 @@ import { Loader2, Search } from 'lucide-react';
 // Define the Zod schema for validation
 const formSchema = z.object({
   youtube_channel_id: z.string().min(1, 'YouTube Channel ID is required (e.g., UCxxxxxxxxxxxxxxx or @handle)'),
+  custom_display_name: z.string().optional(),
   // channel_name and avatar_url removed from direct form input
 });
 
@@ -46,6 +47,7 @@ const YouTubeChannelForm: React.FC<YouTubeChannelFormProps> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       youtube_channel_id: initialData?.youtube_channel_id || '',
+      custom_display_name: initialData?.custom_display_name || '',
     },
   });
 
@@ -55,6 +57,7 @@ const YouTubeChannelForm: React.FC<YouTubeChannelFormProps> = ({
     if (initialData) {
       reset({
         youtube_channel_id: initialData.youtube_channel_id,
+        custom_display_name: initialData.custom_display_name || '',
       });
       // Pre-fill fetched info from initialData if available
       if (initialData.channel_name || initialData.avatar_url) {
@@ -69,6 +72,7 @@ const YouTubeChannelForm: React.FC<YouTubeChannelFormProps> = ({
     } else {
       reset({
         youtube_channel_id: '',
+        custom_display_name: '',
       });
       setFetchedChannelInfo(null);
     }
@@ -104,7 +108,14 @@ const YouTubeChannelForm: React.FC<YouTubeChannelFormProps> = ({
     } catch (err: any) {
       // The service function already stringifies the error nicely
       console.error("Error in handleFetchChannelDetails:", err);
-      setFetchError(err.message || 'An unknown error occurred while fetching details.');
+      const errorMessage = err.message || 'An unknown error occurred while fetching details.';
+      
+      // If it's a YouTube API key error, provide a helpful message
+      if (errorMessage.includes('YouTube API key is not configured')) {
+        setFetchError('YouTube API not configured for local development. You can still create channels manually.');
+      } else {
+        setFetchError(errorMessage);
+      }
       setFetchedChannelInfo(null);
     } finally {
       setIsFetchingDetails(false);
@@ -113,22 +124,13 @@ const YouTubeChannelForm: React.FC<YouTubeChannelFormProps> = ({
 
 
   const handleFormSubmit = (data: YouTubeChannelFormData) => {
-    if (!fetchedChannelInfo && !initialData?.channel_name) {
-      // If no initial data for name (meaning it's a new entry or was never fetched)
-      // and no fetched info, we probably shouldn't submit or should warn.
-      // For now, let's prevent submission if critical fetched info is missing for a new channel.
-      // This logic might need refinement based on whether channel_name/avatar_url are truly optional in DB.
-      // The CreateAdminYouTubeChannelPayload requires channel_name & avatar_url to be string | null.
-      setFetchError("Please fetch channel details before submitting a new channel.");
-      // However, if custom_display_name is provided, maybe that's enough?
-      // Forcing fetch for now.
-      if (!initialData) return; // Strict: only allow submit if fetched for new entries.
-    }
-
+    // Allow submission even without fetched details for local development
+    // The YouTube Channel ID is the only required field
     const payload: CreateAdminYouTubeChannelPayload = {
       youtube_channel_id: fetchedChannelInfo?.actualChannelId || initialData?.youtube_channel_id || data.youtube_channel_id,
       channel_name: fetchedChannelInfo?.name || initialData?.channel_name || null,
       avatar_url: fetchedChannelInfo?.avatarUrl || initialData?.avatar_url || null,
+      custom_display_name: data.custom_display_name || initialData?.custom_display_name || null,
     };
     onSubmit(payload);
   };
@@ -167,6 +169,24 @@ const YouTubeChannelForm: React.FC<YouTubeChannelFormProps> = ({
         </div>
         {errors.youtube_channel_id && <p className="text-sm text-red-400 mt-1">{errors.youtube_channel_id.message}</p>}
         {fetchError && <p className="text-sm text-red-400 mt-1">{fetchError}</p>}
+      </div>
+
+      <div>
+        <Label htmlFor="custom_display_name" className="text-gray-300">Custom Display Name (Optional)</Label>
+        <Controller
+          name="custom_display_name"
+          control={control}
+          render={({ field }) => (
+            <Input
+              id="custom_display_name"
+              {...field}
+              className="mt-1 py-2 px-3 rounded-md bg-lolcow-lightgray text-white border border-lolcow-lightgray focus:ring-lolcow-blue placeholder:text-gray-500"
+              placeholder="e.g., My Awesome Channel"
+            />
+          )}
+        />
+        <p className="text-xs text-gray-400 mt-1">Override the channel name for display purposes</p>
+        {errors.custom_display_name && <p className="text-sm text-red-400 mt-1">{errors.custom_display_name.message}</p>}
       </div>
 
       {fetchedChannelInfo && (

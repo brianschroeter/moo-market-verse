@@ -1,0 +1,114 @@
+import React from "react";
+import { Link } from "react-router-dom";
+import { Product } from "@/services/types/shopify-types";
+import { formatPrice } from "@/services/shopify/shopifyStorefrontService";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ShoppingBag, Star, ExternalLink, Eye } from "lucide-react";
+
+interface ProductCardProps {
+  product: Product;
+  className?: string;
+}
+
+const ProductCard: React.FC<ProductCardProps> = ({ product, className = "" }) => {
+  const handleShopClick = () => {
+    // Open Shopify store product page in new tab
+    window.open(`https://lolcow.co/products/${product.handle}`, '_blank');
+  };
+
+  return (
+    <div className={`group bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-xl overflow-hidden border border-lolcow-lightgray/20 hover:border-lolcow-blue/40 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl hover:shadow-lolcow-blue/20 ${className}`}>
+      {/* Image Section - Clickable to go to product detail */}
+      <Link to={`/shop/products/${product.handle}`} className="block relative aspect-[4/3] overflow-hidden">
+        {product.featuredImageUrl ? (
+          <img
+            src={product.featuredImageUrl}
+            alt={product.title}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-lolcow-lightgray to-lolcow-darkgray flex items-center justify-center">
+            <ShoppingBag className="h-24 w-24 text-lolcow-blue opacity-60" />
+          </div>
+        )}
+        
+        {/* Overlay Effects */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        
+        {/* Best Seller Badge */}
+        <Badge className="absolute top-4 left-4 bg-lolcow-red/90 hover:bg-lolcow-red text-white border-0 backdrop-blur-sm text-sm">
+          <Star className="h-4 w-4 mr-1" />
+          Best Seller
+        </Badge>
+
+        {/* Availability Badge */}
+        {!product.available && (
+          <Badge className="absolute top-4 right-4 bg-gray-600/90 text-white border-0 backdrop-blur-sm">
+            Sold Out
+          </Badge>
+        )}
+        
+        {/* View Details Overlay on Hover */}
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+          <div className="text-white text-center">
+            <Eye className="h-8 w-8 mx-auto mb-2" />
+            <span className="text-sm font-medium">View Details</span>
+          </div>
+        </div>
+      </Link>
+      
+      {/* Content Section */}
+      <div className="p-8">
+        <div className="min-h-[140px]">
+          <Link to={`/shop/products/${product.handle}`}>
+            <h3 className="font-fredoka font-bold text-2xl text-white group-hover:text-lolcow-blue transition-colors duration-300 mb-3 line-clamp-2">
+              {product.title}
+            </h3>
+          </Link>
+          
+          {product.description && (
+            <p className="text-gray-300 text-base leading-relaxed line-clamp-3 mb-6">
+              {product.description}
+            </p>
+          )}
+        </div>
+        
+        {/* Footer Section - Consistent positioning */}
+        <div className="flex items-center justify-between mt-6">
+          <span className="text-white font-bold text-2xl">
+            {formatPrice(product.priceRange.min, product.priceRange.currencyCode)}
+          </span>
+          
+          {/* View Details Button */}
+          <div className="flex gap-2">
+            <Button
+              asChild
+              className="bg-lolcow-darkgray hover:bg-lolcow-lightgray text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-lolcow-lightgray/25 px-4 py-3"
+              size="default"
+            >
+              <Link to={`/shop/products/${product.handle}`}>
+                <Eye className="h-4 w-4" />
+              </Link>
+            </Button>
+            
+            {/* Shop Button */}
+            <Button
+              onClick={handleShopClick}
+              disabled={!product.available}
+              className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold transition-all duration-300 group/btn hover:shadow-lg hover:shadow-lolcow-blue/25 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3"
+              size="default"
+            >
+              {product.available ? 'Shop' : 'Sold Out'}
+              {product.available && (
+                <ExternalLink className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ProductCard;

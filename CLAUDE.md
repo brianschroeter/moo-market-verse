@@ -19,6 +19,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npx supabase functions deploy` - Deploy all edge functions
 - `npx supabase functions deploy <function-name>` - Deploy specific function
 
+### Database Sync & Utility Scripts
+Located in `scripts/` directory:
+
+#### Production Database Sync
+- `./scripts/sync-production-db.sh` - Syncs production database to local (requires password)
+- `./scripts/sync-shopify-orders.sh` - Syncs ALL Shopify orders from production
+- `./scripts/sync-all-shopify-orders.cjs` - Node.js script for Shopify order sync via edge function
+- `./scripts/sync-all-printful-orders.cjs` - Node.js script for Printful order sync
+- `./scripts/continuous-shopify-sync.cjs` - Continuous sync for fetching all orders
+
+#### Testing & Diagnostics
+- `./scripts/check-admin-access.js` - Verify admin access permissions
+- `./scripts/check-production-orders.cjs` - Check production order data
+- `./scripts/diagnose-shopify-sync.cjs` - Diagnose Shopify sync issues
+- `./scripts/test-printful-sync.sh` - Test Printful sync functionality
+
 ### Type Safety Workflow
 1. After database schema changes: `npx supabase gen types typescript --local`
 2. Types auto-generated to `/src/integrations/supabase/types.ts`
@@ -155,6 +171,7 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 2. Run `npx supabase start` for local development
 3. Use development mode in AuthContext for testing without Discord auth
 4. Generate types after schema changes: `npx supabase gen types typescript --local`
+5. For production data sync: Use scripts in `scripts/` directory (requires database credentials)
 
 #### Environment Variables
 - **Required**: `VITE_PUBLIC_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` for client
@@ -193,6 +210,18 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - Shopify order tracking
 - Printful integration for product fulfillment
 - Order linking and customer management
+
+##### Shopify Sync Architecture
+- **Edge Function**: `shopify-orders` handles pagination up to 200 pages (50,000 orders)
+- **Authentication**: Function deployed with `--no-verify-jwt` for production sync
+- **Sync Methods**: Available via curl script, Node.js script, or direct API call
+- **Required Env Variables**: `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_ADMIN_API_ACCESS_TOKEN`, `SHOPIFY_API_VERSION`
+
+##### Printful Sync Architecture
+- **Admin UI**: Two sync buttons - "Sync Latest Orders" (incremental) and "Full Sync" (complete)
+- **Service Function**: `syncPrintfulOrders()` calls `sync-printful-orders` edge function
+- **Performance**: Incremental sync: 30-60 seconds, Full sync: 5-10 minutes for ~800 orders
+- **Required Secret**: `PRINTFUL_API_KEY` must be set in Supabase secrets
 
 #### Integration Error Handling
 - **Discord API**: OAuth with extended scopes, automatic connection sync
