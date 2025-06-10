@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ShoppingCart, Package, Star, Info, Truck, Shield, RefreshCw, ZoomIn, Share2, Heart, Facebook, Twitter, Copy, Check, Ruler, Clock, Award } from "lucide-react";
+import { ChevronLeft, ShoppingCart, Package, Star, Info, ZoomIn, Copy, Check, Ruler, Clock, Award } from "lucide-react";
 import { ProductVariant } from "@/services/types/shopify-types";
 import { toast } from "sonner";
 
@@ -22,7 +22,6 @@ const ProductDetail: React.FC = () => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [copiedLink, setCopiedLink] = useState(false);
-  const [isFavorited, setIsFavorited] = useState(false);
 
   const {
     data: productData,
@@ -53,6 +52,41 @@ const ProductDetail: React.FC = () => {
       setSelectedVariant(availableVariant);
     }
   }, [product, selectedVariant]);
+
+  // Update selected image when color variant changes
+  React.useEffect(() => {
+    if (selectedVariant && product?.images && product.images.length > 0) {
+      // Find color option in selected variant
+      const colorOption = selectedVariant.selectedOptions.find(opt => 
+        opt.name.toLowerCase() === 'color' || opt.name.toLowerCase() === 'colour'
+      );
+      
+      if (colorOption) {
+        // Try to find an image that matches the color
+        const colorValue = colorOption.value.toLowerCase().replace(/\s+/g, '-'); // Convert "Team Purple" to "team-purple"
+        const colorSearchTerms = [
+          colorValue,
+          colorOption.value.toLowerCase(),
+          colorOption.value.toLowerCase().replace('team ', ''), // "team purple" -> "purple"
+          colorOption.value.toLowerCase().replace(/\s+/g, '_'), // "team purple" -> "team_purple"
+        ];
+        
+        const matchingImageIndex = product.images.findIndex(img => {
+          const altText = (img.altText || '').toLowerCase();
+          const imageUrl = (img.url || '').toLowerCase();
+          
+          // Check if any search term appears in alt text or URL
+          return colorSearchTerms.some(term => 
+            altText.includes(term) || imageUrl.includes(term)
+          );
+        });
+        
+        if (matchingImageIndex >= 0) {
+          setSelectedImage(matchingImageIndex);
+        }
+      }
+    }
+  }, [selectedVariant, product]);
 
   // Track recently viewed products
   useEffect(() => {
@@ -116,24 +150,12 @@ const ProductDetail: React.FC = () => {
     }
   };
 
-  const handleShare = async (platform: string) => {
+  const handleCopyLink = async () => {
     const url = window.location.href;
-    const text = `Check out ${product?.title} at LolCow Shop!`;
-    
-    switch (platform) {
-      case 'facebook':
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
-        break;
-      case 'twitter':
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
-        break;
-      case 'copy':
-        await navigator.clipboard.writeText(url);
-        setCopiedLink(true);
-        toast.success('Link copied to clipboard!');
-        setTimeout(() => setCopiedLink(false), 2000);
-        break;
-    }
+    await navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    toast.success('Link copied to clipboard!');
+    setTimeout(() => setCopiedLink(false), 2000);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -197,19 +219,24 @@ const ProductDetail: React.FC = () => {
       <Navbar />
       
       <main className="flex-grow bg-lolcow-black">
-        {/* Breadcrumb */}
-        <div className="bg-lolcow-darkgray border-b border-lolcow-lightgray/20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <nav className="flex items-center space-x-2 text-sm">
-              <Button
-                variant="ghost"
+        {/* Enhanced Breadcrumb */}
+        <div className="bg-lolcow-darkgray/50 border-b border-lolcow-lightgray/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <nav className="flex items-center space-x-3 text-sm">
+              <button
                 onClick={() => navigate('/shop')}
-                className="text-gray-300 hover:text-white p-0"
+                className="text-gray-400 hover:text-white transition-colors duration-200 font-medium"
               >
                 Shop
-              </Button>
-              <span className="text-gray-500">/</span>
-              <span className="text-white">{product.title}</span>
+              </button>
+              <span className="text-gray-600">/</span>
+              {product.productType && (
+                <>
+                  <span className="text-gray-400">{product.productType}</span>
+                  <span className="text-gray-600">/</span>
+                </>
+              )}
+              <span className="text-white font-semibold">{product.title}</span>
             </nav>
           </div>
         </div>
@@ -221,7 +248,7 @@ const ProductDetail: React.FC = () => {
               {/* Image Gallery */}
               <div className="space-y-4">
                 <div 
-                  className="aspect-square rounded-lg overflow-hidden bg-lolcow-darkgray relative cursor-zoom-in"
+                  className="aspect-square rounded-xl overflow-hidden bg-lolcow-darkgray relative cursor-zoom-in shadow-2xl group"
                   onMouseEnter={() => setIsZoomed(true)}
                   onMouseLeave={() => setIsZoomed(false)}
                   onMouseMove={handleMouseMove}
@@ -231,10 +258,10 @@ const ProductDetail: React.FC = () => {
                       <img
                         src={product.images[selectedImage].url}
                         alt={product.images[selectedImage].altText || product.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                       {/* Zoom indicator */}
-                      <div className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute top-4 right-4 bg-black/70 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
                         <ZoomIn className="h-4 w-4" />
                       </div>
                       {/* Zoomed image */}
@@ -265,21 +292,21 @@ const ProductDetail: React.FC = () => {
                 
                 {/* Thumbnail Grid */}
                 {product.images && product.images.length > 1 && (
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-4 gap-3">
                     {product.images.map((image, index) => (
                       <button
                         key={index}
                         onClick={() => setSelectedImage(index)}
-                        className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                        className={`aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 ${
                           selectedImage === index 
-                            ? 'border-lolcow-blue' 
-                            : 'border-transparent hover:border-lolcow-lightgray/50'
+                            ? 'border-lolcow-blue shadow-lg scale-105' 
+                            : 'border-transparent hover:border-lolcow-lightgray/50 hover:shadow-md'
                         }`}
                       >
                         <img
                           src={image.url}
                           alt={image.altText || `${product.title} ${index + 1}`}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
                         />
                       </button>
                     ))}
@@ -288,105 +315,191 @@ const ProductDetail: React.FC = () => {
               </div>
 
               {/* Product Info */}
-              <div className="space-y-8">
+              <div className="space-y-6">
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-fredoka text-white mb-2">
+                  <h1 className="text-3xl md:text-4xl font-fredoka text-white mb-3">
                     {product.title}
                   </h1>
                   {product.vendor && (
-                    <p className="text-gray-300">by {product.vendor}</p>
+                    <p className="text-gray-400 text-lg">by {product.vendor}</p>
                   )}
                 </div>
 
-                {/* Price and Share */}
-                <div className="flex items-center justify-between">
-                  <div className="text-3xl font-bold text-white">
-                    {selectedVariant ? (
-                      formatPrice(selectedVariant.price, product.priceRange.currencyCode)
-                    ) : (
-                      formatPrice(product.priceRange.min, product.priceRange.currencyCode)
-                    )}
+                {/* Price and Copy Link */}
+                <div className="flex items-center justify-between p-4 bg-lolcow-darkgray/50 rounded-lg">
+                  <div className="flex flex-col">
+                    <span className="text-sm text-gray-400">Price</span>
+                    <span className="text-3xl font-bold text-white">
+                      {selectedVariant ? (
+                        formatPrice(selectedVariant.price, product.priceRange.currencyCode)
+                      ) : (
+                        formatPrice(product.priceRange.min, product.priceRange.currencyCode)
+                      )}
+                    </span>
                   </div>
                   
-                  {/* Share and Favorite Buttons */}
-                  <div className="flex gap-2">
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="border-lolcow-lightgray hover:bg-lolcow-lightgray"
-                      onClick={() => setIsFavorited(!isFavorited)}
-                    >
-                      <Heart className={`h-4 w-4 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="border-lolcow-lightgray hover:bg-lolcow-lightgray"
-                      onClick={() => handleShare('facebook')}
-                    >
-                      <Facebook className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="border-lolcow-lightgray hover:bg-lolcow-lightgray"
-                      onClick={() => handleShare('twitter')}
-                    >
-                      <Twitter className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="border-lolcow-lightgray hover:bg-lolcow-lightgray"
-                      onClick={() => handleShare('copy')}
-                    >
-                      {copiedLink ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  {/* Copy Link Button */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-lolcow-lightgray hover:bg-lolcow-lightgray text-gray-300 hover:text-white transition-all duration-200"
+                    onClick={handleCopyLink}
+                  >
+                    {copiedLink ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2 text-green-500" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Share
+                      </>
+                    )}
+                  </Button>
                 </div>
 
-                {/* Product Type & Tags */}
-                <div className="flex flex-wrap gap-2">
-                  {product.productType && (
+                {/* Product Type Badge */}
+                {product.productType && (
+                  <div>
                     <Badge variant="secondary" className="bg-lolcow-darkgray text-white">
                       {product.productType}
                     </Badge>
+                  </div>
+                )}
+
+                {/* Variant Options */}
+                {groupedOptions.length > 0 && (
+                  <div className="space-y-4">
+                    {groupedOptions.map(option => (
+                      <div key={option.name} className="bg-lolcow-darkgray/30 p-4 rounded-lg">
+                        <label className="block text-sm font-semibold text-white mb-3">
+                          Select {option.name}
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {option.values.map(value => {
+                            const isSelected = selectedVariant?.selectedOptions.find(
+                              opt => opt.name === option.name
+                            )?.value === value;
+                            
+                            // Check if this option value has any available variants considering other selected options
+                            const hasAvailableVariant = product.variants.some(variant => {
+                              if (!variant.available) return false;
+                              
+                              // Check if this variant has the current option value
+                              const hasThisOption = variant.selectedOptions.some(opt => 
+                                opt.name === option.name && opt.value === value
+                              );
+                              
+                              if (!hasThisOption) return false;
+                              
+                              // For multi-option products, check if other selected options match
+                              if (selectedVariant && groupedOptions.length > 1) {
+                                return variant.selectedOptions.every(opt => {
+                                  if (opt.name === option.name) {
+                                    return opt.value === value;
+                                  }
+                                  // Check if other options match current selection
+                                  const currentSelection = selectedVariant.selectedOptions.find(
+                                    selected => selected.name === opt.name
+                                  );
+                                  return currentSelection ? currentSelection.value === opt.value : true;
+                                });
+                              }
+                              
+                              return true;
+                            });
+                            
+                            return (
+                              <div key={value} className="relative group">
+                                <Button
+                                  variant={isSelected ? "default" : "outline"}
+                                  size="default"
+                                  onClick={() => handleVariantSelect(option.name, value)}
+                                  disabled={!hasAvailableVariant}
+                                  className={
+                                    !hasAvailableVariant 
+                                      ? "opacity-40 cursor-not-allowed bg-lolcow-darkgray/30 border-lolcow-lightgray/10 text-gray-600 line-through hover:bg-lolcow-darkgray/30 hover:border-lolcow-lightgray/10 hover:text-gray-600"
+                                      : isSelected 
+                                        ? "bg-lolcow-blue hover:bg-lolcow-blue/80 shadow-lg border-lolcow-blue" 
+                                        : "border-lolcow-lightgray/50 text-gray-300 hover:text-white hover:border-white hover:bg-lolcow-lightgray/20"
+                                  }
+                                >
+                                  {value}
+                                </Button>
+                                {!hasAvailableVariant && (
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                    Out of stock
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add to Cart Button */}
+                <div className="flex flex-col gap-4 pt-4 border-t border-lolcow-lightgray/20">
+                  <Button
+                    size="lg"
+                    className="w-full bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold py-6 text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                    disabled={!selectedVariant?.available}
+                    asChild
+                  >
+                    <a 
+                      href={`https://lolcow.co/products/${handle}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      <ShoppingCart className="h-5 w-5 mr-2" />
+                      {selectedVariant?.available ? 'Add to Cart' : 'Out of Stock'}
+                    </a>
+                  </Button>
+                  
+                  {!selectedVariant?.available && (
+                    <p className="text-center text-red-400 text-sm">
+                      This variant is currently out of stock
+                    </p>
                   )}
-                  {product.tags.slice(0, 3).map((tag, index) => (
-                    <Badge key={index} variant="outline" className="border-lolcow-lightgray text-gray-300">
-                      {tag}
-                    </Badge>
-                  ))}
+                  
+                  {/* Additional Info */}
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                    <Info className="h-3 w-3" />
+                    <span>Product availability and pricing may vary</span>
+                  </div>
                 </div>
 
                 {/* Description with Tabs */}
                 <Tabs defaultValue="description" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 bg-lolcow-darkgray">
+                  <TabsList className="grid w-full grid-cols-2 bg-lolcow-darkgray">
                     <TabsTrigger value="description">Description</TabsTrigger>
                     <TabsTrigger value="details">Details</TabsTrigger>
-                    <TabsTrigger value="shipping">Shipping</TabsTrigger>
                   </TabsList>
                   <TabsContent value="description" className="mt-6">
                     {(product.descriptionHtml || product.description) && (
                       <div 
-                        className="prose prose-invert max-w-none text-gray-300 
-                          prose-headings:text-white prose-headings:font-fredoka
-                          prose-p:mb-6 prose-p:leading-relaxed
-                          prose-a:text-lolcow-blue prose-a:no-underline hover:prose-a:underline 
-                          prose-strong:text-white prose-strong:font-semibold
-                          prose-ul:list-disc prose-ul:ml-6 prose-ul:mb-6
-                          prose-ol:list-decimal prose-ol:ml-6 prose-ol:mb-6
-                          prose-li:mb-2
-                          prose-table:w-full prose-table:border-collapse prose-table:my-8
-                          prose-th:bg-lolcow-darkgray prose-th:border prose-th:border-lolcow-lightgray/30 
-                          prose-th:px-6 prose-th:py-4 prose-th:text-left prose-th:font-semibold prose-th:text-white
-                          prose-th:text-sm prose-th:uppercase prose-th:tracking-wider
-                          prose-td:border prose-td:border-lolcow-lightgray/30 prose-td:px-6 prose-td:py-4
-                          prose-td:text-gray-300
-                          prose-tbody:bg-lolcow-darkgray/50
-                          prose-tr:transition-colors hover:prose-tr:bg-lolcow-lightgray/10
-                          prose-thead:border-b-2 prose-thead:border-lolcow-lightgray/40
-                          [&_table]:rounded-lg [&_table]:overflow-hidden [&_table]:shadow-lg"
+                        className="space-y-6 text-gray-300
+                          [&_h1]:text-2xl [&_h1]:font-fredoka [&_h1]:font-semibold [&_h1]:text-white [&_h1]:mb-6 [&_h1]:mt-8
+                          [&_h2]:text-xl [&_h2]:font-fredoka [&_h2]:font-semibold [&_h2]:text-white [&_h2]:mb-4 [&_h2]:mt-8
+                          [&_h3]:text-lg [&_h3]:font-fredoka [&_h3]:font-medium [&_h3]:text-white [&_h3]:mb-3 [&_h3]:mt-6
+                          [&_p]:mb-6 [&_p]:leading-loose [&_p]:text-gray-300
+                          [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:mb-6 [&_ul]:space-y-3
+                          [&_ol]:list-decimal [&_ol]:ml-6 [&_ol]:mb-6 [&_ol]:space-y-3
+                          [&_li]:text-gray-300 [&_li]:leading-relaxed
+                          [&_strong]:text-white [&_strong]:font-semibold
+                          [&_a]:text-lolcow-blue [&_a]:no-underline hover:[&_a]:underline
+                          [&_table]:w-full [&_table]:my-10
+                          [&_table]:bg-lolcow-darkgray/30 [&_table]:rounded-lg [&_table]:overflow-hidden
+                          [&_thead]:bg-lolcow-darkgray/50
+                          [&_th]:px-6 [&_th]:py-4 [&_th]:text-left [&_th]:font-medium [&_th]:text-gray-400 
+                          [&_th]:text-sm [&_th]:uppercase [&_th]:tracking-wider
+                          [&_td]:px-6 [&_td]:py-4 [&_td]:text-gray-300
+                          [&_tbody_tr]:border-t [&_tbody_tr]:border-lolcow-lightgray/10
+                          [&_tbody_tr:hover]:bg-lolcow-lightgray/5 [&_tbody_tr]:transition-colors
+                          [&>*:first-child]:mt-0"
                         dangerouslySetInnerHTML={{ __html: product.descriptionHtml || product.description }}
                       />
                     )}
@@ -421,92 +534,7 @@ const ProductDetail: React.FC = () => {
                       </div>
                     )}
                   </TabsContent>
-                  <TabsContent value="shipping" className="mt-6 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Truck className="h-5 w-5 text-lolcow-blue" />
-                      <div>
-                        <p className="text-sm font-medium text-white">Standard Shipping</p>
-                        <p className="text-xs text-gray-400">5-7 business days • Free on orders over $50</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-5 w-5 text-orange-400" />
-                      <div>
-                        <p className="text-sm font-medium text-white">Express Shipping</p>
-                        <p className="text-xs text-gray-400">2-3 business days • Additional charges apply</p>
-                      </div>
-                    </div>
-                  </TabsContent>
                 </Tabs>
-
-                {/* Variant Options */}
-                {groupedOptions.length > 0 && (
-                  <div className="space-y-4">
-                    {groupedOptions.map(option => (
-                      <div key={option.name}>
-                        <label className="block text-sm font-medium text-white mb-2">
-                          {option.name}
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {option.values.map(value => {
-                            const isSelected = selectedVariant?.selectedOptions.find(
-                              opt => opt.name === option.name
-                            )?.value === value;
-                            
-                            return (
-                              <Button
-                                key={value}
-                                variant={isSelected ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => handleVariantSelect(option.name, value)}
-                                className={isSelected 
-                                  ? "bg-lolcow-blue hover:bg-lolcow-blue/80" 
-                                  : "border-lolcow-lightgray text-gray-300 hover:text-white hover:border-white"
-                                }
-                              >
-                                {value}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Add to Cart Button */}
-                <div className="flex flex-col gap-4">
-                  <Button
-                    size="lg"
-                    className="w-full bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold py-6 text-lg"
-                    disabled={!selectedVariant?.available}
-                    asChild
-                  >
-                    <a 
-                      href={`https://lolcow.co/products/${handle}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                    >
-                      <ShoppingCart className="h-5 w-5 mr-2" />
-                      {selectedVariant?.available ? 'Add to Cart' : 'Out of Stock'}
-                    </a>
-                  </Button>
-                  
-                  {!selectedVariant?.available && (
-                    <p className="text-center text-red-400 text-sm">
-                      This variant is currently out of stock
-                    </p>
-                  )}
-                </div>
-
-
-                {/* Additional Info */}
-                <div className="space-y-2 text-sm text-gray-400">
-                  <p className="flex items-center gap-2">
-                    <Info className="h-4 w-4" />
-                    Product availability and pricing may vary
-                  </p>
-                </div>
               </div>
             </div>
           </div>

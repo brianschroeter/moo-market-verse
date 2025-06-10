@@ -77,6 +77,7 @@ const NavigationManager: React.FC = () => {
       // Map database items to our view model with display labels
       const defaultItems = [
         { key: "home", label: "Home", isEnabled: true },
+        { key: "shop", label: "Shop", isEnabled: true },
         { key: "schedule", label: "Schedule", isEnabled: true },
         { key: "leaderboard", label: "Leaderboard", isEnabled: true },
         { key: "profile", label: "Profile", isEnabled: true },
@@ -115,6 +116,11 @@ const NavigationManager: React.FC = () => {
           <p className="text-gray-300 mb-4">
             Enable or disable navigation items in the main menu. Disabled items will not be visible to regular users, but will still be accessible to administrators.
           </p>
+          <div className="bg-lolcow-darkgray/50 rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-400">
+              <strong className="text-white">Note:</strong> The Shop link connects to your Shopify storefront and displays products synchronized from your Shopify admin.
+            </p>
+          </div>
           
           {navigationItems.map((item) => (
             <div key={item.key} className="flex items-center justify-between border-b border-lolcow-lightgray pb-4">

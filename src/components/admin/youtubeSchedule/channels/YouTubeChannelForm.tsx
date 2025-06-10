@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { AdminYouTubeChannel, CreateAdminYouTubeChannelPayload } from '@/services/types/youtubeSchedule-types';
 import { getYouTubeChannelDetails, YouTubeChannelDetails } from '../../../../services/youtubeScheduleService'; // <-- Import the service
 import { Loader2, Search } from 'lucide-react';
+import { getProxiedImageUrl } from '@/utils/imageProxy';
 // import { supabase } from '@/integrations/supabase/client'; // No longer needed for direct invoke here
 
 // Define the Zod schema for validation
@@ -194,7 +195,7 @@ const YouTubeChannelForm: React.FC<YouTubeChannelFormProps> = ({
           <h4 className="text-md font-semibold text-white">Fetched Channel Details:</h4>
           {fetchedChannelInfo.avatarUrl && (
             <img
-              src={fetchedChannelInfo.avatarUrl}
+              src={getProxiedImageUrl(fetchedChannelInfo.avatarUrl)}
               alt={fetchedChannelInfo.name || 'Channel Avatar'}
               className="w-16 h-16 rounded-full bg-lolcow-lightgray/30"
             />
