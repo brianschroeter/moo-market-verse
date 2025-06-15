@@ -4,17 +4,31 @@ This project uses Vercel Cron Jobs to automatically sync YouTube schedules since
 
 ## Automatic Cron Jobs
 
-The following cron jobs are configured in `vercel.json`:
+### Free Tier (Current Setup)
+The following cron job is configured in `vercel.json`:
 
-1. **Full YouTube Sync** - Every 4 hours
+1. **Daily YouTube Sync** - Once per day at midnight UTC
    - Path: `/api/cron/youtube-sync`
-   - Schedule: `0 */4 * * *` (at minute 0 of every 4th hour)
-   - Syncs all channels, refreshes avatars, and updates today's schedule
+   - Schedule: `0 0 * * *` (daily at midnight)
+   - Syncs all channels, refreshes avatars, and updates schedules
 
-2. **Active Streams Sync** - Every 5 minutes
-   - Path: `/api/cron/youtube-sync-active`
-   - Schedule: `*/5 * * * *` (every 5 minutes)
-   - Quick sync of only live/upcoming streams for real-time updates
+**Note**: Vercel's free tier only allows daily cron jobs. For more frequent updates, use the manual sync endpoint below or upgrade to Vercel Pro.
+
+### Pro Tier (Recommended)
+If you upgrade to Vercel Pro, update `vercel.json` to enable these schedules:
+
+```json
+"crons": [
+  {
+    "path": "/api/cron/youtube-sync",
+    "schedule": "0 */4 * * *"  // Every 4 hours
+  },
+  {
+    "path": "/api/cron/youtube-sync-active",
+    "schedule": "*/5 * * * *"  // Every 5 minutes
+  }
+]
+```
 
 ## Required Environment Variables
 
