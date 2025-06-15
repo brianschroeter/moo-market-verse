@@ -49,8 +49,11 @@ export async function getYouTubeApiKeyStats(): Promise<YouTubeApiKeyStats[]> {
 }
 
 export async function createYouTubeApiKey(payload: CreateYouTubeApiKeyPayload): Promise<YouTubeApiKey> {
-  const response = await supabase.functions.invoke('manage-youtube-api-keys/create', {
-    body: payload
+  const response = await supabase.functions.invoke('manage-youtube-api-keys', {
+    body: {
+      action: 'create',
+      ...payload
+    }
   });
 
   if (response.error) {
@@ -101,8 +104,11 @@ export async function deleteYouTubeApiKey(id: string): Promise<void> {
 }
 
 export async function testYouTubeApiKey(apiKey: string): Promise<{ success: boolean; message: string; quota?: number }> {
-  const response = await supabase.functions.invoke('manage-youtube-api-keys/test', {
-    body: { api_key: apiKey }
+  const response = await supabase.functions.invoke('manage-youtube-api-keys', {
+    body: { 
+      action: 'test',
+      api_key: apiKey 
+    }
   });
 
   if (response.error) {

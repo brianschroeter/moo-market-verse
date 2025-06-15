@@ -63,9 +63,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const url = new URL(req.url)
-    const pathParts = url.pathname.split('/')
-    const action = pathParts[pathParts.length - 1]
+    const body = await req.json()
+    const action = body.action
 
     switch (action) {
       case 'create': {
@@ -76,9 +75,9 @@ serve(async (req) => {
           })
         }
 
-        const body: CreateApiKeyRequest = await req.json()
+        const createBody: CreateApiKeyRequest = body
 
-        if (!body.name || !body.api_key) {
+        if (!createBody.name || !createBody.api_key) {
           return new Response(JSON.stringify({ error: 'Name and API key are required' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -86,16 +85,16 @@ serve(async (req) => {
         }
 
         // Encrypt the API key
-        const encryptedKey = encryptApiKey(body.api_key)
+        const encryptedKey = encryptApiKey(createBody.api_key)
 
         // Create the API key record
         const { data, error } = await supabaseAdmin
           .from('youtube_api_keys')
           .insert({
-            name: body.name,
-            description: body.description,
+            name: createBody.name,
+            description: createBody.description,
             api_key_encrypted: encryptedKey,
-            status: body.status || 'active',
+            status: createBody.status || 'active',
             created_by: adminUser.id
           })
           .select()
@@ -122,9 +121,9 @@ serve(async (req) => {
           })
         }
 
-        const body: UpdateApiKeyRequest = await req.json()
+        const updateBody: UpdateApiKeyRequest = body
 
-        if (!body.id) {
+        if (!updateBody.id) {
           return new Response(JSON.stringify({ error: 'ID is required' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -132,14 +131,14 @@ serve(async (req) => {
         }
 
         const updateData: any = {}
-        if (body.name !== undefined) updateData.name = body.name
-        if (body.description !== undefined) updateData.description = body.description
-        if (body.status !== undefined) updateData.status = body.status
+        if (updateBody.name !== undefined) updateData.name = updateBody.name
+        if (updateBody.description !== undefined) updateData.description = updateBody.description
+        if (updateBody.status !== undefined) updateData.status = updateBody.status
 
         const { data, error } = await supabaseAdmin
           .from('youtube_api_keys')
           .update(updateData)
-          .eq('id', body.id)
+          .eq('id', updateBody.id)
           .select()
           .single()
 
@@ -163,19 +162,19 @@ serve(async (req) => {
           })
         }
 
-        const body: { api_key?: string; id?: string } = await req.json()
+        const testBody: { api_key?: string; id?: string } = body
 
         let apiKey: string
 
-        if (body.api_key) {
+        if (testBody.api_key) {
           // Testing a new key
-          apiKey = body.api_key
-        } else if (body.id) {
+          apiKey = testBody.api_key
+        } else if (testBody.id) {
           // Testing an existing key
           const { data: keyData, error } = await supabaseAdmin
             .from('youtube_api_keys')
             .select('api_key_encrypted')
-            .eq('id', body.id)
+            .eq('id', testBody.id)
             .single()
 
           if (error || !keyData) {

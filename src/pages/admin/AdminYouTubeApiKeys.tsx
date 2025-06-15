@@ -446,9 +446,9 @@ const AdminYouTubeApiKeys: React.FC = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-lolcow-darkgray border-lolcow-lightgray">
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    {editingKey && <SelectItem value="quota_exceeded">Quota Exceeded</SelectItem>}
+                    <SelectItem value="active" className="text-white hover:bg-lolcow-lightgray/20">Active</SelectItem>
+                    <SelectItem value="inactive" className="text-white hover:bg-lolcow-lightgray/20">Inactive</SelectItem>
+                    {editingKey && <SelectItem value="quota_exceeded" className="text-white hover:bg-lolcow-lightgray/20">Quota Exceeded</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
