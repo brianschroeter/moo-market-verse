@@ -347,9 +347,32 @@ const WeeklyScheduleTable: React.FC<{
       
       if (dayStream) {
         const displayTime = dayStream.actual_start_time_utc || dayStream.scheduled_start_time_utc
+        let formattedTime = formatTime(displayTime)
+        
+        // Check if this stream started on a previous day
+        if (displayTime) {
+          const streamStartDate = new Date(displayTime)
+          const currentDayStart = new Date(targetDate)
+          currentDayStart.setHours(0, 0, 0, 0)
+          
+          if (streamStartDate < currentDayStart) {
+            // Stream started on a previous day - add day indicator
+            const dayName = streamStartDate.toLocaleDateString('en-US', { weekday: 'short' })
+            formattedTime = `${dayName} ${formattedTime}`
+            
+            // Mark this as an overnight stream
+            return { 
+              stream: dayStream, 
+              time: formattedTime,
+              type: dayStream.status === 'live' ? 'overnight' : 'streamed',
+              note: 'Started earlier'
+            }
+          }
+        }
+        
         return { 
           stream: dayStream, 
-          time: formatTime(displayTime),
+          time: formattedTime,
           type: dayStream.status === 'live' ? 'live' : 
                 dayStream.status === 'completed' ? 'streamed' : 
                 'scheduled' // For upcoming streams showing on today
