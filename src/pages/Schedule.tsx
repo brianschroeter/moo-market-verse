@@ -619,6 +619,35 @@ const Schedule: React.FC = () => {
     })
   }
 
+  const getUpcomingStreams = (): LiveStream[] => {
+    if (!scheduleData) return []
+    const now = new Date()
+    const twentyFourHoursLater = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+    
+    let streams = scheduleData.liveStreams.filter(stream => {
+      // Only include upcoming streams (not live or completed)
+      if (stream.status === 'live' || stream.status === 'completed') return false
+      
+      const scheduledTime = stream.scheduled_start_time_utc
+      if (!scheduledTime) return false
+      
+      const streamTime = new Date(scheduledTime)
+      // Show streams scheduled in the next 24 hours that have thumbnails
+      return streamTime > now && streamTime <= twentyFourHoursLater && stream.thumbnail_url
+    })
+    
+    if (selectedChannels.length > 0) {
+      streams = streams.filter(stream => selectedChannels.includes(stream.youtube_channel_id))
+    }
+    
+    // Sort by scheduled time (earliest first)
+    return streams.sort((a, b) => {
+      const timeA = a.scheduled_start_time_utc || ''
+      const timeB = b.scheduled_start_time_utc || ''
+      return timeA.localeCompare(timeB)
+    })
+  }
+
   const getWeeklyStreams = (): LiveStream[] => {
     if (!scheduleData) return []
     const today = new Date()
@@ -689,6 +718,7 @@ const Schedule: React.FC = () => {
   }
 
   const liveStreams = getLiveStreams()
+  const upcomingStreams = getUpcomingStreams()
   const replayStreams = getReplayStreams()
   const weeklyStreams = getWeeklyStreams()
 
@@ -866,24 +896,24 @@ const Schedule: React.FC = () => {
             </section>
           )}
 
-          {/* Catch the Replay Section */}
-          {replayStreams.length > 0 && (
+          {/* Coming Up Section */}
+          {upcomingStreams.length > 0 && (
             <section>
               <div className="flex items-center mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 shadow-lg">
-                    <Play className="h-6 w-6 text-white" />
+                  <div className="p-3 rounded-full bg-gradient-to-br from-green-600 to-emerald-600 shadow-lg">
+                    <ChevronRight className="h-6 w-6 text-white" />
                   </div>
                   <h2 className="text-3xl font-fredoka font-bold text-white">
-                    🎬 Catch the Replay
+                    🚀 Coming Up
                   </h2>
                 </div>
-                <div className="ml-4 bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full text-sm font-medium">
-                  Last 3 Days
+                <div className="ml-4 bg-green-600/20 text-green-400 px-3 py-1 rounded-full text-sm font-medium">
+                  Next 24 Hours
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {replayStreams.map(stream => (
+                {upcomingStreams.map(stream => (
                   <VideoCard key={stream.id} stream={stream} />
                 ))}
               </div>
@@ -940,6 +970,30 @@ const Schedule: React.FC = () => {
                   <span className="text-gray-600 italic">TBD</span>
                   <span className="text-gray-400">To Be Determined</span>
                 </div>
+              </div>
+            </section>
+          )}
+
+          {/* Catch the Replay Section */}
+          {replayStreams.length > 0 && (
+            <section>
+              <div className="flex items-center mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 shadow-lg">
+                    <Play className="h-6 w-6 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-fredoka font-bold text-white">
+                    🎬 Catch the Replay
+                  </h2>
+                </div>
+                <div className="ml-4 bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full text-sm font-medium">
+                  Last 3 Days
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {replayStreams.map(stream => (
+                  <VideoCard key={stream.id} stream={stream} />
+                ))}
               </div>
             </section>
           )}
