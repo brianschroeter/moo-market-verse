@@ -734,7 +734,7 @@ const Schedule: React.FC = () => {
 
         {/* Enhanced Stats Row */}
         {scheduleData && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
             <div className="relative group">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-blue-600/0 rounded-xl blur-xl group-hover:from-blue-600/30 transition-all duration-500"></div>
               <div className="relative bg-gradient-to-br from-blue-800/40 to-blue-900/60 rounded-xl px-6 py-5 border border-blue-700/40 shadow-xl backdrop-blur-sm hover:from-blue-700/50 hover:to-blue-800/70 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
@@ -773,23 +773,10 @@ const Schedule: React.FC = () => {
                     <Activity className="h-7 w-7 text-purple-400 filter drop-shadow-glow" />
                   </div>
                   <div>
-                    <div className="text-3xl font-bold text-white mb-1 font-fredoka">{scheduleData.stats.upcomingToday}</div>
+                    <div className="text-3xl font-bold text-white mb-1 font-fredoka">
+                      {scheduleData.stats.upcomingToday === 0 ? 'TBD' : scheduleData.stats.upcomingToday}
+                    </div>
                     <div className="text-sm font-medium text-purple-300 uppercase tracking-wider">Today</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-600/20 to-green-600/0 rounded-xl blur-xl group-hover:from-green-600/30 transition-all duration-500"></div>
-              <div className="relative bg-gradient-to-br from-green-800/40 to-green-900/60 rounded-xl px-6 py-5 border border-green-700/40 shadow-xl backdrop-blur-sm hover:from-green-700/50 hover:to-green-800/70 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-xl bg-green-500/20 mr-4 shadow-inner">
-                    <TrendingUp className="h-7 w-7 text-green-400 filter drop-shadow-glow" />
-                  </div>
-                  <div>
-                    <div className="text-3xl font-bold text-white mb-1 font-fredoka">{scheduleData.stats.totalSlots}</div>
-                    <div className="text-sm font-medium text-green-300 uppercase tracking-wider">Shows</div>
                   </div>
                 </div>
               </div>
