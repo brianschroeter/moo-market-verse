@@ -81,11 +81,74 @@ interface LiveStream {
 
 class YouTubeAPIService {
   private supabase
-  private apiKey: string
+  private currentApiKey: string | null = null
+  private currentApiKeyId: string | null = null
 
-  constructor(supabaseClient: any, apiKey: string) {
+  constructor(supabaseClient: any) {
     this.supabase = supabaseClient
-    this.apiKey = apiKey
+  }
+
+  async getApiKey(): Promise<{ id: string; key: string }> {
+    // Try to get the next available API key
+    const { data, error } = await this.supabase
+      .rpc('get_next_youtube_api_key')
+
+    if (error || !data || data.length === 0) {
+      // Fallback to environment variable if no keys in database
+      const envKey = Deno.env.get('YOUTUBE_API_KEY')
+      if (!envKey) {
+        throw new Error('No YouTube API keys available')
+      }
+      return { id: 'env-key', key: envKey }
+    }
+
+    const keyData = data[0]
+    
+    // Decrypt the API key
+    const decryptedKey = this.decryptApiKey(keyData.api_key_encrypted)
+    
+    this.currentApiKey = decryptedKey
+    this.currentApiKeyId = keyData.id
+    return { id: keyData.id, key: decryptedKey }
+  }
+
+  private decryptApiKey(encrypted: string): string {
+    try {
+      const salt = Deno.env.get('ENCRYPTION_SALT') || 'default-salt'
+      const decrypted = atob(encrypted)
+      const parts = decrypted.split(':')
+      if (parts.length === 3 && parts[0] === salt && parts[2] === salt) {
+        return parts[1]
+      }
+      return encrypted // Return as-is if format doesn't match
+    } catch {
+      return encrypted // Return as-is if decryption fails
+    }
+  }
+
+  async markKeyAsQuotaExceeded(keyId: string, error: string): Promise<void> {
+    if (keyId === 'env-key') return // Skip if using env key
+    
+    await this.supabase.rpc('mark_youtube_api_key_quota_exceeded', {
+      key_id: keyId,
+      error_message: error
+    })
+  }
+
+  async logApiUsage(keyId: string, endpoint: string, channelIds: string[], unitsUsed: number, success: boolean, error?: string): Promise<void> {
+    if (keyId === 'env-key') return // Skip logging for env key
+
+    await this.supabase
+      .from('youtube_api_key_usage_log')
+      .insert({
+        api_key_id: keyId,
+        endpoint,
+        channel_ids: channelIds,
+        units_used: unitsUsed,
+        response_cached: false,
+        success,
+        error_message: error || null
+      })
   }
 
   async getCachedResponse(cacheKey: string): Promise<CacheEntry | null> {
@@ -121,6 +184,7 @@ class YouTubeAPIService {
   }
 
   async trackAPIUsage(endpoint: string, unitsUsed: number, channelIds: string[], cached: boolean, error?: string): Promise<void> {
+    // This is for the old tracking table, keeping for backward compatibility
     await this.supabase
       .from('youtube_api_usage')
       .insert({
@@ -144,9 +208,12 @@ class YouTubeAPIService {
       return cached.response_data.items || []
     }
 
+    // Get API key
+    const apiKeyInfo = await this.getApiKey()
+
     // Make API request
     const url = new URL('https://www.googleapis.com/youtube/v3/search')
-    url.searchParams.set('key', this.apiKey)
+    url.searchParams.set('key', apiKeyInfo.key)
     url.searchParams.set('channelId', channelId)
     url.searchParams.set('type', 'video')
     url.searchParams.set('eventType', 'upcoming')
@@ -160,17 +227,38 @@ class YouTubeAPIService {
       const data: YouTubeAPIResponse = await response.json()
 
       if (!response.ok) {
-        throw new Error(`YouTube API error: ${data.error?.message || response.statusText}`)
+        const errorMessage = `YouTube API error: ${data.error?.message || response.statusText}`
+        
+        // Check if it's a quota error
+        if (response.status === 403 && data.error?.message?.includes('quota')) {
+          await this.markKeyAsQuotaExceeded(apiKeyInfo.id, errorMessage)
+          // Try with a different key
+          const newKeyInfo = await this.getApiKey()
+          if (newKeyInfo.id !== apiKeyInfo.id) {
+            url.searchParams.set('key', newKeyInfo.key)
+            const retryResponse = await fetch(url.toString())
+            const retryData: YouTubeAPIResponse = await retryResponse.json()
+            if (retryResponse.ok) {
+              await this.setCachedResponse(cacheKey, 'search', retryData, 15, channelId)
+              await this.logApiUsage(newKeyInfo.id, 'search', [channelId], 100, true)
+              return retryData.items || []
+            }
+          }
+        }
+        
+        throw new Error(errorMessage)
       }
 
       // Cache the response
       await this.setCachedResponse(cacheKey, 'search', data, 15, channelId)
       await this.trackAPIUsage('search', 100, [channelId], false)
+      await this.logApiUsage(apiKeyInfo.id, 'search', [channelId], 100, true)
 
       return data.items || []
     } catch (error) {
       console.error('Error fetching upcoming streams:', error)
       await this.trackAPIUsage('search', 100, [channelId], false, error.message)
+      await this.logApiUsage(apiKeyInfo.id, 'search', [channelId], 100, false, error.message)
       return []
     }
   }
@@ -185,11 +273,14 @@ class YouTubeAPIService {
       return cached.response_data.items || []
     }
 
+    // Get API key
+    const apiKeyInfo = await this.getApiKey()
+
     // Calculate publishedAfter timestamp
     const publishedAfter = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString()
 
     const url = new URL('https://www.googleapis.com/youtube/v3/search')
-    url.searchParams.set('key', this.apiKey)
+    url.searchParams.set('key', apiKeyInfo.key)
     url.searchParams.set('channelId', channelId)
     url.searchParams.set('type', 'video')
     url.searchParams.set('part', 'snippet')
@@ -203,17 +294,38 @@ class YouTubeAPIService {
       const data: YouTubeAPIResponse = await response.json()
 
       if (!response.ok) {
-        throw new Error(`YouTube API error: ${data.error?.message || response.statusText}`)
+        const errorMessage = `YouTube API error: ${data.error?.message || response.statusText}`
+        
+        // Check if it's a quota error
+        if (response.status === 403 && data.error?.message?.includes('quota')) {
+          await this.markKeyAsQuotaExceeded(apiKeyInfo.id, errorMessage)
+          // Try with a different key
+          const newKeyInfo = await this.getApiKey()
+          if (newKeyInfo.id !== apiKeyInfo.id) {
+            url.searchParams.set('key', newKeyInfo.key)
+            const retryResponse = await fetch(url.toString())
+            const retryData: YouTubeAPIResponse = await retryResponse.json()
+            if (retryResponse.ok) {
+              await this.setCachedResponse(cacheKey, 'search', retryData, 60, channelId)
+              await this.logApiUsage(newKeyInfo.id, 'search', [channelId], 100, true)
+              return retryData.items || []
+            }
+          }
+        }
+        
+        throw new Error(errorMessage)
       }
 
       // Cache for longer since recent videos don't change as often
       await this.setCachedResponse(cacheKey, 'search', data, 60, channelId)
       await this.trackAPIUsage('search', 100, [channelId], false)
+      await this.logApiUsage(apiKeyInfo.id, 'search', [channelId], 100, true)
 
       return data.items || []
     } catch (error) {
       console.error('Error fetching recent videos:', error)
       await this.trackAPIUsage('search', 100, [channelId], false, error.message)
+      await this.logApiUsage(apiKeyInfo.id, 'search', [channelId], 100, false, error.message)
       return []
     }
   }
@@ -230,8 +342,11 @@ class YouTubeAPIService {
       return cached.response_data.items || []
     }
 
+    // Get API key
+    const apiKeyInfo = await this.getApiKey()
+
     const url = new URL('https://www.googleapis.com/youtube/v3/videos')
-    url.searchParams.set('key', this.apiKey)
+    url.searchParams.set('key', apiKeyInfo.key)
     url.searchParams.set('id', videoIds.join(','))
     url.searchParams.set('part', 'snippet,liveStreamingDetails,statistics')
 
@@ -241,17 +356,38 @@ class YouTubeAPIService {
       const data: YouTubeAPIResponse = await response.json()
 
       if (!response.ok) {
-        throw new Error(`YouTube API error: ${data.error?.message || response.statusText}`)
+        const errorMessage = `YouTube API error: ${data.error?.message || response.statusText}`
+        
+        // Check if it's a quota error
+        if (response.status === 403 && data.error?.message?.includes('quota')) {
+          await this.markKeyAsQuotaExceeded(apiKeyInfo.id, errorMessage)
+          // Try with a different key
+          const newKeyInfo = await this.getApiKey()
+          if (newKeyInfo.id !== apiKeyInfo.id) {
+            url.searchParams.set('key', newKeyInfo.key)
+            const retryResponse = await fetch(url.toString())
+            const retryData: YouTubeAPIResponse = await retryResponse.json()
+            if (retryResponse.ok) {
+              await this.setCachedResponse(cacheKey, 'videos', retryData, 10)
+              await this.logApiUsage(newKeyInfo.id, 'videos', [], 1, true)
+              return retryData.items || []
+            }
+          }
+        }
+        
+        throw new Error(errorMessage)
       }
 
       // Cache for 10 minutes since live details can change
       await this.setCachedResponse(cacheKey, 'videos', data, 10)
       await this.trackAPIUsage('videos', 1, [], false)
+      await this.logApiUsage(apiKeyInfo.id, 'videos', [], 1, true)
 
       return data.items || []
     } catch (error) {
       console.error('Error fetching video details:', error)
       await this.trackAPIUsage('videos', 1, [], false, error.message)
+      await this.logApiUsage(apiKeyInfo.id, 'videos', [], 1, false, error.message)
       return []
     }
   }
@@ -331,12 +467,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Get YouTube API key from environment
-    const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY')
-    if (!youtubeApiKey) {
-      throw new Error('YOUTUBE_API_KEY environment variable is not set')
-    }
-
     // Parse request body for configuration
     let config: SyncConfig = {
       lookAheadHours: 48,
@@ -354,7 +484,7 @@ serve(async (req) => {
       }
     }
 
-    const youtubeAPI = new YouTubeAPIService(supabaseServiceRole, youtubeApiKey)
+    const youtubeAPI = new YouTubeAPIService(supabaseServiceRole)
 
     // Get all configured YouTube channels or specific ones
     let channelsQuery = supabaseServiceRole

@@ -30,6 +30,7 @@ import AdminNewsletterSignups from "./pages/admin/newsletter-signups.tsx";
 import AdminGuildSearch from "./pages/admin/AdminGuildSearch";
 import AdminYouTubeScheduleChannels from "./pages/admin/AdminYouTubeScheduleChannels";
 import AdminYouTubeSchedulePage from "./pages/admin/AdminYouTubeSchedulePage";
+import AdminYouTubeApiKeys from "./pages/admin/AdminYouTubeApiKeys";
 import AdminFlashSales from "./pages/admin/AdminFlashSales";
 import AdminCollectionOrder from "./pages/admin/AdminCollectionOrder";
 import AdminPrintfulOrders from "./pages/admin/AdminPrintfulOrders";
@@ -152,6 +153,11 @@ const App = () => {
                 <Route path="/admin/youtube-schedule/slots" element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminYouTubeSchedulePage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/youtube-api-keys" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminYouTubeApiKeys />
                   </ProtectedRoute>
                 } />
                 {/* Printful Orders Admin Route */}
