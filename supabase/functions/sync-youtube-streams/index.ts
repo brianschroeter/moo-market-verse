@@ -340,9 +340,9 @@ serve(async (req) => {
     // Parse request body for configuration
     let config: SyncConfig = {
       lookAheadHours: 48,
-      lookBackHours: 24,
+      lookBackHours: 168, // 7 days back to catch previous week's streams
       forceRefresh: false,
-      maxResults: 10
+      maxResults: 50 // Increased to get more streams per channel
     }
 
     if (req.method === 'POST') {
