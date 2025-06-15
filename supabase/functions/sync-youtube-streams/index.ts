@@ -752,30 +752,33 @@ function determineStreamStatus(video: YouTubeVideo): string {
     return 'upcoming'
   }
   
-  // For 'live' broadcast content, apply additional checks
+  // For 'live' broadcast content, trust YouTube's assessment
+  // Only apply sanity checks for extremely long durations
   if (broadcastContent === 'live') {
     // If the stream has actualStartTime, check duration
     if (actualStart) {
       const hoursLive = (now.getTime() - actualStart.getTime()) / (1000 * 60 * 60)
       
-      // Be more aggressive about marking old streams as completed
-      // Most live streams don't last more than 4 hours
-      if (hoursLive > 4) {
+      // Only mark as completed for extremely long streams (12+ hours)
+      // Some streams can legitimately run for 6-8 hours
+      if (hoursLive > 12) {
         console.log(`Stream ${video.id} has been live for ${hoursLive.toFixed(1)} hours, marking as completed`)
         return 'completed'
       }
       
-      // Check if concurrent viewers is 0 or missing (indicates stream ended)
+      // Don't use concurrent viewers as a primary indicator
+      // Streams can temporarily have 0 viewers but still be live
+      // Only use this check for very old streams
       const concurrentViewers = video.liveStreamingDetails?.concurrentViewers
-      if (concurrentViewers === '0' || (!concurrentViewers && hoursLive > 0.5)) {
+      if (concurrentViewers === '0' && hoursLive > 8) {
         console.log(`Stream ${video.id} has no concurrent viewers after ${hoursLive.toFixed(1)} hours, marking as completed`)
         return 'completed'
       }
     } else if (scheduledStart) {
       // If we don't have actual start time but it was scheduled to start
       const hoursSinceScheduled = (now.getTime() - scheduledStart.getTime()) / (1000 * 60 * 60)
-      // If it's been more than 4 hours since scheduled start and still no actual start time
-      if (hoursSinceScheduled > 4) {
+      // If it's been more than 12 hours since scheduled start and still no actual start time
+      if (hoursSinceScheduled > 12) {
         console.log(`Stream ${video.id} scheduled ${hoursSinceScheduled.toFixed(1)} hours ago but no actual start, marking as completed`)
         return 'completed'
       }
@@ -785,9 +788,9 @@ function determineStreamStatus(video: YouTubeVideo): string {
   
   // Fallback logic when liveBroadcastContent is not definitive
   if (actualStart) {
-    // Check if the stream has been "live" for more than 4 hours
+    // Check if the stream has been "live" for more than 12 hours
     const hoursLive = (now.getTime() - actualStart.getTime()) / (1000 * 60 * 60)
-    if (hoursLive > 4) {
+    if (hoursLive > 12) {
       return 'completed'
     }
     return 'live'

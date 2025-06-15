@@ -18,9 +18,9 @@ serve(async (req) => {
 
     // Get currently live streams and streams starting soon
     const now = new Date()
-    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000)
-    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000)
-    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000)
+    const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000) // Increased to catch more upcoming streams
+    const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000) // Increased to catch long-running streams
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000) // Increased from 30 minutes
 
     // Query for active/upcoming streams
     // Also check for recently fetched streams with no status (might be newly detected)
@@ -39,7 +39,7 @@ serve(async (req) => {
           channel_name
         )
       `)
-      .or(`status.eq.live,and(scheduled_start_time_utc.gte.${now.toISOString()},scheduled_start_time_utc.lte.${oneHourFromNow.toISOString()}),and(actual_start_time_utc.gte.${twoHoursAgo.toISOString()},status.neq.ended),and(status.is.null,fetched_at.gte.${thirtyMinutesAgo.toISOString()})`)
+      .or(`status.eq.live,and(scheduled_start_time_utc.gte.${now.toISOString()},scheduled_start_time_utc.lte.${oneHourFromNow.toISOString()}),and(actual_start_time_utc.gte.${twelveHoursAgo.toISOString()},status.neq.ended),and(status.is.null,fetched_at.gte.${oneHourAgo.toISOString()})`)
 
     if (streamsError) {
       throw new Error(`Failed to fetch active streams: ${streamsError.message}`)

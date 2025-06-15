@@ -608,10 +608,10 @@ const Schedule: React.FC = () => {
       if (error) throw error
       return data
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000, // 30 seconds - more frequent updates for live content
     refetchInterval: (data) => {
       // Refetch more frequently if there are live streams
-      return data?.stats?.liveNow > 0 ? 2 * 60 * 1000 : 10 * 60 * 1000 // 2 min if live, 10 min otherwise
+      return data?.stats?.liveNow > 0 ? 30 * 1000 : 2 * 60 * 1000 // 30 sec if live, 2 min otherwise
     }
   })
 

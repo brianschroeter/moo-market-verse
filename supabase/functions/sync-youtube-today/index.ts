@@ -75,7 +75,8 @@ serve(async (req) => {
         lookBackHours: 24, // Include streams from yesterday that might still be relevant
         lookAheadHours: 30, // Today + early tomorrow
         maxResults: 50,
-        forceRefresh: false, // Use cache where appropriate
+        forceRefresh: true, // Always get fresh data for today's schedule
+        skipCache: true, // Bypass cache for real-time updates
         focusToday: true // Optimize for today's content
       })
     })

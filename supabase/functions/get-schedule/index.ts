@@ -317,7 +317,7 @@ serve(async (req) => {
         headers: { 
           ...corsHeaders, 
           'Content-Type': 'application/json',
-          'Cache-Control': `public, max-age=${Math.floor(nextUpdateIn / 2)}` // Cache for half the update interval
+          'Cache-Control': 'no-cache, no-store, must-revalidate' // Disable caching to ensure fresh data
         } 
       }
     )
