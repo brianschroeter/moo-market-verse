@@ -123,6 +123,7 @@ export const updateAdminScheduleSlot = async (
 ): Promise<AdminScheduleSlot> => {
   const { data, error } = await invokeEdgeFunction<AdminScheduleSlot>('admin-schedule-slots-update', {
     body: payload,
+    method: 'PUT'
   });
   if (error) throw new Error(error.message);
   return data as AdminScheduleSlot;
