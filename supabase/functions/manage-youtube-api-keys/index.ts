@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { ensureAdmin } from '../_shared/auth.ts'
 
@@ -64,23 +63,22 @@ serve(async (req) => {
       })
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    )
-
     // Ensure user is admin
-    const adminUser = await ensureAdmin(supabase)
+    const authResult = await ensureAdmin(req)
     
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    if (authResult.errorResponse) {
+      return authResult.errorResponse
+    }
+    
+    if (!authResult.isAdmin || !authResult.user) {
+      return new Response(JSON.stringify({ error: 'Forbidden: Admin access required' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    
+    const adminUser = authResult.user
+    const supabaseAdmin = authResult.adminClient!
 
     switch (action) {
       case 'create': {
