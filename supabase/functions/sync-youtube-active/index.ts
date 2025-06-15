@@ -20,8 +20,10 @@ serve(async (req) => {
     const now = new Date()
     const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000)
     const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000)
+    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000)
 
     // Query for active/upcoming streams
+    // Also check for recently fetched streams with no status (might be newly detected)
     const { data: activeStreams, error: streamsError } = await supabase
       .from('live_streams')
       .select(`
@@ -30,13 +32,14 @@ serve(async (req) => {
         status,
         scheduled_start_time_utc,
         actual_start_time_utc,
+        fetched_at,
         youtube_channels!inner(
           id,
           youtube_channel_id,
           channel_name
         )
       `)
-      .or(`status.eq.live,and(scheduled_start_time_utc.gte.${now.toISOString()},scheduled_start_time_utc.lte.${oneHourFromNow.toISOString()}),and(actual_start_time_utc.gte.${twoHoursAgo.toISOString()},status.neq.ended)`)
+      .or(`status.eq.live,and(scheduled_start_time_utc.gte.${now.toISOString()},scheduled_start_time_utc.lte.${oneHourFromNow.toISOString()}),and(actual_start_time_utc.gte.${twoHoursAgo.toISOString()},status.neq.ended),and(status.is.null,fetched_at.gte.${thirtyMinutesAgo.toISOString()})`)
 
     if (streamsError) {
       throw new Error(`Failed to fetch active streams: ${streamsError.message}`)
@@ -70,10 +73,19 @@ serve(async (req) => {
 
     console.log(`Found ${activeStreams.length} active/upcoming streams to check`)
 
+    // Also check all channels for new live content (not just known streams)
+    // This ensures we catch streams that just went live
+    const { data: allChannels } = await supabase
+      .from('youtube_channels')
+      .select('youtube_channel_id')
+    
+    const channelIds = allChannels?.map(c => c.youtube_channel_id) || []
+
     // Group video IDs for batch processing
     const videoIds = activeStreams.map(s => s.video_id).filter(Boolean)
     
-    // Call sync-youtube-streams with specific video IDs
+    // Call sync-youtube-streams with both specific video IDs and all channel IDs
+    // This ensures we catch both known streams and discover new ones
     const syncResponse = await fetch(`${supabaseUrl}/functions/v1/sync-youtube-streams`, {
       method: 'POST',
       headers: {
@@ -82,9 +94,10 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         videoIds: videoIds,
+        channelIds: channelIds, // Also check all channels for new content
         lookBackHours: 2,
         lookAheadHours: 1,
-        maxResults: 50,
+        maxResults: 10, // Reduced to focus on most recent/relevant
         forceRefresh: true, // Always get fresh data for active streams
         skipCache: true // Bypass cache for real-time updates
       })

@@ -294,10 +294,15 @@ const WeeklyScheduleTable: React.FC<{
     const isFuture = targetDate > now && !isToday
     
     // First, check for overnight streams (live streams from previous day)
-    // This includes Sunday checking Saturday streams
+    // Only show streams that actually started late in the previous day (after 8 PM)
+    // This prevents showing afternoon streams as "overnight" streams
     const previousDate = new Date(targetDate)
     previousDate.setDate(previousDate.getDate() - 1)
-    previousDate.setHours(0, 0, 0, 0)
+    previousDate.setHours(20, 0, 0, 0) // Only consider streams that started after 8 PM
+    
+    const previousDateEnd = new Date(targetDate)
+    previousDateEnd.setDate(previousDateEnd.getDate() - 1)
+    previousDateEnd.setHours(23, 59, 59, 999)
     
     const overnightStream = liveStreams.find(stream => {
       if (stream.youtube_channel_id !== channel.id) return false
@@ -307,8 +312,9 @@ const WeeklyScheduleTable: React.FC<{
       if (!streamTime) return false
       
       const streamDate = new Date(streamTime)
-      // Check if stream started on previous day and is still live
-      return streamDate >= previousDate && streamDate < targetDate
+      // Check if stream started late in the previous day (after 8 PM) and is still live
+      // This prevents afternoon streams from showing as overnight streams
+      return streamDate >= previousDate && streamDate <= previousDateEnd
     })
     
     if (overnightStream) {
