@@ -38,10 +38,15 @@ interface YouTubeVideo {
 
 interface SyncConfig {
   channelIds?: string[]
+  videoIds?: string[] // For targeted sync of specific videos
   lookAheadHours?: number
   lookBackHours?: number
   forceRefresh?: boolean
   maxResults?: number
+  skipCache?: boolean // For active sync to bypass cache
+  dateRangeStart?: string // For today sync
+  dateRangeEnd?: string // For today sync
+  focusToday?: boolean // Optimize for today's content
 }
 
 interface CacheEntry {
@@ -485,6 +490,65 @@ serve(async (req) => {
     }
 
     const youtubeAPI = new YouTubeAPIService(supabaseServiceRole)
+
+    // Handle specific video IDs sync (for active sync)
+    if (config.videoIds && config.videoIds.length > 0) {
+      console.log(`Syncing specific videos: ${config.videoIds.length} videos`)
+      
+      const detailedVideos = await youtubeAPI.getVideoDetails(config.videoIds)
+      let syncedCount = 0
+      
+      for (const video of detailedVideos) {
+        const videoId = video.id?.videoId || video.id
+        
+        // Get channel info
+        const { data: channelData } = await supabaseServiceRole
+          .from('youtube_channels')
+          .select('id')
+          .eq('youtube_channel_id', video.snippet?.channelId)
+          .single()
+        
+        if (channelData) {
+          const liveStream: LiveStream = {
+            video_id: videoId,
+            youtube_channel_id: channelData.id,
+            title: video.snippet?.title || null,
+            thumbnail_url: video.snippet?.thumbnails?.high?.url || video.snippet?.thumbnails?.default?.url || null,
+            stream_url: `https://www.youtube.com/watch?v=${videoId}`,
+            scheduled_start_time_utc: video.liveStreamingDetails?.scheduledStartTime || null,
+            actual_start_time_utc: video.liveStreamingDetails?.actualStartTime || null,
+            actual_end_time_utc: video.liveStreamingDetails?.actualEndTime || null,
+            status: determineStreamStatus(video),
+            description: video.snippet?.description || null,
+            view_count: video.statistics?.viewCount ? parseInt(video.statistics.viewCount) : null,
+            privacy_status: 'public',
+            fetched_at: new Date().toISOString(),
+            matched_slot_id: null,
+            scheduled_vs_actual_diff: null
+          }
+          
+          const { error: upsertError } = await supabaseServiceRole
+            .from('live_streams')
+            .upsert(liveStream, {
+              onConflict: 'video_id',
+              ignoreDuplicates: false
+            })
+          
+          if (!upsertError) {
+            syncedCount++
+          }
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Synced ${syncedCount} videos`,
+          totalSynced: syncedCount
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Get all configured YouTube channels or specific ones
     let channelsQuery = supabaseServiceRole

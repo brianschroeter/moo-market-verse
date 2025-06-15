@@ -14,7 +14,7 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
-    // Call the sync-youtube-streams function internally
+    // Call the sync-youtube-streams function internally for FULL SYNC
     const syncResponse = await fetch(`${supabaseUrl}/functions/v1/sync-youtube-streams`, {
       method: 'POST',
       headers: {
@@ -22,8 +22,8 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        lookBackHours: 168, // 7 days
-        lookAheadHours: 168, // 7 days
+        lookBackHours: 240, // 10 days - ensure full week coverage
+        lookAheadHours: 168, // 7 days forward
         maxResults: 50,
         forceRefresh: false // Don't force refresh in cron to save API quota
       })
@@ -51,12 +51,13 @@ serve(async (req) => {
     await supabase
       .from('cron_history')
       .insert({
-        job_name: 'youtube-schedule-sync',
+        job_name: 'youtube-full-sync',
         run_at: new Date().toISOString(),
         success: syncResult.success || false,
         result: {
           sync: syncResult,
-          avatarRefresh: avatarRefreshResult
+          avatarRefresh: avatarRefreshResult,
+          syncType: 'full'
         },
         error: syncResult.error || null
       })
@@ -83,7 +84,7 @@ serve(async (req) => {
       await supabase
         .from('cron_history')
         .insert({
-          job_name: 'youtube-schedule-sync',
+          job_name: 'youtube-full-sync',
           run_at: new Date().toISOString(),
           success: false,
           error: error.message

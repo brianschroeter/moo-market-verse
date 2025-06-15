@@ -109,5 +109,11 @@ entrypoint = "./functions/order-linking/index.ts"
 [functions.cron-sync-youtube]
 verify_jwt = false
 
+[functions.sync-youtube-active]
+verify_jwt = false
+
+[functions.sync-youtube-today]
+verify_jwt = false
+
 [functions.manage-youtube-api-keys]
 verify_jwt = true
