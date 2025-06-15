@@ -206,10 +206,10 @@ serve(async (req) => {
           })
         }
 
-        // Test the API key
+        // Test the API key by searching for a known channel
         try {
           const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true&key=${apiKey}`
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&q=test&type=video&maxResults=1&key=${apiKey}`
           )
 
           if (response.ok) {
