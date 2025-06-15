@@ -470,7 +470,7 @@ serve(async (req) => {
     // Parse request body for configuration
     let config: SyncConfig = {
       lookAheadHours: 48,
-      lookBackHours: 168, // 7 days back to catch previous week's streams
+      lookBackHours: 240, // 10 days back to ensure full previous week coverage
       forceRefresh: false,
       maxResults: 50 // Increased to get more streams per channel
     }

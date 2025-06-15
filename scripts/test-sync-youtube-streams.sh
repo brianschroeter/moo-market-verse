@@ -21,10 +21,10 @@ SUPABASE_URL="https://dlmbqojnhjsecajxltzj.supabase.co"
 echo -e "${BLUE}=== Testing sync-youtube-streams Edge Function ===${NC}"
 echo -e "URL: $SUPABASE_URL"
 
-# Configuration to fetch last 7 days of content
+# Configuration to fetch last 10 days of content
 CONFIG='{
   "forceRefresh": true,
-  "lookBackHours": 168,
+  "lookBackHours": 240,
   "lookAheadHours": 48,
   "maxResults": 50
 }'
@@ -60,7 +60,7 @@ else
 fi
 
 echo -e "\n${YELLOW}Note:${NC}"
-echo "- lookBackHours: 168 (7 days) should fetch videos from the past week"
+echo "- lookBackHours: 240 (10 days) should fetch videos from the past week and a half"
 echo "- If you're seeing only 4 videos, the YouTube API might be:"
 echo "  1. Only returning live/upcoming streams (not regular videos)"
 echo "  2. Filtering based on privacy settings"
