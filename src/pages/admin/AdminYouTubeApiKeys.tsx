@@ -393,7 +393,8 @@ const AdminYouTubeApiKeys: React.FC = () => {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Primary API Key"
-                  className="bg-lolcow-charcoal border-lolcow-lightgray text-white"
+                  className="bg-lolcow-charcoal border-lolcow-lightgray text-white placeholder:text-gray-500"
+                  style={{ backgroundColor: '#1a1a1a', color: 'white' }}
                   required
                 />
               </div>
@@ -405,7 +406,8 @@ const AdminYouTubeApiKeys: React.FC = () => {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Optional description"
-                  className="bg-lolcow-charcoal border-lolcow-lightgray text-white"
+                  className="bg-lolcow-charcoal border-lolcow-lightgray text-white placeholder:text-gray-500"
+                  style={{ backgroundColor: '#1a1a1a', color: 'white' }}
                   rows={3}
                 />
               </div>
@@ -420,7 +422,9 @@ const AdminYouTubeApiKeys: React.FC = () => {
                       value={formData.api_key}
                       onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
                       placeholder="Your YouTube API key"
-                      className="bg-lolcow-charcoal border-lolcow-lightgray text-white"
+                      className="bg-lolcow-charcoal border-lolcow-lightgray text-white placeholder:text-gray-500"
+                      style={{ backgroundColor: '#1a1a1a', color: 'white' }}
+                      autoComplete="current-password"
                       required={!editingKey}
                     />
                     <Button

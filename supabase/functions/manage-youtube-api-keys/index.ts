@@ -20,14 +20,14 @@ interface UpdateApiKeyRequest {
 // Simple encryption using base64 and a salt
 // In production, use proper encryption with key management
 const encryptApiKey = (apiKey: string): string => {
-  const salt = Deno.env.get('ENCRYPTION_SALT') || 'default-salt'
+  const salt = Deno.env.get('YOUTUBE_API_KEY_SALT') || 'default-salt'
   const combined = `${salt}:${apiKey}:${salt}`
   return btoa(combined)
 }
 
 const decryptApiKey = (encrypted: string): string => {
   try {
-    const salt = Deno.env.get('ENCRYPTION_SALT') || 'default-salt'
+    const salt = Deno.env.get('YOUTUBE_API_KEY_SALT') || 'default-salt'
     const decrypted = atob(encrypted)
     const parts = decrypted.split(':')
     if (parts.length === 3 && parts[0] === salt && parts[2] === salt) {
@@ -45,6 +45,25 @@ serve(async (req) => {
   }
 
   try {
+    // Parse body first
+    let body: any
+    try {
+      body = await req.json()
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const action = body.action
+    if (!action) {
+      return new Response(JSON.stringify({ error: 'Action is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -62,9 +81,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
-
-    const body = await req.json()
-    const action = body.action
 
     switch (action) {
       case 'create': {
