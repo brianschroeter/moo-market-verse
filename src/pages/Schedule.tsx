@@ -734,7 +734,7 @@ const Schedule: React.FC = () => {
 
         {/* Enhanced Stats Row */}
         {scheduleData && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-2 gap-6 mb-8">
             <div className="relative group">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-blue-600/0 rounded-xl blur-xl group-hover:from-blue-600/30 transition-all duration-500"></div>
               <div className="relative bg-gradient-to-br from-blue-800/40 to-blue-900/60 rounded-xl px-6 py-5 border border-blue-700/40 shadow-xl backdrop-blur-sm hover:from-blue-700/50 hover:to-blue-800/70 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
@@ -760,23 +760,6 @@ const Schedule: React.FC = () => {
                   <div>
                     <div className="text-3xl font-bold text-white mb-1 font-fredoka">{scheduleData.stats.liveNow}</div>
                     <div className="text-sm font-medium text-red-300 uppercase tracking-wider">Live Now</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-purple-600/0 rounded-xl blur-xl group-hover:from-purple-600/30 transition-all duration-500"></div>
-              <div className="relative bg-gradient-to-br from-purple-800/40 to-purple-900/60 rounded-xl px-6 py-5 border border-purple-700/40 shadow-xl backdrop-blur-sm hover:from-purple-700/50 hover:to-purple-800/70 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-xl bg-purple-500/20 mr-4 shadow-inner">
-                    <Activity className="h-7 w-7 text-purple-400 filter drop-shadow-glow" />
-                  </div>
-                  <div>
-                    <div className="text-3xl font-bold text-white mb-1 font-fredoka">
-                      {scheduleData.stats.upcomingToday === 0 ? 'TBD' : scheduleData.stats.upcomingToday}
-                    </div>
-                    <div className="text-sm font-medium text-purple-300 uppercase tracking-wider">Today</div>
                   </div>
                 </div>
               </div>
@@ -811,7 +794,7 @@ const Schedule: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-4">
                 {getAvailableChannels().map((channel) => {
                   const isSelected = selectedChannels.includes(channel.id)
                   const displayName = channel.custom_display_name || channel.channel_name || 'Unknown Channel'
@@ -822,16 +805,43 @@ const Schedule: React.FC = () => {
                       onClick={() => toggleChannelFilter(channel.id)}
                       variant={isSelected ? "default" : "outline"}
                       size="sm"
-                      className={`flex items-center gap-2 transition-all ${
+                      className={`relative flex items-center gap-3 pr-4 pl-2 py-2 h-auto transition-all transform hover:scale-105 ${
                         isSelected 
-                          ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600 shadow-lg' 
-                          : 'border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white hover:border-gray-500'
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 shadow-xl ring-2 ring-purple-400/50' 
+                          : 'bg-gray-800/60 border-gray-600 text-gray-300 hover:bg-gray-700/80 hover:text-white hover:border-purple-500/50'
                       }`}
                     >
-                      <Tv className="h-4 w-4" />
-                      {displayName}
+                      {/* Channel Avatar */}
+                      <div className="relative flex-shrink-0">
+                        {channel.avatar_url ? (
+                          <img 
+                            src={getProxiedImageUrl(channel.avatar_url)}
+                            alt={displayName}
+                            className={`w-8 h-8 rounded-full object-cover ${
+                              isSelected ? 'ring-2 ring-white/50' : 'ring-1 ring-gray-600'
+                            }`}
+                            onError={(e) => {
+                              // Fallback to initials if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div className={`${channel.avatar_url ? 'hidden' : ''} w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm`}>
+                          {displayName.charAt(0).toUpperCase()}
+                        </div>
+                        {isSelected && (
+                          <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+                        )}
+                      </div>
+                      
+                      {/* Channel Name */}
+                      <span className="font-medium whitespace-nowrap">{displayName}</span>
+                      
+                      {/* Selected Indicator */}
                       {isSelected && (
-                        <div className="h-2 w-2 bg-white rounded-full ml-1 animate-pulse"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-lg pointer-events-none"></div>
                       )}
                     </Button>
                   )
