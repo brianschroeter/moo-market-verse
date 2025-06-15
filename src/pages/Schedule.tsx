@@ -87,11 +87,14 @@ const formatTime = (dateString: string | null): string => {
   // Round down to the nearest hour
   date.setMinutes(0)
   date.setSeconds(0)
-  return date.toLocaleTimeString('en-US', { 
+  // Format time to prevent AM/PM wrapping
+  const timeStr = date.toLocaleTimeString('en-US', { 
     hour: '2-digit', 
     minute: '2-digit',
-    timeZoneName: 'short'
+    hour12: true
   })
+  // Replace space with non-breaking space to prevent wrapping
+  return timeStr.replace(' ', '\u00A0')
 }
 
 const formatRelativeTime = (dateString: string | null): string => {
@@ -311,7 +314,7 @@ const WeeklyScheduleTable: React.FC<{
     if (overnightStream) {
       return {
         stream: overnightStream,
-        time: '12:00 AM',
+        time: '12:00\u00A0AM', // Non-breaking space to prevent wrapping
         type: 'overnight',
         note: 'Continued from yesterday'
       }
@@ -356,7 +359,7 @@ const WeeklyScheduleTable: React.FC<{
           hour: '2-digit', 
           minute: '2-digit',
           hour12: true
-        }),
+        }).replace(' ', '\u00A0'), // Non-breaking space to prevent AM/PM wrapping
         type: 'scheduled'
       }
     }
@@ -469,7 +472,7 @@ const WeeklyScheduleTable: React.FC<{
                       >
                         {time ? (
                           <div className="flex flex-col items-center gap-1 transform transition-transform group-hover:scale-105">
-                            <Badge className={`text-white text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 shadow-lg cursor-pointer transition-all ${
+                            <Badge className={`text-white text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 shadow-lg cursor-pointer transition-all whitespace-nowrap ${
                               type === 'live' 
                                 ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
                                 : type === 'overnight'
@@ -803,7 +806,56 @@ const Schedule: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0 sm:pt-2">
-              <div className="flex flex-wrap gap-2 sm:gap-3 md:gap-4">
+              {/* Mobile/Tablet: Grid layout for equal-sized pills */}
+              <div className="grid grid-cols-2 sm:hidden gap-2">
+                {getAvailableChannels().map((channel) => {
+                  const isSelected = selectedChannels.includes(channel.id)
+                  const displayName = channel.custom_display_name || channel.channel_name || 'Unknown Channel'
+                  
+                  return (
+                    <Button
+                      key={channel.id}
+                      onClick={() => toggleChannelFilter(channel.id)}
+                      variant={isSelected ? "default" : "outline"}
+                      className={`relative flex items-center justify-center gap-2 px-3 py-3 h-auto transition-all text-xs font-medium ${
+                        isSelected 
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0 shadow-xl ring-2 ring-purple-400/50' 
+                          : 'bg-gray-800/60 border-gray-600 text-gray-300 active:bg-gray-700/80'
+                      }`}
+                    >
+                      {/* Channel Avatar */}
+                      <div className="relative flex-shrink-0">
+                        {channel.avatar_url ? (
+                          <img 
+                            src={getProxiedImageUrl(channel.avatar_url)}
+                            alt={displayName}
+                            className={`w-6 h-6 rounded-full object-cover ${
+                              isSelected ? 'ring-2 ring-white/50' : 'ring-1 ring-gray-600'
+                            }`}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div className={`${channel.avatar_url ? 'hidden' : ''} w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-xs`}>
+                          {displayName.charAt(0).toUpperCase()}
+                        </div>
+                        {isSelected && (
+                          <div className="absolute -bottom-1 -right-1 h-2.5 w-2.5 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+                        )}
+                      </div>
+                      
+                      {/* Channel Name - Truncated for mobile */}
+                      <span className="font-medium truncate max-w-[80px]">{displayName}</span>
+                    </Button>
+                  )
+                })}
+              </div>
+              
+              {/* Desktop: Original flex layout */}
+              <div className="hidden sm:flex sm:flex-wrap sm:gap-3 md:gap-4">
                 {getAvailableChannels().map((channel) => {
                   const isSelected = selectedChannels.includes(channel.id)
                   const displayName = channel.custom_display_name || channel.channel_name || 'Unknown Channel'
