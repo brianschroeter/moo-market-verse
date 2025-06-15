@@ -325,11 +325,24 @@ const WeeklyScheduleTable: React.FC<{
       const dayStream = liveStreams.find(stream => {
         if (stream.youtube_channel_id !== channel.id) return false
         
-        const streamTime = stream.actual_start_time_utc || stream.scheduled_start_time_utc
-        if (!streamTime) return false
+        // Check if stream started on this day
+        const streamStartTime = stream.actual_start_time_utc || stream.scheduled_start_time_utc
+        if (streamStartTime) {
+          const streamStartDate = new Date(streamStartTime)
+          if (streamStartDate >= targetDate && streamStartDate <= targetDateEnd) {
+            return true
+          }
+        }
         
-        const streamDate = new Date(streamTime)
-        return streamDate >= targetDate && streamDate <= targetDateEnd
+        // Also check if stream ended on this day (for midnight-spanning streams)
+        if (stream.actual_end_time_utc) {
+          const streamEndDate = new Date(stream.actual_end_time_utc)
+          if (streamEndDate >= targetDate && streamEndDate <= targetDateEnd) {
+            return true
+          }
+        }
+        
+        return false
       })
       
       if (dayStream) {
@@ -337,7 +350,9 @@ const WeeklyScheduleTable: React.FC<{
         return { 
           stream: dayStream, 
           time: formatTime(displayTime),
-          type: dayStream.status === 'live' ? 'live' : 'streamed'
+          type: dayStream.status === 'live' ? 'live' : 
+                dayStream.status === 'completed' ? 'streamed' : 
+                'scheduled' // For upcoming streams showing on today
         }
       }
     }
@@ -480,7 +495,7 @@ const WeeklyScheduleTable: React.FC<{
                                 : type === 'streamed'
                                 ? 'bg-green-600 hover:bg-green-700'
                                 : type === 'scheduled'
-                                ? 'bg-blue-600 hover:bg-blue-700'
+                                ? 'bg-yellow-600 hover:bg-yellow-700'
                                 : type === 'predicted'
                                 ? 'bg-gray-600 hover:bg-gray-500 border border-dashed border-gray-400'
                                 : 'bg-gray-700 hover:bg-gray-600'
@@ -496,7 +511,7 @@ const WeeklyScheduleTable: React.FC<{
                                   : type === 'streamed'
                                   ? 'text-green-400'
                                   : type === 'scheduled'
-                                  ? 'text-blue-400'
+                                  ? 'text-yellow-400'
                                   : type === 'predicted'
                                   ? 'text-gray-400'
                                   : 'text-gray-400'
@@ -1017,7 +1032,7 @@ const Schedule: React.FC = () => {
                   <span className="text-gray-400">Completed Stream</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-blue-600 text-white text-[10px] sm:text-xs">Time</Badge>
+                  <Badge className="bg-yellow-600 text-white text-[10px] sm:text-xs">Time</Badge>
                   <span className="text-gray-400">Scheduled Stream</span>
                 </div>
                 <div className="flex items-center gap-2">
