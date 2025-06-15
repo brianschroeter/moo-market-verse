@@ -112,6 +112,11 @@ Deno.serve(async (req) => {
             });
         }
         fieldsToUpdate.avatar_url = avatar_url;
+        // If avatar_url is being updated, mark it as fetched now
+        if (avatar_url) {
+            fieldsToUpdate.avatar_last_fetched_at = new Date().toISOString();
+            fieldsToUpdate.avatar_fetch_error = null;
+        }
     }
 
     if (Object.keys(fieldsToUpdate).length === 0) {

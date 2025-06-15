@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
+import { invokeEdgeFunction } from '@/utils/edgeFunctionUtils';
 
 interface EnhancedStats {
   total_devices: number;
@@ -83,7 +84,7 @@ const SharedFingerprintsPage: React.FC = () => {
       setError(null);
       try {
         // Use the enhanced function which provides proper statistics
-        const { data: functionResponse, error: functionError } = await supabase.functions.invoke(
+        const { data: functionResponse, error: functionError } = await invokeEdgeFunction(
           'get-enhanced-fingerprints'
         );
 

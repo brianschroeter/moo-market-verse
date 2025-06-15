@@ -106,6 +106,9 @@ Deno.serve(async (req) => {
         channel_name: channel_name || null, // Use provided channel_name or null
         avatar_url: avatar_url || null,     // Use provided avatar_url or null
         custom_display_name: custom_display_name, // Will be null if not provided, which is fine
+        // If avatar_url is provided, mark it as fetched now
+        avatar_last_fetched_at: avatar_url ? new Date().toISOString() : null,
+        avatar_fetch_error: null,
     };
 
     const { data, error } = await adminClient

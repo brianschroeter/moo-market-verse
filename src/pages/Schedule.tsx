@@ -11,16 +11,20 @@ import {
   Clock, 
   ExternalLink, 
   Users, 
-  Eye, 
   Tv, 
   Radio,
   Play,
   TrendingUp,
   Activity,
   Filter,
-  X
+  X,
+  Calendar,
+  Sparkles,
+  ChevronRight,
+  Youtube
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getProxiedImageUrl, getImageWithFallback } from "@/utils/imageProxy";
 
 interface ScheduleData {
   channels: Channel[]
@@ -79,32 +83,40 @@ interface LiveStream {
 
 const formatTime = (dateString: string | null): string => {
   if (!dateString) return "TBA"
-  return new Date(dateString).toLocaleTimeString('en-US', { 
+  const date = new Date(dateString)
+  // Round down to the nearest hour
+  date.setMinutes(0)
+  date.setSeconds(0)
+  return date.toLocaleTimeString('en-US', { 
     hour: '2-digit', 
     minute: '2-digit',
     timeZoneName: 'short'
   })
 }
 
-const formatDuration = (start: string | null, end: string | null): string => {
-  if (!start) return ""
-  if (!end) return `${formatTime(start)} - Live`
+const formatRelativeTime = (dateString: string | null): string => {
+  if (!dateString) return ""
   
-  const startTime = new Date(start)
-  const endTime = new Date(end)
-  return `${formatTime(start)} - ${endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
-}
-
-const getStatusBadge = (status: string | null) => {
-  switch (status) {
-    case 'live':
-      return <Badge className="bg-red-500 text-white animate-pulse border-red-600">🔴 LIVE</Badge>
-    case 'upcoming':
-      return <Badge className="bg-blue-500 text-white border-blue-600">📅 Scheduled</Badge>
-    case 'completed':
-      return <Badge className="bg-gray-500 text-white border-gray-600">✅ Completed</Badge>
-    default:
-      return <Badge className="bg-gray-600 text-white border-gray-700">❓ Unknown</Badge>
+  const now = new Date()
+  const date = new Date(dateString)
+  const diffMs = date.getTime() - now.getTime()
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  
+  if (diffMs < 0) {
+    // Past
+    const absDiffMs = Math.abs(diffMs)
+    const absDiffHours = Math.floor(absDiffMs / (1000 * 60 * 60))
+    const absDiffDays = Math.floor(absDiffMs / (1000 * 60 * 60 * 24))
+    
+    if (absDiffHours < 1) return "Just ended"
+    if (absDiffHours < 24) return `${absDiffHours}h ago`
+    return `${absDiffDays}d ago`
+  } else {
+    // Future
+    if (diffHours < 1) return "Starting soon"
+    if (diffHours < 24) return `In ${diffHours}h`
+    return `In ${diffDays}d`
   }
 }
 
@@ -120,20 +132,420 @@ const formatDayTitle = (day: string): string => {
   return day.charAt(0).toUpperCase() + day.slice(1);
 }
 
+// Generate default thumbnail with channel initials
+const DefaultThumbnail: React.FC<{ channelName: string | null | undefined }> = ({ channelName }) => {
+  const name = channelName || "Channel"
+  const initials = name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()
+  const colors = [
+    'from-purple-600 to-pink-600',
+    'from-blue-600 to-cyan-600',
+    'from-green-600 to-emerald-600',
+    'from-orange-600 to-red-600',
+    'from-indigo-600 to-purple-600'
+  ]
+  const colorIndex = name.charCodeAt(0) % colors.length
+  
+  return (
+    <div className={`w-full h-full bg-gradient-to-br ${colors[colorIndex]} flex items-center justify-center`}>
+      <span className="text-4xl font-bold text-white">{initials}</span>
+    </div>
+  )
+}
+
+// Video card component for consistent styling
+const VideoCard: React.FC<{ 
+  stream?: LiveStream
+  slot?: ScheduleSlot
+  isLive?: boolean
+}> = ({ stream, slot, isLive }) => {
+  const isLiveStream = !!stream
+  const title = isLiveStream ? stream.title : slot?.fallback_title || 'Scheduled Show'
+  const channel = isLiveStream ? stream.channel : slot?.channel
+  const channelName = channel?.custom_display_name || channel?.channel_name || 'Unknown Channel'
+  const thumbnailUrl = isLiveStream ? getProxiedImageUrl(stream.thumbnail_url) : null
+  const streamUrl = isLiveStream ? stream.stream_url : null
+  const scheduledTime = isLiveStream ? stream.scheduled_start_time_utc : null
+  const description = isLiveStream ? stream.description : slot?.notes
+  
+  return (
+    <div className="group relative h-full">
+      <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+      <Card className="relative h-full bg-gray-800/60 border-gray-700/50 overflow-hidden hover:border-purple-500/50 transition-all duration-300 hover:transform hover:scale-[1.02]">
+        {/* Thumbnail */}
+        <div className="relative aspect-video overflow-hidden bg-gray-900">
+          {thumbnailUrl ? (
+            <img 
+              src={thumbnailUrl} 
+              alt={title || 'Stream thumbnail'}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <DefaultThumbnail channelName={channelName} />
+          )}
+          
+          {/* Live indicator */}
+          {isLive && (
+            <div className="absolute top-4 left-4">
+              <div className="flex items-center gap-2 bg-red-600 text-white px-3 py-1.5 rounded-full shadow-lg animate-pulse">
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+                <span className="text-sm font-bold">LIVE</span>
+              </div>
+            </div>
+          )}
+          
+          {/* Time indicator */}
+          {scheduledTime && (
+            <div className="absolute bottom-4 right-4">
+              <div className="bg-black/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-sm font-medium">
+                {formatRelativeTime(scheduledTime)}
+              </div>
+            </div>
+          )}
+          
+          {/* Hover overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+            {streamUrl && (
+              <Button
+                onClick={() => window.open(streamUrl, '_blank')}
+                className="bg-red-600 hover:bg-red-700 text-white shadow-lg"
+                size="sm"
+              >
+                <Youtube className="h-4 w-4 mr-2" />
+                Watch Now
+              </Button>
+            )}
+          </div>
+        </div>
+        
+        {/* Content */}
+        <CardContent className="p-4 space-y-3">
+          <h3 className="font-bold text-lg text-white line-clamp-2 group-hover:text-purple-300 transition-colors">
+            {title}
+          </h3>
+          
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2">
+              <Tv className="h-4 w-4" />
+              <span className="line-clamp-1">{channelName}</span>
+            </div>
+          </div>
+          
+          {scheduledTime && (
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <Clock className="h-4 w-4" />
+              <span>{formatTime(scheduledTime)}</span>
+            </div>
+          )}
+          
+          {description && (
+            <p className="text-sm text-gray-300 line-clamp-2">
+              {description}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// Weekly schedule table component
+const WeeklyScheduleTable: React.FC<{
+  channels: Channel[]
+  scheduleSlots: ScheduleSlot[]
+  liveStreams: LiveStream[]
+  selectedChannels: string[]
+}> = ({ channels, scheduleSlots, liveStreams, selectedChannels }) => {
+  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const today = new Date()
+  const currentDayIndex = today.getDay()
+  
+  // Get channels to display (filtered if filters are active)
+  const displayChannels = selectedChannels.length > 0 
+    ? channels.filter(c => selectedChannels.includes(c.id))
+    : channels
+  
+  // Group schedule slots by channel and day
+  const getScheduleForChannelAndDay = (channel: Channel, dayIndex: number): { 
+    slot?: ScheduleSlot, 
+    stream?: LiveStream, 
+    time?: string, 
+    type?: 'live' | 'streamed' | 'scheduled' | 'predicted' | 'overnight',
+    note?: string 
+  } => {
+    // Calculate the actual date for this day in the current week
+    const now = new Date()
+    const currentWeekStart = new Date(now)
+    currentWeekStart.setDate(now.getDate() - now.getDay()) // Start of this week's Sunday
+    currentWeekStart.setHours(0, 0, 0, 0)
+    
+    const targetDate = new Date(currentWeekStart)
+    targetDate.setDate(currentWeekStart.getDate() + dayIndex)
+    targetDate.setHours(0, 0, 0, 0)
+    
+    const targetDateEnd = new Date(targetDate)
+    targetDateEnd.setHours(23, 59, 59, 999)
+    
+    // Check if this day is in the past, today, or future
+    const isToday = dayIndex === currentDayIndex
+    const isPast = targetDate < now && !isToday
+    const isFuture = targetDate > now && !isToday
+    
+    // First, check for overnight streams (live streams from previous day)
+    // This includes Sunday checking Saturday streams
+    const previousDate = new Date(targetDate)
+    previousDate.setDate(previousDate.getDate() - 1)
+    previousDate.setHours(0, 0, 0, 0)
+    
+    const overnightStream = liveStreams.find(stream => {
+      if (stream.youtube_channel_id !== channel.id) return false
+      if (stream.status !== 'live') return false
+      
+      const streamTime = stream.actual_start_time_utc || stream.scheduled_start_time_utc
+      if (!streamTime) return false
+      
+      const streamDate = new Date(streamTime)
+      // Check if stream started on previous day and is still live
+      return streamDate >= previousDate && streamDate < targetDate
+    })
+    
+    if (overnightStream) {
+      return {
+        stream: overnightStream,
+        time: '12:00 AM',
+        type: 'overnight',
+        note: 'Continued from yesterday'
+      }
+    }
+    
+    // For today and past days, look for actual streams
+    if (isToday || isPast) {
+      const dayStream = liveStreams.find(stream => {
+        if (stream.youtube_channel_id !== channel.id) return false
+        
+        const streamTime = stream.actual_start_time_utc || stream.scheduled_start_time_utc
+        if (!streamTime) return false
+        
+        const streamDate = new Date(streamTime)
+        return streamDate >= targetDate && streamDate <= targetDateEnd
+      })
+      
+      if (dayStream) {
+        const displayTime = dayStream.actual_start_time_utc || dayStream.scheduled_start_time_utc
+        return { 
+          stream: dayStream, 
+          time: formatTime(displayTime),
+          type: dayStream.status === 'live' ? 'live' : 'streamed'
+        }
+      }
+    }
+    
+    // Check for scheduled slots
+    const slot = scheduleSlots.find(s => 
+      s.youtube_channel_id === channel.id && 
+      s.day_of_week?.includes(dayIndex)
+    )
+    
+    if (slot && slot.default_start_time_utc) {
+      // Parse time string (e.g., "19:00:00") and format it
+      const [hours] = slot.default_start_time_utc.split(':')
+      const date = new Date()
+      date.setHours(parseInt(hours), 0, 0) // Round down to the hour
+      return { 
+        slot, 
+        time: date.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: true
+        }),
+        type: 'scheduled'
+      }
+    }
+    
+    // For Mon-Fri (dayIndex 1-5), look for last week's stream time as prediction
+    if (dayIndex >= 1 && dayIndex <= 5) {
+      const lastWeekDate = new Date(targetDate)
+      lastWeekDate.setDate(lastWeekDate.getDate() - 7)
+      const lastWeekDateEnd = new Date(lastWeekDate)
+      lastWeekDateEnd.setHours(23, 59, 59, 999)
+      
+      const lastWeekStream = liveStreams.find(stream => {
+        if (stream.youtube_channel_id !== channel.id) return false
+        
+        const streamTime = stream.actual_start_time_utc || stream.scheduled_start_time_utc
+        if (!streamTime) return false
+        
+        const streamDate = new Date(streamTime)
+        return streamDate >= lastWeekDate && streamDate <= lastWeekDateEnd
+      })
+      
+      if (lastWeekStream) {
+        const displayTime = lastWeekStream.actual_start_time_utc || lastWeekStream.scheduled_start_time_utc
+        return {
+          stream: lastWeekStream,
+          time: formatTime(displayTime),
+          type: 'predicted',
+          note: 'Based on last week'
+        }
+      }
+    }
+    
+    return {}
+  }
+  
+  // Helper to format day header
+  const formatDayHeader = (day: string, index: number) => {
+    const isToday = index === currentDayIndex
+    const now = new Date()
+    const currentWeekStart = new Date(now)
+    currentWeekStart.setDate(now.getDate() - now.getDay())
+    const dayDate = new Date(currentWeekStart)
+    dayDate.setDate(currentWeekStart.getDate() + index)
+    
+    return (
+      <th key={`day-${index}`} className={`px-6 py-4 text-sm font-medium ${isToday ? 'text-purple-400 bg-purple-900/20' : 'text-gray-300'}`}>
+        <div className="flex flex-col items-center gap-1">
+          <span className="font-semibold">{day}</span>
+          <span className="text-xs text-gray-500">
+            {dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+          {isToday && <span className="text-xs text-purple-400 font-bold">TODAY</span>}
+        </div>
+      </th>
+    )
+  }
+  
+  return (
+    <div className="w-full overflow-x-auto rounded-lg">
+      <div className="min-w-[800px]">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-900/50">
+              <th className="sticky left-0 z-10 bg-gray-900/90 backdrop-blur-sm px-6 py-4 text-left text-sm font-medium text-gray-300 border-r border-gray-800">
+                Channel
+              </th>
+              {daysOfWeek.map((day, index) => formatDayHeader(day, index))}
+            </tr>
+          </thead>
+          <tbody>
+            {displayChannels.map((channel) => {
+              const channelName = channel.custom_display_name || channel.channel_name || 'Unknown Channel'
+              const avatarProps = getImageWithFallback(channel.avatar_url)
+              
+              return (
+                <tr key={channel.id} className="border-b border-gray-800 group hover:bg-gray-800/30 transition-all duration-200">
+                  <td className="sticky left-0 z-10 bg-gray-900/90 group-hover:bg-gray-800/90 backdrop-blur-sm px-6 py-4 border-r border-gray-800 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-gray-700 to-gray-800 flex-shrink-0 ring-2 ring-gray-700 group-hover:ring-purple-600/50 transition-all">
+                        {channel.avatar_url ? (
+                          <img 
+                            {...avatarProps}
+                            alt={channelName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-400">
+                            {channelName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <span className="font-medium text-white whitespace-nowrap group-hover:text-purple-300 transition-colors">
+                        {channelName}
+                      </span>
+                    </div>
+                  </td>
+                  {daysOfWeek.map((_, dayIndex) => {
+                    const { slot, stream, time, type, note } = getScheduleForChannelAndDay(channel, dayIndex)
+                    const isToday = dayIndex === currentDayIndex
+                    
+                    return (
+                      <td 
+                        key={dayIndex} 
+                        className={`px-6 py-4 text-center transition-all duration-200 ${
+                          isToday ? 'bg-purple-900/10 group-hover:bg-purple-800/20' : 'group-hover:bg-gray-800/20'
+                        }`}
+                      >
+                        {time ? (
+                          <div className="flex flex-col items-center gap-1 transform transition-transform group-hover:scale-105">
+                            <Badge className={`text-white text-xs px-2 py-1 shadow-lg cursor-pointer transition-all ${
+                              type === 'live' 
+                                ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
+                                : type === 'overnight'
+                                ? 'bg-purple-600 hover:bg-purple-700 animate-pulse'
+                                : type === 'streamed'
+                                ? 'bg-green-600 hover:bg-green-700'
+                                : type === 'scheduled'
+                                ? 'bg-blue-600 hover:bg-blue-700'
+                                : type === 'predicted'
+                                ? 'bg-gray-600 hover:bg-gray-500 border border-dashed border-gray-400'
+                                : 'bg-gray-700 hover:bg-gray-600'
+                            }`}>
+                              {time}
+                            </Badge>
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className={`text-xs font-medium ${
+                                type === 'live' 
+                                  ? 'text-red-400' 
+                                  : type === 'overnight'
+                                  ? 'text-purple-400'
+                                  : type === 'streamed'
+                                  ? 'text-green-400'
+                                  : type === 'scheduled'
+                                  ? 'text-blue-400'
+                                  : type === 'predicted'
+                                  ? 'text-gray-400'
+                                  : 'text-gray-400'
+                              }`}>
+                                {type === 'live' ? 'Live' 
+                                  : type === 'overnight' ? 'Live' 
+                                  : type === 'streamed' ? 'Streamed' 
+                                  : type === 'scheduled' ? 'Scheduled'
+                                  : type === 'predicted' ? 'Usual Time'
+                                  : 'Regular'}
+                              </span>
+                              {note && (
+                                <span className="text-xs text-gray-500 italic">
+                                  {note}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-600 italic">TBD</span>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      
+      {/* Mobile scroll indicator */}
+      <div className="md:hidden flex items-center justify-center pt-2 text-xs text-gray-500">
+        <span className="flex items-center gap-1">
+          <ChevronRight className="h-3 w-3" />
+          Scroll for more days
+        </span>
+      </div>
+    </div>
+  )
+}
+
 const Schedule: React.FC = () => {
-  const [currentDay, setCurrentDay] = useState<string>(getDayName(new Date()));
-  const [includeRecent, setIncludeRecent] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<'live' | 'replay' | 'upcoming'>('live');
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
 
-  // Fetch schedule data
+  // Fetch schedule data - always include recent for replays
   const { data: scheduleData, isLoading, isError, error, refetch } = useQuery<ScheduleData>({
-    queryKey: ['schedule', includeRecent],
+    queryKey: ['schedule'],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('get-schedule', {
         body: {
-          includeRecent,
+          includeRecent: true, // Always include recent for replay section
           daysAhead: 7,
-          hoursBack: 24
+          hoursBack: 72 // 3 days back for replays
         }
       })
 
@@ -146,12 +558,6 @@ const Schedule: React.FC = () => {
       return data?.stats?.liveNow > 0 ? 2 * 60 * 1000 : 10 * 60 * 1000 // 2 min if live, 10 min otherwise
     }
   })
-
-
-  // Handle tab changes
-  const handleTabChange = (value: string) => {
-    setCurrentDay(value);
-  };
 
   // Get unique channels from schedule data
   const getAvailableChannels = (): Channel[] => {
@@ -176,58 +582,90 @@ const Schedule: React.FC = () => {
   // Check if filters are active
   const hasActiveFilters = selectedChannels.length > 0
 
-
-  // Get shows for the selected day with filtering
-  const getShowsForDay = (day: string): (ScheduleSlot | LiveStream)[] => {
+  // Get streams by status
+  const getLiveStreams = (): LiveStream[] => {
     if (!scheduleData) return []
-
-    // Calculate target date based on current day selection
-    const today = new Date()
-    const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-    const targetDayIndex = daysOfWeek.indexOf(day);
-    const currentDayIndex = today.getDay();
-    const difference = targetDayIndex - currentDayIndex;
+    let streams = scheduleData.liveStreams.filter(stream => stream.status === 'live')
     
-    const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() + difference);
-    const targetDayOfWeek = targetDate.getDay()
-
-    // Get schedule slots for this day
-    let slotsForDay = scheduleData.scheduleSlots.filter(slot => {
-      if (slot.specific_date) {
-        const slotDate = new Date(slot.specific_date)
-        return slotDate.toDateString() === targetDate.toDateString()
-      }
-      return slot.day_of_week && slot.day_of_week.includes(targetDayOfWeek)
-    })
-
-    // Get live streams for this day
-    let streamsForDay = scheduleData.liveStreams.filter(stream => {
-      if (!stream.scheduled_start_time_utc) return false
-      const streamDate = new Date(stream.scheduled_start_time_utc)
-      return streamDate.toDateString() === targetDate.toDateString()
-    })
-
-    // Apply channel filters if any are selected
     if (selectedChannels.length > 0) {
-      slotsForDay = slotsForDay.filter(slot => 
-        selectedChannels.includes(slot.youtube_channel_id)
-      )
-      streamsForDay = streamsForDay.filter(stream => 
-        selectedChannels.includes(stream.youtube_channel_id)
-      )
+      streams = streams.filter(stream => selectedChannels.includes(stream.youtube_channel_id))
     }
+    
+    return streams
+  }
 
-    return [...slotsForDay, ...streamsForDay].sort((a, b) => {
-      const timeA = 'default_start_time_utc' in a ? a.default_start_time_utc : a.scheduled_start_time_utc
-      const timeB = 'default_start_time_utc' in b ? b.default_start_time_utc : b.scheduled_start_time_utc
+  const getReplayStreams = (): LiveStream[] => {
+    if (!scheduleData) return []
+    const now = new Date()
+    const threeDaysAgo = new Date(now.getTime() - 72 * 60 * 60 * 1000)
+    
+    let streams = scheduleData.liveStreams.filter(stream => {
+      if (stream.status !== 'completed') return false
+      if (!stream.actual_end_time_utc && !stream.scheduled_start_time_utc) return false
       
-      if (!timeA && !timeB) return 0
-      if (!timeA) return 1
-      if (!timeB) return -1
-      
-      return timeA.localeCompare(timeB)
+      const streamTime = new Date(stream.actual_end_time_utc || stream.scheduled_start_time_utc!)
+      return streamTime >= threeDaysAgo && streamTime <= now
     })
+    
+    if (selectedChannels.length > 0) {
+      streams = streams.filter(stream => selectedChannels.includes(stream.youtube_channel_id))
+    }
+    
+    // Sort by most recent first
+    return streams.sort((a, b) => {
+      const timeA = a.actual_end_time_utc || a.scheduled_start_time_utc || ''
+      const timeB = b.actual_end_time_utc || b.scheduled_start_time_utc || ''
+      return timeB.localeCompare(timeA)
+    })
+  }
+
+  const getWeeklyStreams = (): LiveStream[] => {
+    if (!scheduleData) return []
+    const today = new Date()
+    
+    // For development/testing: Show streams from the past 6 months to future
+    const startOfWeek = new Date(today)
+    startOfWeek.setMonth(today.getMonth() - 6) // Go back 6 months
+    startOfWeek.setDate(today.getDate() - today.getDay()) // Start of Sunday
+    startOfWeek.setHours(0, 0, 0, 0)
+    
+    const endOfWeek = new Date(today)
+    endOfWeek.setDate(today.getDate() + (6 - today.getDay()) + 7) // End of next Saturday
+    endOfWeek.setHours(23, 59, 59, 999)
+    
+    console.log('📅 Getting weekly streams:', {
+      startOfWeek: startOfWeek.toISOString(),
+      endOfWeek: endOfWeek.toISOString(),
+      totalStreams: scheduleData.liveStreams.length
+    })
+    
+    // Get all streams for this week (past, present, and future)
+    const weeklyStreams = scheduleData.liveStreams.filter(stream => {
+      // Use actual start time if available, otherwise scheduled time
+      const streamTime = stream.actual_start_time_utc 
+        ? new Date(stream.actual_start_time_utc)
+        : stream.scheduled_start_time_utc 
+          ? new Date(stream.scheduled_start_time_utc)
+          : null
+          
+      if (!streamTime) return false
+      
+      const isInWeek = streamTime >= startOfWeek && streamTime <= endOfWeek
+      
+      if (isInWeek) {
+        console.log('📺 Stream in week:', {
+          title: stream.title,
+          channel_id: stream.youtube_channel_id,
+          time: streamTime.toISOString(),
+          status: stream.status
+        })
+      }
+      
+      return isInWeek
+    })
+    
+    console.log('📊 Weekly streams found:', weeklyStreams.length)
+    return weeklyStreams
   }
 
   if (isError) {
@@ -251,63 +689,79 @@ const Schedule: React.FC = () => {
     )
   }
 
-  const currentShows = getShowsForDay(currentDay)
-  const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const liveStreams = getLiveStreams()
+  const replayStreams = getReplayStreams()
+  const weeklyStreams = getWeeklyStreams()
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-lolcow-black to-lolcow-darkgray text-white">
       <Navbar />
       <main className="flex-grow container mx-auto px-4 py-8">
         <ScheduleHeader 
-          includeRecent={includeRecent}
-          onToggleRecent={() => setIncludeRecent(!includeRecent)}
+          includeRecent={true}
+          onToggleRecent={() => {}}
           stats={scheduleData?.stats}
         />
 
-        {/* Stats Row */}
+        {/* Enhanced Stats Row */}
         {scheduleData && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-blue-800/40 to-blue-900/60 rounded-xl px-6 py-5 border border-blue-700/40 shadow-lg backdrop-blur-sm hover:from-blue-700/50 hover:to-blue-800/70 transition-all duration-300">
-              <div className="flex items-center">
-                <div className="p-3 rounded-xl bg-blue-500/20 mr-4">
-                  <Tv className="h-7 w-7 text-blue-400" />
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-white mb-1">{scheduleData.stats.totalChannels}</div>
-                  <div className="text-sm font-medium text-blue-300 uppercase tracking-wider">Channels</div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-gradient-to-br from-red-800/40 to-red-900/60 rounded-xl px-6 py-5 border border-red-700/40 shadow-lg backdrop-blur-sm hover:from-red-700/50 hover:to-red-800/70 transition-all duration-300">
-              <div className="flex items-center">
-                <div className="p-3 rounded-xl bg-red-500/20 mr-4">
-                  <Radio className="h-7 w-7 text-red-400" />
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-white mb-1">{scheduleData.stats.liveNow}</div>
-                  <div className="text-sm font-medium text-red-300 uppercase tracking-wider">Live Now</div>
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-blue-600/0 rounded-xl blur-xl group-hover:from-blue-600/30 transition-all duration-500"></div>
+              <div className="relative bg-gradient-to-br from-blue-800/40 to-blue-900/60 rounded-xl px-6 py-5 border border-blue-700/40 shadow-xl backdrop-blur-sm hover:from-blue-700/50 hover:to-blue-800/70 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-xl bg-blue-500/20 mr-4 shadow-inner">
+                    <Tv className="h-7 w-7 text-blue-400 filter drop-shadow-glow" />
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-white mb-1 font-fredoka">{scheduleData.stats.totalChannels}</div>
+                    <div className="text-sm font-medium text-blue-300 uppercase tracking-wider">Channels</div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="bg-gradient-to-br from-purple-800/40 to-purple-900/60 rounded-xl px-6 py-5 border border-purple-700/40 shadow-lg backdrop-blur-sm hover:from-purple-700/50 hover:to-purple-800/70 transition-all duration-300">
-              <div className="flex items-center">
-                <div className="p-3 rounded-xl bg-purple-500/20 mr-4">
-                  <Activity className="h-7 w-7 text-purple-400" />
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-white mb-1">{scheduleData.stats.upcomingToday}</div>
-                  <div className="text-sm font-medium text-purple-300 uppercase tracking-wider">Today</div>
+            
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-red-600/20 to-red-600/0 rounded-xl blur-xl group-hover:from-red-600/30 transition-all duration-500"></div>
+              <div className="relative bg-gradient-to-br from-red-800/40 to-red-900/60 rounded-xl px-6 py-5 border border-red-700/40 shadow-xl backdrop-blur-sm hover:from-red-700/50 hover:to-red-800/70 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-xl bg-red-500/20 mr-4 shadow-inner">
+                    <Radio className="h-7 w-7 text-red-400 animate-pulse filter drop-shadow-glow" />
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-white mb-1 font-fredoka">{scheduleData.stats.liveNow}</div>
+                    <div className="text-sm font-medium text-red-300 uppercase tracking-wider">Live Now</div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="bg-gradient-to-br from-green-800/40 to-green-900/60 rounded-xl px-6 py-5 border border-green-700/40 shadow-lg backdrop-blur-sm hover:from-green-700/50 hover:to-green-800/70 transition-all duration-300">
-              <div className="flex items-center">
-                <div className="p-3 rounded-xl bg-green-500/20 mr-4">
-                  <TrendingUp className="h-7 w-7 text-green-400" />
+            
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-purple-600/0 rounded-xl blur-xl group-hover:from-purple-600/30 transition-all duration-500"></div>
+              <div className="relative bg-gradient-to-br from-purple-800/40 to-purple-900/60 rounded-xl px-6 py-5 border border-purple-700/40 shadow-xl backdrop-blur-sm hover:from-purple-700/50 hover:to-purple-800/70 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-xl bg-purple-500/20 mr-4 shadow-inner">
+                    <Activity className="h-7 w-7 text-purple-400 filter drop-shadow-glow" />
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-white mb-1 font-fredoka">{scheduleData.stats.upcomingToday}</div>
+                    <div className="text-sm font-medium text-purple-300 uppercase tracking-wider">Today</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-3xl font-bold text-white mb-1">{scheduleData.stats.totalSlots}</div>
-                  <div className="text-sm font-medium text-green-300 uppercase tracking-wider">Shows</div>
+              </div>
+            </div>
+            
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-600/20 to-green-600/0 rounded-xl blur-xl group-hover:from-green-600/30 transition-all duration-500"></div>
+              <div className="relative bg-gradient-to-br from-green-800/40 to-green-900/60 rounded-xl px-6 py-5 border border-green-700/40 shadow-xl backdrop-blur-sm hover:from-green-700/50 hover:to-green-800/70 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-xl bg-green-500/20 mr-4 shadow-inner">
+                    <TrendingUp className="h-7 w-7 text-green-400 filter drop-shadow-glow" />
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-white mb-1 font-fredoka">{scheduleData.stats.totalSlots}</div>
+                    <div className="text-sm font-medium text-green-300 uppercase tracking-wider">Shows</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -316,14 +770,14 @@ const Schedule: React.FC = () => {
 
         {/* Filter Section */}
         {scheduleData && getAvailableChannels().length > 0 && (
-          <Card className="bg-gradient-to-br from-gray-800/40 to-gray-900/60 border border-gray-700/50 shadow-lg mb-6">
+          <Card className="bg-gradient-to-br from-gray-800/40 to-gray-900/60 border border-gray-700/50 shadow-lg mb-8">
             <CardHeader className="pb-4">
               <CardTitle className="font-fredoka text-white flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="p-2 rounded-lg bg-purple-500/20 mr-3">
                     <Filter className="h-5 w-5 text-purple-400" />
                   </div>
-                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-white font-bold">
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-white font-bold text-xl">
                     Filter by Channel
                   </span>
                 </div>
@@ -343,25 +797,25 @@ const Schedule: React.FC = () => {
             <CardContent>
               <div className="flex flex-wrap gap-3">
                 {getAvailableChannels().map((channel) => {
-                  const isSelected = selectedChannels.includes(channel.youtube_channel_id)
+                  const isSelected = selectedChannels.includes(channel.id)
                   const displayName = channel.custom_display_name || channel.channel_name || 'Unknown Channel'
                   
                   return (
                     <Button
-                      key={channel.youtube_channel_id}
-                      onClick={() => toggleChannelFilter(channel.youtube_channel_id)}
+                      key={channel.id}
+                      onClick={() => toggleChannelFilter(channel.id)}
                       variant={isSelected ? "default" : "outline"}
                       size="sm"
                       className={`flex items-center gap-2 transition-all ${
                         isSelected 
-                          ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600' 
+                          ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600 shadow-lg' 
                           : 'border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white hover:border-gray-500'
                       }`}
                     >
                       <Tv className="h-4 w-4" />
                       {displayName}
                       {isSelected && (
-                        <div className="h-2 w-2 bg-white rounded-full ml-1"></div>
+                        <div className="h-2 w-2 bg-white rounded-full ml-1 animate-pulse"></div>
                       )}
                     </Button>
                   )
@@ -373,7 +827,7 @@ const Schedule: React.FC = () => {
                     <Filter className="h-4 w-4 text-purple-400" />
                     <span>
                       Showing only: {selectedChannels.map(channelId => {
-                        const channel = getAvailableChannels().find(c => c.youtube_channel_id === channelId)
+                        const channel = getAvailableChannels().find(c => c.id === channelId)
                         return channel?.custom_display_name || channel?.channel_name || 'Unknown'
                       }).join(', ')}
                     </span>
@@ -384,150 +838,129 @@ const Schedule: React.FC = () => {
           </Card>
         )}
 
-        <div className="mb-8">
-          <Card className="bg-gray-800/30 border border-gray-700/50 shadow-lg">
-            <CardHeader>
-              <CardTitle className="font-fredoka text-white flex items-center justify-between">
-                <div className="flex items-center">
-                  <Play className="mr-2 h-5 w-5 text-blue-500" />
-                  <span>
-                    Daily Schedule
-                  </span>
+        {/* Main Content Sections */}
+        <div className="space-y-12">
+          {/* Live Now Section */}
+          {liveStreams.length > 0 && (
+            <section>
+              <div className="flex items-center mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-red-600/50 rounded-full blur-xl animate-pulse"></div>
+                    <div className="relative p-3 rounded-full bg-gradient-to-br from-red-600 to-red-700 shadow-2xl">
+                      <Radio className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <h2 className="text-3xl font-fredoka font-bold text-white">
+                    🔴 Live Now
+                  </h2>
                 </div>
-                {isLoading && <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={currentDay} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="grid grid-cols-7 mb-6 bg-gray-700/50 border border-gray-600/50">
-                  {daysOfWeek.map(day => (
-                    <TabsTrigger 
-                      key={day}
-                      value={day}
-                      className="text-xs md:text-sm data-[state=active]:bg-blue-600 data-[state=active]:text-white"
-                    >
-                      {formatDayTitle(day).slice(0, 3)}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                
-                {daysOfWeek.map(day => (
-                  <TabsContent key={day} value={day} className="space-y-4">
-                    {isLoading ? (
-                      <div className="space-y-4">
-                        {[1, 2, 3].map(i => (
-                          <div key={i} className="p-6 border border-gray-700/50 rounded-xl animate-pulse bg-gray-800/20">
-                            <div className="h-6 bg-gray-700 rounded mb-3"></div>
-                            <div className="h-4 bg-gray-800 rounded mb-2"></div>
-                            <div className="h-4 bg-gray-800 rounded w-3/4"></div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : currentShows.length === 0 ? (
-                      <div className="text-center py-12 text-gray-400 bg-gray-800/20 rounded-xl border border-gray-700/30">
-                        <Users className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                        <p className="text-xl font-medium">No Shows Scheduled</p>
-                        <p className="text-sm mt-2">Check back later or try a different day</p>
-                      </div>
-                    ) : (
-                      currentShows.map((item, index) => {
-                        const isLiveStream = 'video_id' in item
-                        const liveStream = isLiveStream ? item as LiveStream : null
-                        const scheduleSlot = !isLiveStream ? item as ScheduleSlot : null
-
-                        return (
-                          <div 
-                            key={isLiveStream ? liveStream!.id : scheduleSlot!.id} 
-                            className="p-6 border border-gray-700/50 rounded-xl hover:bg-gray-800/30 transition-all bg-gray-800/20 shadow-lg"
-                          >
-                            <div className="flex flex-col md:flex-row md:items-start md:justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-3">
-                                  <div className="p-2 rounded-lg bg-blue-500/20">
-                                    {isLiveStream && liveStream!.status === 'live' ? (
-                                      <Radio className="h-5 w-5 text-red-500" />
-                                    ) : (
-                                      <Tv className="h-5 w-5 text-blue-500" />
-                                    )}
-                                  </div>
-                                  <h3 className="text-xl font-bold text-white">
-                                    {isLiveStream ? liveStream!.title : scheduleSlot!.fallback_title || 'Scheduled Show'}
-                                  </h3>
-                                  {isLiveStream && getStatusBadge(liveStream!.status)}
-                                </div>
-                                
-                                <div className="flex items-center text-gray-300 mb-3">
-                                  <Clock className="h-4 w-4 mr-2 text-blue-400" />
-                                  <span className="font-medium">
-                                    {isLiveStream ? 
-                                      formatDuration(liveStream!.scheduled_start_time_utc, liveStream!.actual_end_time_utc) :
-                                      formatTime(scheduleSlot!.default_start_time_utc)
-                                    }
-                                  </span>
-                                  {isLiveStream && liveStream!.scheduled_vs_actual_diff && (
-                                    <span className="ml-3 text-yellow-400 text-sm bg-yellow-400/10 px-2 py-1 rounded">
-                                      {liveStream!.scheduled_vs_actual_diff} difference
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="bg-gray-700/30 rounded-lg p-3 mb-3">
-                                  <p className="text-gray-300 text-sm">
-                                    <span className="text-blue-400 font-medium">Channel:</span>{' '}
-                                    {isLiveStream ? 
-                                      (liveStream!.channel?.custom_display_name || liveStream!.channel?.channel_name || 'Unknown') :
-                                      (scheduleSlot!.channel?.custom_display_name || scheduleSlot!.channel?.channel_name || 'Unknown')
-                                    }
-                                  </p>
-                                </div>
-
-                                {isLiveStream && liveStream!.description && (
-                                  <p className="text-gray-300 text-sm line-clamp-2 bg-gray-700/20 p-3 rounded-lg">
-                                    {liveStream!.description}
-                                  </p>
-                                )}
-
-                                {!isLiveStream && scheduleSlot!.notes && (
-                                  <p className="text-gray-300 text-sm bg-gray-700/20 p-3 rounded-lg">
-                                    {scheduleSlot!.notes}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div className="flex flex-col gap-3 mt-4 md:mt-0 md:ml-6">
-                                {isLiveStream && liveStream!.view_count && (
-                                  <div className="flex items-center text-gray-400 text-sm bg-gray-700/30 px-3 py-2 rounded-lg">
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    <span className="font-medium">{liveStream!.view_count.toLocaleString()} views</span>
-                                  </div>
-                                )}
-
-                                {isLiveStream && liveStream!.stream_url && (
-                                  <Button
-                                    className="bg-red-600 hover:bg-red-700 text-white shadow-lg"
-                                    onClick={() => window.open(liveStream!.stream_url!, '_blank')}
-                                  >
-                                    <ExternalLink className="h-4 w-4 mr-2" />
-                                    Watch Stream
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })
-                    )}
-                  </TabsContent>
+                <div className="ml-4 bg-red-600/20 text-red-400 px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+                  {liveStreams.length} Streaming
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {liveStreams.map(stream => (
+                  <VideoCard key={stream.id} stream={stream} isLive={true} />
                 ))}
-              </Tabs>
-            </CardContent>
-          </Card>
+              </div>
+            </section>
+          )}
+
+          {/* Catch the Replay Section */}
+          {replayStreams.length > 0 && (
+            <section>
+              <div className="flex items-center mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 shadow-lg">
+                    <Play className="h-6 w-6 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-fredoka font-bold text-white">
+                    🎬 Catch the Replay
+                  </h2>
+                </div>
+                <div className="ml-4 bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full text-sm font-medium">
+                  Last 3 Days
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {replayStreams.map(stream => (
+                  <VideoCard key={stream.id} stream={stream} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Weekly Schedule Section */}
+          {scheduleData && (scheduleData.channels.length > 0 || scheduleData.scheduleSlots.length > 0) && (
+            <section>
+              <div className="flex items-center mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg">
+                    <Calendar className="h-6 w-6 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-fredoka font-bold text-white">
+                    📅 Weekly Schedule
+                  </h2>
+                </div>
+                <div className="ml-4 bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full text-sm font-medium">
+                  This Week's Shows
+                </div>
+              </div>
+              
+              <Card className="bg-gray-800/40 border-gray-700/50 overflow-hidden">
+                <CardContent className="p-0">
+                  <WeeklyScheduleTable 
+                    channels={scheduleData.channels}
+                    scheduleSlots={scheduleData.scheduleSlots}
+                    liveStreams={weeklyStreams}
+                    selectedChannels={selectedChannels}
+                  />
+                </CardContent>
+              </Card>
+              
+              {/* Legend */}
+              <div className="flex flex-wrap gap-4 mt-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-red-600 text-white text-xs animate-pulse">Time</Badge>
+                  <span className="text-gray-400">Live Now</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-green-600 text-white text-xs">Time</Badge>
+                  <span className="text-gray-400">Completed Stream</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-blue-600 text-white text-xs">Time</Badge>
+                  <span className="text-gray-400">Scheduled Stream</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-300 font-medium">Time</span>
+                  <span className="text-gray-400">Regular Schedule</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600 italic">TBD</span>
+                  <span className="text-gray-400">To Be Determined</span>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* No Content Message */}
+          {liveStreams.length === 0 && replayStreams.length === 0 && (!scheduleData || scheduleData.channels.length === 0) && !isLoading && (
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-800/50 mb-6">
+                <Tv className="h-12 w-12 text-gray-600" />
+              </div>
+              <h3 className="text-2xl font-fredoka font-bold text-gray-400 mb-2">No Shows Available</h3>
+              <p className="text-gray-500">Check back later for upcoming streams and replays</p>
+            </div>
+          )}
         </div>
 
-        {/* Status indicator like leaderboard */}
-        <div className="flex justify-center mb-8">
-          <div className="bg-slate-700/50 border border-slate-600/70 text-sm text-slate-300 px-4 py-2 rounded-full flex items-center">
-            <span className="h-2.5 w-2.5 bg-green-500 rounded-full mr-2.5"></span>
+        {/* Status indicator */}
+        <div className="flex justify-center mt-12 mb-8">
+          <div className="bg-slate-700/50 border border-slate-600/70 text-sm text-slate-300 px-4 py-2 rounded-full flex items-center shadow-lg">
+            <span className="h-2.5 w-2.5 bg-green-500 rounded-full mr-2.5 animate-pulse"></span>
             Schedule updated: {scheduleData ? new Date(scheduleData.lastUpdated).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Loading...'}
           </div>
         </div>

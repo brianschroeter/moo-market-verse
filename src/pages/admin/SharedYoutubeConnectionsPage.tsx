@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { invokeEdgeFunction } from '@/utils/edgeFunctionUtils';
 
 interface UserProfile {
   user_id: string;
@@ -33,7 +34,7 @@ const SharedYoutubeConnectionsPage: React.FC = () => {
       setError(null);
       try {
         // The Edge Function returns { data: result } or { error: message }
-        const { data: functionResponse, error: functionError } = await supabase.functions.invoke(
+        const { data: functionResponse, error: functionError } = await invokeEdgeFunction(
           'get-shared-youtube-connections'
         );
 

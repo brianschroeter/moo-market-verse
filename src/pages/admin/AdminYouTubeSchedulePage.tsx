@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/AdminLayout';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit3, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit3, Trash2, RefreshCw, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import {
   createAdminScheduleSlot,
   updateAdminScheduleSlot,
   deleteAdminScheduleSlot,
+  syncYouTubeStreams,
 } from '@/services/youtubeScheduleService';
 import { AdminScheduleSlot, CreateAdminScheduleSlotPayload, UpdateAdminScheduleSlotPayload, AdminYouTubeChannel } from '@/services/types/youtubeSchedule-types';
 import ScheduleSlotForm from '@/components/admin/youtubeSchedule/slots/ScheduleSlotForm';
@@ -39,6 +40,7 @@ const AdminYouTubeSchedulePage: React.FC = () => {
   const [editingSlot, setEditingSlot] = useState<AdminScheduleSlot | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [slotToDelete, setSlotToDelete] = useState<AdminScheduleSlot | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Fetch YouTube Channels (for the form's channel selector)
   const { data: youtubeChannels, isLoading: isLoadingChannels } = useQuery<AdminYouTubeChannel[], Error>({
@@ -120,6 +122,48 @@ const AdminYouTubeSchedulePage: React.FC = () => {
     }
   };
 
+  const handleSyncStreams = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await syncYouTubeStreams({
+        lookAheadHours: 48,
+        lookBackHours: 24,
+        forceRefresh: false,
+        maxResults: 10
+      });
+
+      if (response.success) {
+        toast({ 
+          title: 'Success', 
+          description: `YouTube sync completed! ${response.totalSynced || 0} streams synced.` 
+        });
+        
+        // Optionally, show detailed results
+        if (response.channels && response.channels.length > 0) {
+          const channelDetails = response.channels
+            .map(ch => `${ch.channel}: ${ch.total || 0} videos`)
+            .join(', ');
+          console.log('Sync details:', channelDetails);
+        }
+      } else {
+        toast({ 
+          variant: 'destructive', 
+          title: 'Sync Failed', 
+          description: response.error || 'Failed to sync YouTube streams' 
+        });
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Sync Error', 
+        description: 'An unexpected error occurred while syncing' 
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   if (isError) {
     return (
       <AdminLayout>
@@ -166,10 +210,30 @@ const AdminYouTubeSchedulePage: React.FC = () => {
       <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-white font-fredoka">Manage Channel Schedule</h1>
-          <Button onClick={handleAddSlot} className="bg-lolcow-blue hover:bg-lolcow-blue/90 text-white">
-            <PlusCircle className="mr-2 h-5 w-5" />
-            Add Schedule Slot
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleSyncStreams} 
+              variant="outline" 
+              className="border-lolcow-lightgray text-white hover:bg-lolcow-lightgray/[.15]"
+              disabled={isSyncing}
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-5 w-5" />
+                  Sync YouTube Streams
+                </>
+              )}
+            </Button>
+            <Button onClick={handleAddSlot} className="bg-lolcow-blue hover:bg-lolcow-blue/90 text-white">
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Add Schedule Slot
+            </Button>
+          </div>
         </div>
 
         {isLoadingSlots || isLoadingChannels ? (

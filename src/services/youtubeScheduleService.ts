@@ -7,41 +7,35 @@ import {
   CreateAdminScheduleSlotPayload,
   UpdateAdminScheduleSlotPayload
 } from "./types/youtubeSchedule-types";
+import { invokeEdgeFunction } from "@/utils/edgeFunctionUtils";
+
+// Helper function removed - now using invokeEdgeFunction utility which handles auth automatically
 
 // --- YouTube Channels (for Schedule) ---
 
 export const getAdminYouTubeChannels = async (): Promise<AdminYouTubeChannel[]> => {
   console.log('🔍 Calling admin-youtube-channels-list function...');
   
-  // In development mode, we need to handle authentication differently
-  const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
-  const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
-  
-  const { data, error } = await supabase.functions.invoke('admin-youtube-channels-list', {
-    method: 'GET', // Specify GET method
-    headers,
-  });
-  
-  if (error) {
-    console.error('🚨 Function invoke error:', error);
-    console.error('🚨 Error details:', JSON.stringify(error, null, 2));
-    throw new Error(`Function error: ${error.message || 'Unknown error'}`);
+  try {
+    const { data, error } = await invokeEdgeFunction<AdminYouTubeChannel[]>('admin-youtube-channels-list');
+    
+    if (error) {
+      console.error('🚨 Function invoke error:', error);
+      throw new Error(`Function error: ${error.message || 'Unknown error'}`);
+    }
+    
+    console.log('✅ Function response:', data);
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error in getAdminYouTubeChannels:', error);
+    throw error;
   }
-  
-  console.log('✅ Function response:', data);
-  // Ensure data is treated as an array, even if the function returns a single object or null unexpectedly
-  return Array.isArray(data) ? data : [];
 };
 
 export const createAdminYouTubeChannel = async (
   payload: CreateAdminYouTubeChannelPayload
 ): Promise<AdminYouTubeChannel> => {
-  // In development mode, we need to handle authentication differently
-  const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
-  const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
-  
-  const { data, error } = await supabase.functions.invoke('admin-youtube-channels-create', {
-    headers,
+  const { data, error } = await invokeEdgeFunction<AdminYouTubeChannel>('admin-youtube-channels-create', {
     body: payload,
   });
   if (error) throw new Error(error.message);
@@ -51,13 +45,7 @@ export const createAdminYouTubeChannel = async (
 export const updateAdminYouTubeChannel = async (
   payload: UpdateAdminYouTubeChannelPayload
 ): Promise<AdminYouTubeChannel> => {
-  // In development mode, we need to handle authentication differently
-  const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
-  const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
-  
-  const { data, error } = await supabase.functions.invoke(`admin-youtube-channels-update`, { 
-    method: 'PUT', // Specify PUT method to match edge function expectation
-    headers,
+  const { data, error } = await invokeEdgeFunction<AdminYouTubeChannel>('admin-youtube-channels-update', { 
     body: payload,
   });
   if (error) throw new Error(error.message);
@@ -65,12 +53,7 @@ export const updateAdminYouTubeChannel = async (
 };
 
 export const deleteAdminYouTubeChannel = async (channelId: string): Promise<void> => {
-  // In development mode, we need to handle authentication differently
-  const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
-  const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
-  
-  const { error } = await supabase.functions.invoke(`admin-youtube-channels-delete`, { 
-    headers,
+  const { error } = await invokeEdgeFunction('admin-youtube-channels-delete', { 
     body: { id: channelId },
   });
   if (error) throw new Error(error.message);
@@ -84,7 +67,7 @@ export interface YouTubeChannelDetails {
 }
 
 export const getYouTubeChannelDetails = async (channelId: string): Promise<YouTubeChannelDetails> => {
-  const { data, error } = await supabase.functions.invoke('get-youtube-channel-details', {
+  const { data, error } = await invokeEdgeFunction<YouTubeChannelDetails>('get-youtube-channel-details', {
     body: { identifier: channelId }, // Use 'identifier' as the key
   });
 
@@ -108,27 +91,27 @@ export const getYouTubeChannelDetails = async (channelId: string): Promise<YouTu
   return data as YouTubeChannelDetails;
 };
 
+
 // --- Schedule Slots ---
 
 export const getAdminScheduleSlots = async (filters?: { youtube_channel_id?: string }): Promise<AdminScheduleSlot[]> => {
-  // In development mode, we need to handle authentication differently
-  const isDev = import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true';
-  const headers = isDev ? { 'Authorization': 'Bearer dev-access-token' } : undefined;
-  
-  const { data, error } = await supabase.functions.invoke('admin-schedule-slots-list', {
-    method: 'GET', // Specify GET method
-    headers,
-    body: filters // GET requests can still have a body with Supabase invoke if the function expects it, though often filters are query params
-  });
-  if (error) throw new Error(error.message);
-  // Ensure data is treated as an array
-  return Array.isArray(data) ? data : [];
+  try {
+    const { data, error } = await invokeEdgeFunction<AdminScheduleSlot[]>('admin-schedule-slots-list', {
+      body: filters
+    });
+    
+    if (error) throw new Error(error.message);
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error in getAdminScheduleSlots:', error);
+    throw error;
+  }
 };
 
 export const createAdminScheduleSlot = async (
   payload: CreateAdminScheduleSlotPayload
 ): Promise<AdminScheduleSlot> => {
-  const { data, error } = await supabase.functions.invoke('admin-schedule-slots-create', {
+  const { data, error } = await invokeEdgeFunction<AdminScheduleSlot>('admin-schedule-slots-create', {
     body: payload,
   });
   if (error) throw new Error(error.message);
@@ -138,8 +121,7 @@ export const createAdminScheduleSlot = async (
 export const updateAdminScheduleSlot = async (
   payload: UpdateAdminScheduleSlotPayload
 ): Promise<AdminScheduleSlot> => {
-  const { data, error } = await supabase.functions.invoke(`admin-schedule-slots-update`, {
-    method: 'PUT', // Specify PUT method
+  const { data, error } = await invokeEdgeFunction<AdminScheduleSlot>('admin-schedule-slots-update', {
     body: payload,
   });
   if (error) throw new Error(error.message);
@@ -147,8 +129,58 @@ export const updateAdminScheduleSlot = async (
 };
 
 export const deleteAdminScheduleSlot = async (slotId: string): Promise<void> => {
-  const { error } = await supabase.functions.invoke(`admin-schedule-slots-delete`, {
+  const { error } = await invokeEdgeFunction('admin-schedule-slots-delete', {
     body: { id: slotId },
   });
   if (error) throw new Error(error.message);
+};
+
+// --- YouTube Streams Sync ---
+
+export interface SyncYouTubeStreamsConfig {
+  channelIds?: string[];
+  lookAheadHours?: number;
+  lookBackHours?: number;
+  forceRefresh?: boolean;
+  maxResults?: number;
+}
+
+export interface SyncYouTubeStreamsResponse {
+  success: boolean;
+  message: string;
+  totalSynced?: number;
+  channels?: Array<{
+    channel: string;
+    upcoming?: number;
+    recent?: number;
+    total?: number;
+    error?: string;
+  }>;
+  config?: SyncYouTubeStreamsConfig;
+  error?: string;
+}
+
+export const syncYouTubeStreams = async (config?: SyncYouTubeStreamsConfig): Promise<SyncYouTubeStreamsResponse> => {
+  try {
+    const { data, error } = await invokeEdgeFunction<SyncYouTubeStreamsResponse>('sync-youtube-streams', {
+      body: config || {
+        lookBackHours: 24,
+        lookAheadHours: 48,
+        maxResults: 10
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to sync YouTube streams');
+    }
+
+    return data || { success: false, message: 'No data returned' };
+  } catch (error) {
+    console.error('Error syncing YouTube streams:', error);
+    return {
+      success: false,
+      message: 'Failed to sync YouTube streams',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
 }; 

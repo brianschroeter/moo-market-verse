@@ -35,6 +35,7 @@ import AdminCollectionOrder from "./pages/admin/AdminCollectionOrder";
 import AdminPrintfulOrders from "./pages/admin/AdminPrintfulOrders";
 import ShopifyOrdersPage from "./pages/admin/ShopifyOrdersPage";
 import OrderReports from "./pages/admin/OrderReports";
+import TestYouTubeEdgeFunction from "./pages/TestYouTubeEdgeFunction";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -171,6 +172,8 @@ const App = () => {
                     <OrderReports />
                   </ProtectedRoute>
                 } />
+                {/* Test YouTube Edge Function Route */}
+                <Route path="/test-youtube" element={<TestYouTubeEdgeFunction />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AuthProvider>

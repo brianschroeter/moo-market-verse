@@ -49,6 +49,9 @@ verify_jwt = false
 [functions.sync-youtube-streams]
 verify_jwt = false
 
+[functions.refresh-youtube-avatars]
+verify_jwt = false
+
 [functions.shopify-storefront]
 verify_jwt = false
 
@@ -102,3 +105,6 @@ enabled = true
 verify_jwt = true # Assuming this is desired, like other functions
 import_map = "./functions/order-linking/import_map.json"
 entrypoint = "./functions/order-linking/index.ts"
+
+[functions.cron-sync-youtube]
+verify_jwt = false

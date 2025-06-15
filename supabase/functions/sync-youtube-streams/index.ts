@@ -331,7 +331,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY')
+    // For local development, use hardcoded key if env var not available
+    const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY') || 'AIzaSyDXWUdOgsZMacMshvvlGT6oscCkdrUngFY'
     if (!youtubeApiKey) {
       throw new Error('YOUTUBE_API_KEY environment variable is not set')
     }
@@ -434,7 +435,7 @@ serve(async (req) => {
               scheduled_start_time_utc: video.liveStreamingDetails?.scheduledStartTime || null,
               actual_start_time_utc: video.liveStreamingDetails?.actualStartTime || null,
               actual_end_time_utc: video.liveStreamingDetails?.actualEndTime || null,
-              status: this.determineStreamStatus(video),
+              status: determineStreamStatus(video),
               description: video.snippet?.description || null,
               view_count: video.statistics?.viewCount ? parseInt(video.statistics.viewCount) : null,
               privacy_status: 'public',

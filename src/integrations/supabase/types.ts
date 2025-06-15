@@ -1,3 +1,4 @@
+Connecting to db 5432
 export type Json =
   | string
   | number
@@ -61,6 +62,102 @@ export type Database = {
           is_important?: boolean | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      collection_order: {
+        Row: {
+          collection_handle: string
+          created_at: string | null
+          created_by: string | null
+          display_order: number
+          id: number
+          is_visible: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          collection_handle: string
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number
+          id?: number
+          is_visible?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          collection_handle?: string
+          created_at?: string | null
+          created_by?: string | null
+          display_order?: number
+          id?: number
+          is_visible?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      collection_products: {
+        Row: {
+          collection_id: number
+          position: number | null
+          product_id: number
+        }
+        Insert: {
+          collection_id: number
+          position?: number | null
+          product_id: number
+        }
+        Update: {
+          collection_id?: number
+          position?: number | null
+          product_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_products_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "shopify_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "shopify_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cron_history: {
+        Row: {
+          created_at: string | null
+          duration_ms: number | null
+          error: string | null
+          id: string
+          job_name: string
+          result: Json | null
+          run_at: string
+          success: boolean
+        }
+        Insert: {
+          created_at?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          job_name: string
+          result?: Json | null
+          run_at?: string
+          success?: boolean
+        }
+        Update: {
+          created_at?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          job_name?: string
+          result?: Json | null
+          run_at?: string
+          success?: boolean
         }
         Relationships: []
       }
@@ -193,53 +290,135 @@ export type Database = {
         }
         Relationships: []
       }
+      flash_sales: {
+        Row: {
+          action_text: string | null
+          action_url: string | null
+          banner_color: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          discount_text: string | null
+          end_date: string | null
+          id: number
+          is_active: boolean | null
+          priority: number | null
+          start_date: string | null
+          text_color: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_text?: string | null
+          action_url?: string | null
+          banner_color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          discount_text?: string | null
+          end_date?: string | null
+          id?: number
+          is_active?: boolean | null
+          priority?: number | null
+          start_date?: string | null
+          text_color?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_text?: string | null
+          action_url?: string | null
+          banner_color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          discount_text?: string | null
+          end_date?: string | null
+          id?: number
+          is_active?: boolean | null
+          priority?: number | null
+          start_date?: string | null
+          text_color?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       live_streams: {
         Row: {
           actual_end_time_utc: string | null
           actual_start_time_utc: string | null
           created_at: string
+          description: string | null
+          duration_minutes: number | null
+          fetched_at: string | null
           id: string
           last_checked_at: string
+          matched_slot_id: string | null
+          privacy_status: string | null
           scheduled_start_time_utc: string | null
+          scheduled_vs_actual_diff: unknown | null
           status: string | null
           stream_url: string | null
           thumbnail_url: string | null
           title: string | null
           updated_at: string
           video_id: string
+          view_count: number | null
           youtube_channel_id: string
         }
         Insert: {
           actual_end_time_utc?: string | null
           actual_start_time_utc?: string | null
           created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          fetched_at?: string | null
           id?: string
           last_checked_at?: string
+          matched_slot_id?: string | null
+          privacy_status?: string | null
           scheduled_start_time_utc?: string | null
+          scheduled_vs_actual_diff?: unknown | null
           status?: string | null
           stream_url?: string | null
           thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
           video_id: string
+          view_count?: number | null
           youtube_channel_id: string
         }
         Update: {
           actual_end_time_utc?: string | null
           actual_start_time_utc?: string | null
           created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          fetched_at?: string | null
           id?: string
           last_checked_at?: string
+          matched_slot_id?: string | null
+          privacy_status?: string | null
           scheduled_start_time_utc?: string | null
+          scheduled_vs_actual_diff?: unknown | null
           status?: string | null
           stream_url?: string | null
           thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
           video_id?: string
+          view_count?: number | null
           youtube_channel_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "live_streams_matched_slot_id_fkey"
+            columns: ["matched_slot_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_slots"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "live_streams_youtube_channel_id_fkey"
             columns: ["youtube_channel_id"]
@@ -356,6 +535,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_order_mappings_shopify_order"
+            columns: ["shopify_order_id"]
+            isOneToOne: false
+            referencedRelation: "shopify_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_mappings_mapped_by_fkey"
             columns: ["mapped_by"]
@@ -504,7 +690,7 @@ export type Database = {
       schedule_slots: {
         Row: {
           created_at: string
-          day_of_week: number | null
+          day_of_week: number[] | null
           default_start_time_utc: string | null
           fallback_title: string | null
           id: string
@@ -516,7 +702,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          day_of_week?: number | null
+          day_of_week?: number[] | null
           default_start_time_utc?: string | null
           fallback_title?: string | null
           id?: string
@@ -528,7 +714,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          day_of_week?: number | null
+          day_of_week?: number[] | null
           default_start_time_utc?: string | null
           fallback_title?: string | null
           id?: string
@@ -547,6 +733,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shopify_collections: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          handle: string
+          id: number
+          image_url: string | null
+          last_synced_at: string | null
+          products_count: number | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          handle: string
+          id: number
+          image_url?: string | null
+          last_synced_at?: string | null
+          products_count?: number | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          handle?: string
+          id?: number
+          image_url?: string | null
+          last_synced_at?: string | null
+          products_count?: number | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       shopify_orders: {
         Row: {
@@ -642,6 +864,60 @@ export type Database = {
             referencedColumns: ["printful_internal_id"]
           },
         ]
+      }
+      shopify_products: {
+        Row: {
+          available: boolean | null
+          created_at: string | null
+          description: string | null
+          featured_image_url: string | null
+          handle: string
+          id: number
+          last_synced_at: string | null
+          price_max: number | null
+          price_min: number | null
+          product_type: string | null
+          status: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          vendor: string | null
+        }
+        Insert: {
+          available?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          featured_image_url?: string | null
+          handle: string
+          id: number
+          last_synced_at?: string | null
+          price_max?: number | null
+          price_min?: number | null
+          product_type?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Update: {
+          available?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          featured_image_url?: string | null
+          handle?: string
+          id?: number
+          last_synced_at?: string | null
+          price_max?: number | null
+          price_min?: number | null
+          product_type?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Relationships: []
       }
       support_tickets: {
         Row: {
@@ -863,6 +1139,75 @@ export type Database = {
           },
         ]
       }
+      youtube_api_cache: {
+        Row: {
+          cache_key: string
+          channel_id: string | null
+          created_at: string | null
+          endpoint: string
+          expires_at: string
+          fetched_at: string | null
+          id: string
+          response_data: Json
+        }
+        Insert: {
+          cache_key: string
+          channel_id?: string | null
+          created_at?: string | null
+          endpoint: string
+          expires_at: string
+          fetched_at?: string | null
+          id?: string
+          response_data: Json
+        }
+        Update: {
+          cache_key?: string
+          channel_id?: string | null
+          created_at?: string | null
+          endpoint?: string
+          expires_at?: string
+          fetched_at?: string | null
+          id?: string
+          response_data?: Json
+        }
+        Relationships: []
+      }
+      youtube_api_usage: {
+        Row: {
+          channel_ids: string[] | null
+          created_at: string | null
+          endpoint: string
+          error_message: string | null
+          id: string
+          quota_exceeded: boolean | null
+          request_timestamp: string | null
+          response_cached: boolean | null
+          units_used: number
+        }
+        Insert: {
+          channel_ids?: string[] | null
+          created_at?: string | null
+          endpoint: string
+          error_message?: string | null
+          id?: string
+          quota_exceeded?: boolean | null
+          request_timestamp?: string | null
+          response_cached?: boolean | null
+          units_used: number
+        }
+        Update: {
+          channel_ids?: string[] | null
+          created_at?: string | null
+          endpoint?: string
+          error_message?: string | null
+          id?: string
+          quota_exceeded?: boolean | null
+          request_timestamp?: string | null
+          response_cached?: boolean | null
+          units_used?: number
+        }
+        Relationships: []
+      }
       youtube_channels: {
         Row: {
           avatar_url: string | null
@@ -988,6 +1333,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      cleanup_expired_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       find_similar_devices: {
         Args: {
           target_components: Json
@@ -1022,6 +1371,16 @@ export type Database = {
           cash_cow_count: number
           total_members_count: number
           total_usd_value: number
+        }[]
+      }
+      get_daily_api_usage: {
+        Args: { target_date?: string }
+        Returns: {
+          endpoint: string
+          total_units: number
+          request_count: number
+          cached_requests: number
+          quota_exceeded_count: number
         }[]
       }
       get_enhanced_fingerprint_stats: {
@@ -1118,6 +1477,14 @@ export type Database = {
         Returns: boolean
       }
       is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_admin_or_dev: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_dev_mode: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }

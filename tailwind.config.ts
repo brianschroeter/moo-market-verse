@@ -121,6 +121,9 @@ export default {
         'fredoka': ['"Fredoka One"', 'cursive'],
         'nunito': ['"Nunito"', 'sans-serif'],
       },
+      dropShadow: {
+        'glow': '0 0 12px rgba(59, 130, 246, 0.8)',
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
