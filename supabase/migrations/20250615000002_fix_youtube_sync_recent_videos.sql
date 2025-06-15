@@ -24,8 +24,24 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Update RLS policy to allow service role to manage all streams
-ALTER POLICY "Service role can manage all streams" ON live_streams
-  USING (auth.role() = 'service_role');
+DO $$
+BEGIN
+    -- Drop the policy if it exists
+    IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'public' 
+        AND tablename = 'live_streams' 
+        AND policyname = 'Service role can manage all streams'
+    ) THEN
+        DROP POLICY "Service role can manage all streams" ON public.live_streams;
+    END IF;
+    
+    -- Create the policy with the correct definition
+    CREATE POLICY "Service role can manage all streams" ON public.live_streams
+        FOR ALL
+        USING (auth.role() = 'service_role')
+        WITH CHECK (auth.role() = 'service_role');
+END $$;
 
 -- Add comment explaining the sync behavior
 COMMENT ON TABLE live_streams IS 'Stores YouTube live streams and videos. The sync-youtube-streams edge function fetches both upcoming streams and recent videos from the past 7 days by default.';

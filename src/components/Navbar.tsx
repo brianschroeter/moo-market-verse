@@ -29,7 +29,12 @@ const Navbar: React.FC = () => {
 
   const enabledNavItems = baseNavStructure.filter(item => {
     const dbItem = menuItems.find(db => db.item_key === item.key);
-    return !dbItem || dbItem.is_enabled;
+    // If the item exists in the database, use its enabled state
+    if (dbItem) {
+      return dbItem.is_enabled;
+    }
+    // If not in database, show all items except shop (which should be explicitly enabled)
+    return item.key !== 'shop';
   });
 
   const toggleMenu = () => {

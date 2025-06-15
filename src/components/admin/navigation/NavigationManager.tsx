@@ -33,14 +33,34 @@ const fetchNavigationItems = async (): Promise<MenuItem[]> => {
 };
 
 const updateNavigationItem = async ({ key, enabled }: { key: string; enabled: boolean }): Promise<void> => {
-  const { error } = await supabase
+  // First, ensure the item exists in the database
+  const { data: existingItem } = await supabase
     .from('menu_items')
-    .update({ is_enabled: enabled })
-    .eq('item_key', key);
+    .select('*')
+    .eq('item_key', key)
+    .single();
 
-  if (error) {
-    console.error("Error updating menu item:", error);
-    throw error;
+  if (!existingItem) {
+    // Insert if it doesn't exist
+    const { error: insertError } = await supabase
+      .from('menu_items')
+      .insert({ item_key: key, is_enabled: enabled });
+    
+    if (insertError) {
+      console.error("Error inserting menu item:", insertError);
+      throw insertError;
+    }
+  } else {
+    // Update if it exists
+    const { error: updateError } = await supabase
+      .from('menu_items')
+      .update({ is_enabled: enabled, updated_at: new Date().toISOString() })
+      .eq('item_key', key);
+
+    if (updateError) {
+      console.error("Error updating menu item:", updateError);
+      throw updateError;
+    }
   }
 };
 
@@ -95,8 +115,24 @@ const NavigationManager: React.FC = () => {
     }
   }, [menuItems]);
 
-  const handleToggleChange = (key: string, enabled: boolean) => {
-    updateMutation.mutate({ key, enabled });
+  const handleToggleChange = async (key: string, enabled: boolean) => {
+    // Optimistically update the UI
+    setNavigationItems(prev => 
+      prev.map(item => 
+        item.key === key ? { ...item, isEnabled: enabled } : item
+      )
+    );
+    
+    try {
+      await updateMutation.mutateAsync({ key, enabled });
+    } catch (error) {
+      // Revert on error
+      setNavigationItems(prev => 
+        prev.map(item => 
+          item.key === key ? { ...item, isEnabled: !enabled } : item
+        )
+      );
+    }
   };
 
   if (isLoading) {
