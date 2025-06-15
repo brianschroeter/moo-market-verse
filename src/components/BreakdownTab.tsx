@@ -128,7 +128,7 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
               <span className="text-green-400 font-medium">Current Active Memberships</span>
             </div>
             <span className="text-gray-500 hidden md:inline">•</span>
-            <span className="text-gray-400">Ranked by value (Crown: $500, PayPig: $100, Cash\u00A0Cow: $10)</span>
+            <span className="text-gray-400">Ranked by value (Crown: $500, PayPig: $100, Cash Cow: $10)</span>
           </div>
         </div>
         
