@@ -545,7 +545,7 @@ const Schedule: React.FC = () => {
         body: {
           includeRecent: true, // Always include recent for replay section
           daysAhead: 7,
-          hoursBack: 72 // 3 days back for replays
+          hoursBack: 240 // 10 days back to ensure we have last week's data for predictions
         }
       })
 
