@@ -721,17 +721,45 @@ function determineStreamStatus(video: YouTubeVideo): string {
   const actualEnd = video.liveStreamingDetails?.actualEndTime ? 
     new Date(video.liveStreamingDetails.actualEndTime) : null
 
+  // If we have an actual end time, the stream is completed
   if (actualEnd) {
     return 'completed'
-  } else if (actualStart) {
-    return 'live'
-  } else if (scheduledStart && scheduledStart > now) {
-    return 'upcoming'
-  } else if (video.snippet?.liveBroadcastContent === 'live') {
-    return 'live'
-  } else if (video.snippet?.liveBroadcastContent === 'upcoming') {
-    return 'upcoming'
-  } else {
+  }
+  
+  // Use liveBroadcastContent as the primary indicator when available
+  const broadcastContent = video.snippet?.liveBroadcastContent
+  
+  // If YouTube API says it's not live anymore, trust that
+  if (broadcastContent === 'none') {
     return 'completed'
   }
+  
+  // If YouTube API says it's live, trust that
+  if (broadcastContent === 'live') {
+    return 'live'
+  }
+  
+  // If YouTube API says it's upcoming, trust that
+  if (broadcastContent === 'upcoming') {
+    return 'upcoming'
+  }
+  
+  // Fallback logic when liveBroadcastContent is not definitive
+  if (actualStart) {
+    // Check if the stream has been "live" for more than 12 hours
+    // Most streams don't last longer than this
+    const hoursLive = (now.getTime() - actualStart.getTime()) / (1000 * 60 * 60)
+    if (hoursLive > 12) {
+      return 'completed'
+    }
+    return 'live'
+  }
+  
+  // If scheduled for the future, it's upcoming
+  if (scheduledStart && scheduledStart > now) {
+    return 'upcoming'
+  }
+  
+  // Default to completed
+  return 'completed'
 }
