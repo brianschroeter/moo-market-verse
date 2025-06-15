@@ -110,21 +110,78 @@ serve(async (req) => {
       hoursBack
     })
 
-    // Fetch all channels
-    let channelsQuery = supabase
+    // Fetch all channels ordered by their earliest weekday stream time
+    // First, get channels with their earliest weekday slot time
+    let channelsWithSlotsQuery = supabase
       .from('youtube_channels')
-      .select('*')
-      .order('channel_name')
-
+      .select(`
+        *,
+        schedule_slots!inner (
+          default_start_time_utc,
+          day_of_week
+        )
+      `)
+    
     if (channelIds.length > 0) {
-      channelsQuery = channelsQuery.in('youtube_channel_id', channelIds)
+      channelsWithSlotsQuery = channelsWithSlotsQuery.in('youtube_channel_id', channelIds)
     }
 
-    const { data: channels, error: channelsError } = await channelsQuery
+    const { data: channelsWithSlots, error: channelsWithSlotsError } = await channelsWithSlotsQuery
+
+    // Now get all channels (including those without slots)
+    let allChannelsQuery = supabase
+      .from('youtube_channels')
+      .select('*')
+    
+    if (channelIds.length > 0) {
+      allChannelsQuery = allChannelsQuery.in('youtube_channel_id', channelIds)
+    }
+
+    const { data: allChannels, error: channelsError } = await allChannelsQuery
 
     if (channelsError) {
       throw new Error(`Failed to fetch channels: ${channelsError.message}`)
     }
+
+    // Process channels to find earliest weekday time for each
+    const channelEarliestTimes = new Map()
+    
+    if (channelsWithSlots && !channelsWithSlotsError) {
+      for (const channel of channelsWithSlots) {
+        if (channel.schedule_slots) {
+          for (const slot of channel.schedule_slots) {
+            // Check if this slot has any weekday (Monday=1 to Friday=5)
+            if (slot.day_of_week && slot.default_start_time_utc) {
+              const hasWeekday = slot.day_of_week.some((day: number) => day >= 1 && day <= 5)
+              if (hasWeekday) {
+                const currentEarliest = channelEarliestTimes.get(channel.id)
+                if (!currentEarliest || slot.default_start_time_utc < currentEarliest) {
+                  channelEarliestTimes.set(channel.id, slot.default_start_time_utc)
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Sort channels by their earliest weekday time
+    const channels = allChannels?.sort((a, b) => {
+      const timeA = channelEarliestTimes.get(a.id)
+      const timeB = channelEarliestTimes.get(b.id)
+      
+      // Channels with weekday times come first
+      if (timeA && !timeB) return -1
+      if (!timeA && timeB) return 1
+      
+      // If both have times, sort by time
+      if (timeA && timeB) {
+        return timeA.localeCompare(timeB)
+      }
+      
+      // If neither has times, sort alphabetically
+      return (a.channel_name || '').localeCompare(b.channel_name || '')
+    }) || []
 
     if (!channels || channels.length === 0) {
       return new Response(
