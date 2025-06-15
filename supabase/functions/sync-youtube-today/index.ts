@@ -24,18 +24,17 @@ serve(async (req) => {
     // Also include early morning streams for tomorrow (up to 6 AM)
     const tomorrowEarlyEnd = new Date(todayEnd.getTime() + 6 * 60 * 60 * 1000)
 
-    // Get all channels to sync today's schedule
+    // Get all channels to sync today's schedule (removing is_active filter as column doesn't exist)
     const { data: channels, error: channelsError } = await supabase
       .from('youtube_channels')
       .select('*')
-      .eq('is_active', true)
 
     if (channelsError) {
       throw new Error(`Failed to fetch channels: ${channelsError.message}`)
     }
 
     if (!channels || channels.length === 0) {
-      console.log('No active channels to sync')
+      console.log('No channels to sync')
       
       await supabase
         .from('cron_history')

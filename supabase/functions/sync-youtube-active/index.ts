@@ -18,6 +18,7 @@ serve(async (req) => {
 
     // Get currently live streams and streams starting soon
     const now = new Date()
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000) // For upcoming streams
     const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000) // Increased to catch more upcoming streams
     const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000) // Increased to catch long-running streams
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000) // Increased from 30 minutes
