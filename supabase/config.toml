@@ -46,6 +46,21 @@ verify_jwt = false
 [functions.sync-printful-orders]
 verify_jwt = false
 
+[functions.sync-youtube-streams]
+verify_jwt = false
+
+[functions.refresh-youtube-avatars]
+verify_jwt = false
+
+[functions.shopify-storefront]
+verify_jwt = false
+
+[functions.get-schedule]
+verify_jwt = false
+
+[functions.get-youtube-channel-details]
+verify_jwt = false
+
 
 [functions.delete-user]
 enabled = true
@@ -90,3 +105,9 @@ enabled = true
 verify_jwt = true # Assuming this is desired, like other functions
 import_map = "./functions/order-linking/import_map.json"
 entrypoint = "./functions/order-linking/index.ts"
+
+[functions.cron-sync-youtube]
+verify_jwt = false
+
+[functions.manage-youtube-api-keys]
+verify_jwt = true

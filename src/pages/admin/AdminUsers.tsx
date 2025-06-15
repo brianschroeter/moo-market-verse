@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { YouTubeMembership } from "@/services/types/auth-types";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { getDiscordAvatarUrl } from "@/utils/avatarUtils";
+import { invokeEdgeFunction } from "@/utils/edgeFunctionUtils";
 
 // ---- Added: Interface for User Device ----
 interface UserDevice {
@@ -819,7 +820,7 @@ const AdminUsers: React.FC = (): ReactNode => {
       }
 
       // Call the Supabase Edge function to add the connection
-      const { data: functionResponse, error } = await supabase.functions.invoke(
+      const { data: functionResponse, error } = await invokeEdgeFunction(
         'add-user-connection',
         {
           body: {
@@ -919,7 +920,7 @@ const AdminUsers: React.FC = (): ReactNode => {
     const removalToast = toast({ title: "Processing", description: `Removing ${connectionDetails.platform} connection...` });
 
     try {
-      const { error: functionError } = await supabase.functions.invoke('delete-user-connection', {
+      const { error: functionError } = await invokeEdgeFunction('delete-user-connection', {
         body: {
           user_id: currentUser.id,
           connection_id: connectionIdToRemove, // This is the ID like YouTube Channel ID
@@ -1053,7 +1054,7 @@ const AdminUsers: React.FC = (): ReactNode => {
     setIsDeleting(true);
     try {
       // Call the Supabase Edge function
-      const { error } = await supabase.functions.invoke('delete-user', {
+      const { error } = await invokeEdgeFunction('delete-user', {
         body: { target_user_id: userToDelete.id },
       });
 
@@ -1140,7 +1141,7 @@ const AdminUsers: React.FC = (): ReactNode => {
     setPfpLoadError(false); // Reset PFP error state on new fetch
 
     try {
-      const { data, error } = await supabase.functions.invoke(
+      const { data, error } = await invokeEdgeFunction(
         'get-youtube-channel-details',
         { body: { identifier: identifier.trim() } } // Pass identifier
       );

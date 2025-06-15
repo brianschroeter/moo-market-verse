@@ -23,3 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Database backups
+backups/
+
+# Environment secrets
+.env.secrets
+*/.env.secrets
+scripts/clone-production/.env.secrets

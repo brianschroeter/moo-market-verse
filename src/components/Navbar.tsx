@@ -20,6 +20,7 @@ const Navbar: React.FC = () => {
 
   const baseNavStructure = [
     { key: "home", label: "Home", path: "/" },
+    { key: "shop", label: "Shop", path: "/shop" },
     { key: "schedule", label: "Schedule", path: "/schedule" },
     { key: "leaderboard", label: "Leaderboard", path: "/leaderboard" },
     { key: "profile", label: "Profile", path: "/profile" },

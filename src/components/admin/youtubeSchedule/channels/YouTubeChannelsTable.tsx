@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, ArrowUpDown } from 'lucide-react';
 import { AdminYouTubeChannel } from '@/services/types/youtubeSchedule-types';
+import { getProxiedImageUrl } from '@/utils/imageProxy';
 
 interface YouTubeChannelsTableProps {
   channels: AdminYouTubeChannel[];
@@ -46,22 +47,44 @@ export const YouTubeChannelsTable: React.FC<YouTubeChannelsTableProps> = ({
       id: 'avatar',
       header: 'Avatar',
       cell: ({ row }) => {
+        const [imageError, setImageError] = React.useState(false);
+        const [imageLoaded, setImageLoaded] = React.useState(false);
         const channel = row.original;
-        if (channel.avatar_url) {
-          return (
-            <img 
-              src={channel.avatar_url} 
-              alt={channel.channel_name || 'Avatar'} 
-              className="w-10 h-10 rounded-full object-cover bg-lolcow-lightgray/30"
-            />
-          );
-        }
-        // Fallback display if no avatar_url (e.g., initials)
-        const displayName = channel.channel_name;
+        
+        // Get display name for fallback
+        const displayName = channel.channel_name || channel.custom_display_name || channel.youtube_channel_id;
         const initials = displayName?.charAt(0).toUpperCase() || '?';
-        return (
+        
+        // Always show initials as background
+        const initialsElement = (
           <div className="w-10 h-10 rounded-full flex items-center justify-center bg-lolcow-blue text-white text-lg font-semibold">
             {initials}
+          </div>
+        );
+        
+        // Show only initials if no avatar_url or if image failed to load
+        if (!channel.avatar_url || imageError) {
+          return initialsElement;
+        }
+        
+        // Use proxy for YouTube images to avoid rate limits
+        const imageSrc = getProxiedImageUrl(channel.avatar_url);
+        
+        return (
+          <div className="relative w-10 h-10">
+            {!imageLoaded && initialsElement}
+            <img 
+              src={imageSrc} 
+              alt={channel.channel_name || 'Avatar'} 
+              className={`w-10 h-10 rounded-full object-cover bg-lolcow-lightgray/30 ${imageLoaded ? '' : 'absolute inset-0'}`}
+              loading="lazy" // Lazy load images
+              onLoad={() => setImageLoaded(true)}
+              onError={() => {
+                console.error('Failed to load avatar:', channel.avatar_url);
+                setImageError(true);
+              }}
+              style={{ display: imageLoaded ? 'block' : 'none' }}
+            />
           </div>
         );
       },

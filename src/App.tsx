@@ -10,6 +10,9 @@ import Profile from "./pages/Profile";
 import Support from "./pages/Support";
 import Schedule from "./pages/Schedule";
 import Leaderboard from "./pages/Leaderboard";
+import Shop from "./pages/Shop";
+import CollectionPage from "./pages/CollectionPage";
+import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
 import TicketList from "./pages/TicketList";
 import TicketDetail from "./pages/TicketDetail";
@@ -27,9 +30,13 @@ import AdminNewsletterSignups from "./pages/admin/newsletter-signups.tsx";
 import AdminGuildSearch from "./pages/admin/AdminGuildSearch";
 import AdminYouTubeScheduleChannels from "./pages/admin/AdminYouTubeScheduleChannels";
 import AdminYouTubeSchedulePage from "./pages/admin/AdminYouTubeSchedulePage";
+import AdminYouTubeApiKeys from "./pages/admin/AdminYouTubeApiKeys";
+import AdminFlashSales from "./pages/admin/AdminFlashSales";
+import AdminCollectionOrder from "./pages/admin/AdminCollectionOrder";
 import AdminPrintfulOrders from "./pages/admin/AdminPrintfulOrders";
 import ShopifyOrdersPage from "./pages/admin/ShopifyOrdersPage";
 import OrderReports from "./pages/admin/OrderReports";
+import TestYouTubeEdgeFunction from "./pages/TestYouTubeEdgeFunction";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -55,6 +62,9 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/shop" element={<Shop />} />
+                <Route path="/shop/collections/:collection" element={<CollectionPage />} />
+                <Route path="/shop/products/:handle" element={<ProductDetail />} />
                 <Route path="/profile" element={
                   <ProtectedRoute>
                     <Profile />
@@ -115,6 +125,16 @@ const App = () => {
                     <AdminAnnouncements />
                   </ProtectedRoute>
                 } />
+                <Route path="/admin/flash-sales" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminFlashSales />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/collection-order" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminCollectionOrder />
+                  </ProtectedRoute>
+                } />
                 <Route path="/admin/newsletter-signups" element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminNewsletterSignups />
@@ -135,6 +155,11 @@ const App = () => {
                     <AdminYouTubeSchedulePage />
                   </ProtectedRoute>
                 } />
+                <Route path="/admin/youtube-api-keys" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminYouTubeApiKeys />
+                  </ProtectedRoute>
+                } />
                 {/* Printful Orders Admin Route */}
                 <Route path="/admin/printful-orders" element={
                   <ProtectedRoute requireAdmin={true}>
@@ -153,6 +178,8 @@ const App = () => {
                     <OrderReports />
                   </ProtectedRoute>
                 } />
+                {/* Test YouTube Edge Function Route */}
+                <Route path="/test-youtube" element={<TestYouTubeEdgeFunction />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AuthProvider>

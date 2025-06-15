@@ -111,7 +111,7 @@ serve(async (req: Request) => {
       })
     }
 
-    const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY')
+    const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY') || 'AIzaSyDXWUdOgsZMacMshvvlGT6oscCkdrUngFY'
     if (!YOUTUBE_API_KEY) {
         return new Response(JSON.stringify({ error: 'YouTube API key is not configured' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -201,6 +201,31 @@ serve(async (req: Request) => {
         });
     }
     const supabaseAdminClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', SERVICE_ROLE_KEY);
+
+    // Update the avatar URL in the database if we fetched it successfully
+    if (channelTitle && channelPfpUrl) {
+      try {
+        const { error: updateError } = await supabaseAdminClient
+          .from('youtube_channels')
+          .update({
+            channel_name: channelTitle,
+            avatar_url: channelPfpUrl,
+            avatar_last_fetched_at: new Date().toISOString(),
+            avatar_fetch_error: null
+          })
+          .eq('youtube_channel_id', canonicalChannelId);
+        
+        if (updateError) {
+          console.error('Failed to update channel avatar in database:', updateError);
+          // Don't fail the request, just log the error
+        } else {
+          console.log(`Updated avatar URL for channel ${canonicalChannelId}`);
+        }
+      } catch (updateException) {
+        console.error('Exception updating channel avatar:', updateException);
+        // Don't fail the request, just log the error
+      }
+    }
 
     const { data: memberships, error: dbError } = await supabaseAdminClient
       .from('youtube_memberships')

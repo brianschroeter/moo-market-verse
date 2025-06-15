@@ -98,22 +98,49 @@ export const verifyYouTubeConnection = async (
       youtubeAvatar,
     });
 
-    const { data, error } = await supabase.functions.invoke("verify-youtube", {
-      body: { 
-        youtubeChannelId,
-        youtubeChannelName,
-        youtubeAvatar
-      },
-    });
+    // In dev mode with VITE_DEVMODE=true, use direct fetch with dev-access-token
+    if (import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true') {
+      console.log("[verifyYouTubeConnection] Using dev mode with direct fetch");
+      const response = await fetch(`${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/verify-youtube`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer dev-access-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          youtubeChannelId,
+          youtubeChannelName,
+          youtubeAvatar
+        })
+      });
 
-    console.log("[verifyYouTubeConnection] Edge function response:", data);
+      const data = await response.json();
+      console.log("[verifyYouTubeConnection] Edge function response:", data);
 
-    if (error) {
-      console.error("[verifyYouTubeConnection] Error from edge function:", error);
-      return false;
+      if (!response.ok) {
+        console.error("[verifyYouTubeConnection] Error from edge function:", response.status, data);
+        return false;
+      }
+
+      return true;
+    } else {
+      const { data, error } = await supabase.functions.invoke("verify-youtube", {
+        body: { 
+          youtubeChannelId,
+          youtubeChannelName,
+          youtubeAvatar
+        },
+      });
+
+      console.log("[verifyYouTubeConnection] Edge function response:", data);
+
+      if (error) {
+        console.error("[verifyYouTubeConnection] Error from edge function:", error);
+        return false;
+      }
+      
+      return true;
     }
-    
-    return true;
   } catch (error) {
     console.error("[verifyYouTubeConnection] Exception in function:", error);
     return false;
@@ -142,18 +169,46 @@ export const refreshYouTubeAvatar = async (connection: YouTubeConnection): Promi
       refreshAvatar: true
     });
 
-    const functionResponse = await supabase.functions.invoke("verify-youtube", {
-      body: { 
-        youtubeChannelId: connection.youtube_channel_id,
-        youtubeChannelName: connection.youtube_channel_name,
-        refreshAvatar: true
-      },
-    });
+    let data: any;
+    let error: any;
 
-    // Log entire response object for debugging
-    console.log("[refreshYouTubeAvatar] Complete edge function response object:", functionResponse);
-    
-    const { data, error } = functionResponse;
+    // In dev mode with VITE_DEVMODE=true, use direct fetch with dev-access-token
+    if (import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true') {
+      console.log("[refreshYouTubeAvatar] Using dev mode with direct fetch");
+      const response = await fetch(`${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/verify-youtube`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer dev-access-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          youtubeChannelId: connection.youtube_channel_id,
+          youtubeChannelName: connection.youtube_channel_name,
+          refreshAvatar: true
+        })
+      });
+
+      data = await response.json();
+      console.log("[refreshYouTubeAvatar] Edge function data:", data);
+
+      if (!response.ok) {
+        error = { message: `HTTP error! status: ${response.status}` };
+      }
+    } else {
+      const functionResponse = await supabase.functions.invoke("verify-youtube", {
+        body: { 
+          youtubeChannelId: connection.youtube_channel_id,
+          youtubeChannelName: connection.youtube_channel_name,
+          refreshAvatar: true
+        },
+      });
+
+      // Log entire response object for debugging
+      console.log("[refreshYouTubeAvatar] Complete edge function response object:", functionResponse);
+      
+      data = functionResponse.data;
+      error = functionResponse.error;
+    }
 
     if (error) {
       console.error("[refreshYouTubeAvatar] Edge function error:", error);

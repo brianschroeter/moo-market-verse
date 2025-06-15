@@ -87,17 +87,42 @@ export default {
         "pulse-glow": {
           '0%, 100%': { boxShadow: '0 0 5px 0px rgba(0, 163, 255, 0.5)' },
           '50%': { boxShadow: '0 0 15px 5px rgba(0, 163, 255, 0.8)' },
+        },
+        "shimmer": {
+          '0%': { transform: 'translateX(-100%) skewX(-12deg)' },
+          '100%': { transform: 'translateX(400%) skewX(-12deg)' },
+        },
+        "fadeInUp": {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        "bounceIn": {
+          '0%': { opacity: '0', transform: 'scale(0.3)' },
+          '50%': { opacity: '1', transform: 'scale(1.05)' },
+          '70%': { transform: 'scale(0.9)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        "slideInRight": {
+          '0%': { opacity: '0', transform: 'translateX(30px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
         }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "float": "float 6s ease-in-out infinite",
-        "pulse-glow": "pulse-glow 2s ease-in-out infinite"
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "shimmer": "shimmer 3s ease-in-out infinite",
+        "fadeInUp": "fadeInUp 0.6s ease-out",
+        "bounceIn": "bounceIn 1s ease-out",
+        "slideInRight": "slideInRight 1s ease-out"
       },
       fontFamily: {
         'fredoka': ['"Fredoka One"', 'cursive'],
         'nunito': ['"Nunito"', 'sans-serif'],
+      },
+      dropShadow: {
+        'glow': '0 0 12px rgba(59, 130, 246, 0.8)',
       },
     },
   },
