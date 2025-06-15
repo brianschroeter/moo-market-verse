@@ -98,7 +98,7 @@ const formatTime = (dateString: string | null): string => {
   return timeStr.replace(' ', '\u00A0')
 }
 
-const formatRelativeTime = (dateString: string | null): string => {
+const formatRelativeTime = (dateString: string | null, isLive: boolean = false): string => {
   if (!dateString) return ""
   
   const now = new Date()
@@ -110,9 +110,19 @@ const formatRelativeTime = (dateString: string | null): string => {
   if (diffMs < 0) {
     // Past
     const absDiffMs = Math.abs(diffMs)
+    const absDiffMinutes = Math.floor(absDiffMs / (1000 * 60))
     const absDiffHours = Math.floor(absDiffMs / (1000 * 60 * 60))
     const absDiffDays = Math.floor(absDiffMs / (1000 * 60 * 60 * 24))
     
+    // For live streams, show when it started
+    if (isLive) {
+      if (absDiffMinutes < 1) return "Just started"
+      if (absDiffMinutes < 60) return `Started ${absDiffMinutes}m ago`
+      if (absDiffHours < 24) return `Started ${absDiffHours}h ago`
+      return `Started ${absDiffDays}d ago`
+    }
+    
+    // For non-live streams, show when it ended
     if (absDiffHours < 1) return "Just ended"
     if (absDiffHours < 24) return `${absDiffHours}h ago`
     return `${absDiffDays}d ago`
@@ -168,7 +178,10 @@ const VideoCard: React.FC<{
   const channelName = channel?.custom_display_name || channel?.channel_name || 'Unknown Channel'
   const thumbnailUrl = isLiveStream ? getProxiedImageUrl(stream.thumbnail_url) : null
   const streamUrl = isLiveStream ? stream.stream_url : null
-  const scheduledTime = isLiveStream ? stream.scheduled_start_time_utc : null
+  // For live streams, use actual start time; for others, use scheduled time
+  const displayTime = isLiveStream ? 
+    (stream.status === 'live' && stream.actual_start_time_utc ? stream.actual_start_time_utc : stream.scheduled_start_time_utc) : 
+    null
   const description = isLiveStream ? stream.description : slot?.notes
   
   return (
@@ -198,10 +211,10 @@ const VideoCard: React.FC<{
           )}
           
           {/* Time indicator */}
-          {scheduledTime && (
+          {displayTime && (
             <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4">
               <div className="bg-black/80 backdrop-blur-sm text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium">
-                {formatRelativeTime(scheduledTime)}
+                {formatRelativeTime(displayTime, isLive || (stream?.status === 'live'))}
               </div>
             </div>
           )}
@@ -234,10 +247,10 @@ const VideoCard: React.FC<{
             </div>
           </div>
           
-          {scheduledTime && (
+          {displayTime && (
             <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-400">
               <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span>{formatTime(scheduledTime)}</span>
+              <span>{formatTime(displayTime)}</span>
             </div>
           )}
           
