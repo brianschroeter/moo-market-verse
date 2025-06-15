@@ -1,0 +1,63 @@
+name: YouTube Schedule Sync
+
+on:
+  schedule:
+    # Run every 4 hours
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      lookBackHours:
+        description: 'Hours to look back for past streams'
+        required: false
+        default: '168'
+      lookAheadHours:
+        description: 'Hours to look ahead for upcoming streams'
+        required: false
+        default: '168'
+
+jobs:
+  sync-youtube:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Sync YouTube Streams
+      run: |
+        echo "Starting YouTube sync..."
+        
+        # Full sync with custom parameters if provided
+        PAYLOAD='{}'
+        if [ -n "${{ github.event.inputs.lookBackHours }}" ]; then
+          PAYLOAD=$(echo $PAYLOAD | jq '. + {"lookBackHours": ${{ github.event.inputs.lookBackHours }}}')
+        fi
+        if [ -n "${{ github.event.inputs.lookAheadHours }}" ]; then
+          PAYLOAD=$(echo $PAYLOAD | jq '. + {"lookAheadHours": ${{ github.event.inputs.lookAheadHours }}}')
+        fi
+        
+        # Main sync
+        echo "Running main YouTube sync..."
+        curl -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/sync-youtube-streams" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d "$PAYLOAD" \
+          --fail \
+          --max-time 300
+        
+        # Active streams sync (more frequent updates for live/upcoming)
+        echo -e "\nRunning active streams sync..."
+        curl -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/sync-youtube-active" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{}' \
+          --fail \
+          --max-time 60
+        
+        # Refresh avatars for channels with stale images
+        echo -e "\nRefreshing channel avatars..."
+        curl -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/refresh-youtube-avatars" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{}' \
+          --fail \
+          --max-time 120
+        
+        echo -e "\nSync completed successfully!"
