@@ -69,12 +69,39 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
-    // Parse query parameters
+    // Parse parameters from request body or query parameters
+    let channelIds = []
+    let includeRecent = false
+    let daysAhead = 7
+    let hoursBack = 24
+
+    // Try to parse from request body first
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json()
+        channelIds = body.channels?.split(',') || body.channelIds || []
+        includeRecent = body.includeRecent === true
+        daysAhead = body.daysAhead || 7
+        hoursBack = body.hoursBack || 24
+      } catch (e) {
+        console.log('Failed to parse request body, falling back to query params')
+      }
+    }
+
+    // Fall back to query parameters if not in body
     const url = new URL(req.url)
-    const channelIds = url.searchParams.get('channels')?.split(',') || []
-    const includeRecent = url.searchParams.get('includeRecent') === 'true'
-    const daysAhead = parseInt(url.searchParams.get('daysAhead') || '7')
-    const hoursBack = parseInt(url.searchParams.get('hoursBack') || '24')
+    if (channelIds.length === 0) {
+      channelIds = url.searchParams.get('channels')?.split(',') || []
+    }
+    if (!includeRecent) {
+      includeRecent = url.searchParams.get('includeRecent') === 'true'
+    }
+    if (!daysAhead) {
+      daysAhead = parseInt(url.searchParams.get('daysAhead') || '7')
+    }
+    if (!hoursBack) {
+      hoursBack = parseInt(url.searchParams.get('hoursBack') || '24')
+    }
 
     console.log('Fetching schedule data with params:', {
       channelIds: channelIds.length > 0 ? channelIds : 'all',
@@ -146,15 +173,29 @@ serve(async (req) => {
       .in('youtube_channel_id', channelUUIDs)
       .order('scheduled_start_time_utc')
 
-    // Filter by date range if we have scheduled times
+    // Filter by date range - include streams that:
+    // 1. Have scheduled time within our date range, OR
+    // 2. Are currently live (regardless of scheduled time), OR
+    // 3. Have actual start/end times within our date range
     liveStreamsQuery = liveStreamsQuery
-      .or(`scheduled_start_time_utc.gte.${startDate.toISOString()},scheduled_start_time_utc.lte.${endDate.toISOString()},status.eq.live`)
+      .or(`and(scheduled_start_time_utc.gte.${startDate.toISOString()},scheduled_start_time_utc.lte.${endDate.toISOString()}),status.eq.live,and(actual_start_time_utc.gte.${startDate.toISOString()},actual_start_time_utc.lte.${endDate.toISOString()}),and(actual_end_time_utc.gte.${startDate.toISOString()},actual_end_time_utc.lte.${endDate.toISOString()})`)
 
     const { data: liveStreams, error: streamsError } = await liveStreamsQuery
+
+    console.log('Live streams query params:', {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      channelCount: channelUUIDs.length,
+      includeRecent,
+      hoursBack,
+      daysAhead
+    })
 
     if (streamsError) {
       console.error('Error fetching live streams:', streamsError)
     }
+
+    console.log(`Found ${liveStreams?.length || 0} live streams`)
 
     // Create lookup maps
     const channelMap = new Map(channels.map(c => [c.id, c]))

@@ -623,10 +623,9 @@ const Schedule: React.FC = () => {
     if (!scheduleData) return []
     const today = new Date()
     
-    // For development/testing: Show streams from the past 6 months to future
+    // Show streams from the past week to next week
     const startOfWeek = new Date(today)
-    startOfWeek.setMonth(today.getMonth() - 6) // Go back 6 months
-    startOfWeek.setDate(today.getDate() - today.getDay()) // Start of Sunday
+    startOfWeek.setDate(today.getDate() - today.getDay() - 7) // Start of last Sunday
     startOfWeek.setHours(0, 0, 0, 0)
     
     const endOfWeek = new Date(today)
@@ -639,7 +638,7 @@ const Schedule: React.FC = () => {
       totalStreams: scheduleData.liveStreams.length
     })
     
-    // Get all streams for this week (past, present, and future)
+    // Get all streams for the weekly view (past week, current week, and next week)
     const weeklyStreams = scheduleData.liveStreams.filter(stream => {
       // Use actual start time if available, otherwise scheduled time
       const streamTime = stream.actual_start_time_utc 
