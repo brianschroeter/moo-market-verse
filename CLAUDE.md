@@ -11,6 +11,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run lint` - Run ESLint
 - `npm run preview` - Preview production build
 
+### Deployment Process
+Standard deployment workflow for production:
+```bash
+npm run build
+git add .
+git commit -m "feat: Your commit message"
+git push
+vercel --prod
+```
+
 ### Supabase Commands
 - `npx supabase start` - Start local Supabase stack
 - `npx supabase db reset` - Reset local database with migrations
@@ -34,6 +44,11 @@ Located in `scripts/` directory:
 - `./scripts/check-production-orders.cjs` - Check production order data
 - `./scripts/diagnose-shopify-sync.cjs` - Diagnose Shopify sync issues
 - `./scripts/test-printful-sync.sh` - Test Printful sync functionality
+
+### YouTube Sync Manual Endpoints
+- Full sync: `curl -X POST "https://discord.lolcow.co/api/manual-youtube-sync" -H "Content-Type: application/json"`
+- Active sync: `curl -X POST "https://discord.lolcow.co/api/manual-youtube-sync-active" -H "Content-Type: application/json"`
+- Today sync: `curl -X POST "https://discord.lolcow.co/api/manual-youtube-sync-today" -H "Content-Type: application/json"`
 
 ### Type Safety Workflow
 1. After database schema changes: `npx supabase gen types typescript --local`
@@ -61,6 +76,7 @@ Located in `scripts/` directory:
 - Concurrent operation prevention via useRef flags
 - State persistence: Impersonation state persisted to localStorage
 - Error handling: URL-based auth error detection and toast notifications
+- Auto-cleanup: Corrupted auth state automatically detected and cleared on initialization
 
 #### Development Mode Security
 - `DEV_MODE` only activates when `import.meta.env.DEV && import.meta.env.VITE_DEVMODE === 'true'`
@@ -119,6 +135,14 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - Discord/YouTube API integrations
 - Order processing & linking
 - Newsletter subscriptions
+
+#### YouTube Sync Architecture
+- **sync-youtube-streams**: Main sync function with encryption salt handling (YOUTUBE_API_KEY_SALT)
+- **sync-youtube-active**: Lightweight sync for live/upcoming streams (2min cache bypass)
+- **sync-youtube-today**: Daily schedule sync with forceRefresh and skipCache
+- **Stream Status**: Uses YouTube's `liveBroadcastContent` field for accurate status
+- **Overnight Streams**: Streams starting after 8PM show on both days with day indicators
+- **Cache Strategy**: 2-minute TTL for live content, aggressive bypass for real-time updates
 
 #### Edge Function Patterns
 - **Shared Utilities**: `/supabase/functions/_shared/auth.ts` and `cors.ts`
@@ -205,6 +229,9 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - Connection status monitoring
 - Integration with content delivery
 - Hybrid thumbnail approach: real thumbnails with colored placeholder fallback
+- **Cron Jobs**: Vercel Cron Jobs (daily on free tier) + manual sync endpoints
+- **Schedule Page**: Auto-refresh every 30s when live, 2min otherwise
+- **Channel Sorting**: Ordered by earliest weekday stream time (Mon-Fri)
 
 #### E-commerce
 - Shopify order tracking
@@ -236,6 +263,23 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - Edge functions require JWT verification (configurable in `supabase/config.toml`)
 - Use the existing service patterns when adding new integrations
 - Follow established component patterns and TypeScript conventions
+
+### Common Issues and Solutions
+
+#### YouTube Sync Not Working
+- **Symptom**: Videos show as live when they're not, or scheduled videos show as "Streamed"
+- **Cause**: Encryption salt mismatch or cache issues
+- **Solution**: Check YOUTUBE_API_KEY_SALT environment variable, ensure forceRefresh/skipCache in sync functions
+
+#### Navigation Items Not Persisting
+- **Symptom**: Admin toggle changes revert after page refresh
+- **Cause**: Navbar defaulting to show missing database items
+- **Solution**: NavigationManager uses insert-or-update pattern, Navbar checks database state properly
+
+#### Overnight Streams Display Issues
+- **Symptom**: Streams showing at midnight next day instead of current day
+- **Cause**: Date boundary logic not accounting for overnight streams
+- **Solution**: Only streams starting after 8PM are considered overnight, show day indicators
 
 #### Auth State Management
 - **Auto-cleanup**: The app automatically detects and clears corrupted auth state on initialization

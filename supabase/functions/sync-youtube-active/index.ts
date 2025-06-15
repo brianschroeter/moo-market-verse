@@ -15,6 +15,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
     console.log('Starting lightweight active streams sync...')
+    console.log(`Current time: ${new Date().toISOString()}`)
 
     // Get currently live streams and streams starting soon
     const now = new Date()
@@ -40,7 +41,7 @@ serve(async (req) => {
           channel_name
         )
       `)
-      .or(`status.eq.live,and(scheduled_start_time_utc.gte.${now.toISOString()},scheduled_start_time_utc.lte.${oneHourFromNow.toISOString()}),and(actual_start_time_utc.gte.${twelveHoursAgo.toISOString()},status.neq.ended),and(status.is.null,fetched_at.gte.${oneHourAgo.toISOString()})`)
+      .or(`status.eq.live,status.eq.upcoming,and(scheduled_start_time_utc.gte.${twelveHoursAgo.toISOString()},scheduled_start_time_utc.lte.${twoHoursFromNow.toISOString()}),and(actual_start_time_utc.gte.${twelveHoursAgo.toISOString()},status.neq.ended),and(status.is.null,fetched_at.gte.${oneHourAgo.toISOString()})`)
 
     if (streamsError) {
       throw new Error(`Failed to fetch active streams: ${streamsError.message}`)
@@ -73,6 +74,11 @@ serve(async (req) => {
     }
 
     console.log(`Found ${activeStreams.length} active/upcoming streams to check`)
+    
+    // Log the status of each stream for debugging
+    activeStreams.forEach(stream => {
+      console.log(`Stream ${stream.video_id}: status=${stream.status}, scheduled=${stream.scheduled_start_time_utc}, actual=${stream.actual_start_time_utc}`)
+    })
 
     // Also check all channels for new live content (not just known streams)
     // This ensures we catch streams that just went live

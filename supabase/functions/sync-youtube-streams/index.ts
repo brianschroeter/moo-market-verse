@@ -755,6 +755,8 @@ function determineStreamStatus(video: YouTubeVideo): string {
   // For 'live' broadcast content, trust YouTube's assessment
   // Only apply sanity checks for extremely long durations
   if (broadcastContent === 'live') {
+    console.log(`Stream ${video.id} has liveBroadcastContent: 'live'`)
+    
     // If the stream has actualStartTime, check duration
     if (actualStart) {
       const hoursLive = (now.getTime() - actualStart.getTime()) / (1000 * 60 * 60)

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getProxiedImageUrl, getImageWithFallback } from "@/utils/imageProxy";
+import { useActiveSync } from "@/hooks/useActiveSync";
 
 interface ScheduleData {
   channels: Channel[]
@@ -592,6 +593,9 @@ const WeeklyScheduleTable: React.FC<{
 const Schedule: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<'live' | 'replay' | 'upcoming'>('live');
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+
+  // Trigger active sync when viewing the schedule
+  useActiveSync();
 
   // Fetch schedule data - always include recent for replays
   const { data: scheduleData, isLoading, isError, error, refetch } = useQuery<ScheduleData>({
