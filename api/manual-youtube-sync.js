@@ -20,14 +20,14 @@ export default async function handler(req, res) {
     // Call the sync functions using anon key (they have verify_jwt = false)
     const results = {};
 
-    // 1. Full sync
+    // 1. Full sync with forceRefresh to bypass cache
     const fullSyncResponse = await fetch(`${SUPABASE_URL}/functions/v1/sync-youtube-streams`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({})
+      body: JSON.stringify({ forceRefresh: true })
     });
     results.fullSync = await fullSyncResponse.json();
 

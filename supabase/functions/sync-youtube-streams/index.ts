@@ -88,9 +88,11 @@ class YouTubeAPIService {
   private supabase
   private currentApiKey: string | null = null
   private currentApiKeyId: string | null = null
+  private skipCache: boolean = false
 
-  constructor(supabaseClient: any) {
+  constructor(supabaseClient: any, skipCache: boolean = false) {
     this.supabase = supabaseClient
+    this.skipCache = skipCache
   }
 
   async getApiKey(): Promise<{ id: string; key: string }> {
@@ -119,7 +121,7 @@ class YouTubeAPIService {
 
   private decryptApiKey(encrypted: string): string {
     try {
-      const salt = Deno.env.get('ENCRYPTION_SALT') || 'default-salt'
+      const salt = Deno.env.get('YOUTUBE_API_KEY_SALT') || Deno.env.get('ENCRYPTION_SALT') || 'default-salt'
       const decrypted = atob(encrypted)
       const parts = decrypted.split(':')
       if (parts.length === 3 && parts[0] === salt && parts[2] === salt) {
@@ -206,11 +208,13 @@ class YouTubeAPIService {
   async searchUpcomingLiveStreams(channelId: string, maxResults: number = 10): Promise<YouTubeVideo[]> {
     const cacheKey = `upcoming_${channelId}_${maxResults}`
     
-    // Check cache first
-    const cached = await this.getCachedResponse(cacheKey)
-    if (cached && !cached.response_data.error) {
-      await this.trackAPIUsage('search', 0, [channelId], true)
-      return cached.response_data.items || []
+    // Check cache first (unless skipCache is true)
+    if (!this.skipCache) {
+      const cached = await this.getCachedResponse(cacheKey)
+      if (cached && !cached.response_data.error) {
+        await this.trackAPIUsage('search', 0, [channelId], true)
+        return cached.response_data.items || []
+      }
     }
 
     // Get API key
@@ -271,11 +275,13 @@ class YouTubeAPIService {
   async searchRecentVideos(channelId: string, hoursBack: number = 24, maxResults: number = 10): Promise<YouTubeVideo[]> {
     const cacheKey = `recent_${channelId}_${hoursBack}_${maxResults}`
     
-    // Check cache first
-    const cached = await this.getCachedResponse(cacheKey)
-    if (cached && !cached.response_data.error) {
-      await this.trackAPIUsage('search', 0, [channelId], true)
-      return cached.response_data.items || []
+    // Check cache first (unless skipCache is true)
+    if (!this.skipCache) {
+      const cached = await this.getCachedResponse(cacheKey)
+      if (cached && !cached.response_data.error) {
+        await this.trackAPIUsage('search', 0, [channelId], true)
+        return cached.response_data.items || []
+      }
     }
 
     // Get API key
@@ -340,11 +346,13 @@ class YouTubeAPIService {
 
     const cacheKey = `videos_${videoIds.sort().join('_')}`
     
-    // Check cache first
-    const cached = await this.getCachedResponse(cacheKey)
-    if (cached && !cached.response_data.error) {
-      await this.trackAPIUsage('videos', 0, [], true)
-      return cached.response_data.items || []
+    // Check cache first (unless skipCache is true)
+    if (!this.skipCache) {
+      const cached = await this.getCachedResponse(cacheKey)
+      if (cached && !cached.response_data.error) {
+        await this.trackAPIUsage('videos', 0, [], true)
+        return cached.response_data.items || []
+      }
     }
 
     // Get API key
@@ -489,7 +497,7 @@ serve(async (req) => {
       }
     }
 
-    const youtubeAPI = new YouTubeAPIService(supabaseServiceRole)
+    const youtubeAPI = new YouTubeAPIService(supabaseServiceRole, config.forceRefresh || config.skipCache || false)
 
     // Handle specific video IDs sync (for active sync)
     if (config.videoIds && config.videoIds.length > 0) {
@@ -734,22 +742,39 @@ function determineStreamStatus(video: YouTubeVideo): string {
     return 'completed'
   }
   
-  // If YouTube API says it's live, trust that
-  if (broadcastContent === 'live') {
-    return 'live'
-  }
-  
   // If YouTube API says it's upcoming, trust that
   if (broadcastContent === 'upcoming') {
     return 'upcoming'
   }
   
+  // For 'live' broadcast content, apply additional checks
+  if (broadcastContent === 'live') {
+    // If the stream has actualStartTime, check duration
+    if (actualStart) {
+      const hoursLive = (now.getTime() - actualStart.getTime()) / (1000 * 60 * 60)
+      
+      // Most live streams don't last more than 8 hours
+      // Be more aggressive about marking old streams as completed
+      if (hoursLive > 8) {
+        console.log(`Stream ${video.id} has been live for ${hoursLive.toFixed(1)} hours, marking as completed`)
+        return 'completed'
+      }
+      
+      // Also check if concurrent viewers is 0 or missing (indicates stream ended)
+      const concurrentViewers = video.liveStreamingDetails?.concurrentViewers
+      if (concurrentViewers === '0' || (!concurrentViewers && hoursLive > 1)) {
+        console.log(`Stream ${video.id} has no concurrent viewers, marking as completed`)
+        return 'completed'
+      }
+    }
+    return 'live'
+  }
+  
   // Fallback logic when liveBroadcastContent is not definitive
   if (actualStart) {
-    // Check if the stream has been "live" for more than 12 hours
-    // Most streams don't last longer than this
+    // Check if the stream has been "live" for more than 8 hours
     const hoursLive = (now.getTime() - actualStart.getTime()) / (1000 * 60 * 60)
-    if (hoursLive > 12) {
+    if (hoursLive > 8) {
       return 'completed'
     }
     return 'live'
