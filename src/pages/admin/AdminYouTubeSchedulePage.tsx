@@ -127,7 +127,7 @@ const AdminYouTubeSchedulePage: React.FC = () => {
     try {
       const response = await syncYouTubeStreams({
         lookAheadHours: 48,
-        lookBackHours: 240, // 10 days back to ensure full previous week coverage
+        lookBackHours: 336, // 14 days back to ensure we always have last week's data for predictions
         forceRefresh: true,
         maxResults: 50 // Increased to get more videos per channel
       });
