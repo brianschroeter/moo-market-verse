@@ -331,8 +331,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // For local development, use hardcoded key if env var not available
-    const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY') || 'AIzaSyDXWUdOgsZMacMshvvlGT6oscCkdrUngFY'
+    // Get YouTube API key from environment
+    const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY')
     if (!youtubeApiKey) {
       throw new Error('YOUTUBE_API_KEY environment variable is not set')
     }
