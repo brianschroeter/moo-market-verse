@@ -38,9 +38,9 @@ const RankingsTable: React.FC<RankingsTableProps> = ({ data, columns, valueForma
   };
 
   const getRankDisplay = (rank: any, index: number) => {
-    if (index === 0) return <Trophy className="h-5 w-5 text-yellow-400" />;
-    if (index === 1) return <Trophy className="h-5 w-5 text-gray-400" />;
-    if (index === 2) return <Trophy className="h-5 w-5 text-amber-700" />;
+    if (index === 0) return <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400" />;
+    if (index === 1) return <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />;
+    if (index === 2) return <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-amber-700" />;
     return `#${rank}`;
   };
 
@@ -57,8 +57,8 @@ const RankingsTable: React.FC<RankingsTableProps> = ({ data, columns, valueForma
               <th 
                 key={column} 
                 className={cn(
-                  "py-3 px-3 text-left font-medium text-sm",
-                  column === "rank" && "w-12 text-center",
+                  "py-2 sm:py-3 px-2 sm:px-3 text-left font-medium text-xs sm:text-sm",
+                  column === "rank" && "w-10 sm:w-12 text-center",
                   (column === "amount" || column === "gifts") && "text-right",
                   (column === "crownCount" || column === "paypigCount" || column === "cashCowCount" || column === "crown" || column === "pig" || column === "cow") && "text-center"
                 )}
@@ -81,10 +81,10 @@ const RankingsTable: React.FC<RankingsTableProps> = ({ data, columns, valueForma
                 <td 
                   key={`${row.id || index}-${column}`} 
                   className={cn(
-                    "py-3 px-3",
+                    "py-2 sm:py-3 px-2 sm:px-3 text-xs sm:text-sm",
                     column === "rank" && index < 3 ? "font-bold flex justify-center items-center h-full" : "",
                     column === "rank" && index >= 3 && "font-medium text-gray-500 text-center",
-                    column === "show" && "text-white font-medium",
+                    column === "show" && "text-white font-medium truncate max-w-[120px] sm:max-w-none",
                     column === "amount" && "text-blue-400 font-medium text-right",
                     column === "gifts" && "text-green-400 font-medium text-right",
                     (column === "crownCount" || column === "crown") && "text-yellow-400 font-medium text-center",

@@ -63,34 +63,34 @@ const SuperchatsTab: React.FC<SuperchatsTabProps> = ({ data }) => {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-        <div className="flex items-center mb-4 md:mb-0">
-          <div className="p-2 rounded-lg bg-lolcow-red/20 mr-3">
-            <DollarSign className="h-6 w-6 text-lolcow-red" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-6">
+        <div className="flex items-center mb-3 md:mb-0">
+          <div className="p-1.5 sm:p-2 rounded-lg bg-lolcow-red/20 mr-2 sm:mr-3">
+            <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-lolcow-red" />
           </div>
-          <h3 className="text-2xl font-bold text-white">
+          <h3 className="text-xl sm:text-2xl font-bold text-white">
             Superchat <span className="text-lolcow-red">Rankings</span>
           </h3>
         </div>
         
-        <div className="flex flex-wrap items-center justify-center md:justify-end gap-4">
-          <div className="bg-gray-800/80 rounded-lg px-4 py-2 border border-gray-700/50 flex items-center">
-            <Trophy className="h-4 w-4 text-yellow-500 mr-2" />
-            <span className="text-gray-400 text-sm mr-2">Top earner:</span>
-            <span className="font-semibold text-white">{topEarner}</span>
+        <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 sm:gap-4">
+          <div className="bg-gray-800/80 rounded-lg px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-700/50 flex items-center">
+            <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-yellow-500 mr-1.5 sm:mr-2" />
+            <span className="text-gray-400 text-xs sm:text-sm mr-1 sm:mr-2">Top:</span>
+            <span className="font-semibold text-white text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{topEarner}</span>
           </div>
           
-          <div className="bg-gray-800/80 rounded-lg px-4 py-2 border border-gray-700/50 flex items-center">
-            <TrendingUp className="h-4 w-4 text-green-500 mr-2" />
-            <span className="text-gray-400 text-sm mr-2">Total:</span>
-            <span className="font-semibold text-white">${totalAmount}</span>
+          <div className="bg-gray-800/80 rounded-lg px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-700/50 flex items-center">
+            <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 mr-1.5 sm:mr-2" />
+            <span className="text-gray-400 text-xs sm:text-sm mr-1 sm:mr-2">Total:</span>
+            <span className="font-semibold text-white text-xs sm:text-sm">${totalAmount}</span>
           </div>
         </div>
       </div>
       
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 min-h-[350px] shadow-lg">
-          <div className="mb-4 text-lg font-medium text-gray-200">Top 5 Shows by Superchat Revenue</div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-gray-800/30 p-4 sm:p-6 rounded-xl border border-gray-700/50 min-h-[300px] sm:min-h-[350px] shadow-lg">
+          <div className="mb-3 sm:mb-4 text-base sm:text-lg font-medium text-gray-200">Top 5 Shows by Superchat Revenue</div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 30 }}>
               <defs>
@@ -130,8 +130,8 @@ const SuperchatsTab: React.FC<SuperchatsTabProps> = ({ data }) => {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 shadow-lg">
-          <div className="mb-4 text-lg font-medium text-gray-200">Complete Rankings</div>
+        <div className="bg-gray-800/30 p-4 sm:p-6 rounded-xl border border-gray-700/50 shadow-lg">
+          <div className="mb-3 sm:mb-4 text-base sm:text-lg font-medium text-gray-200">Complete Rankings</div>
           <RankingsTable 
             data={data}
             columns={["rank", "show", "amount"]}

@@ -53,7 +53,7 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
 
   const CROWN_VALUE = 500;
   const PAYPIG_VALUE = 100;
-  const CASH_COW_VALUE = 5;
+  const CASH_COW_VALUE = 10;
 
   useEffect(() => {
     if (data && data.length > 0) {
@@ -112,49 +112,49 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-        <div className="flex flex-col">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 sm:mb-6">
+        <div className="flex flex-col mb-4 lg:mb-0">
           <div className="flex items-center mb-2">
-            <div className="p-2 rounded-lg bg-yellow-500/20 mr-3">
-              <LayoutPanelTop className="h-6 w-6 text-yellow-400" />
+            <div className="p-1.5 sm:p-2 rounded-lg bg-yellow-500/20 mr-2 sm:mr-3">
+              <LayoutPanelTop className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-400" />
             </div>
-            <h3 className="text-2xl font-bold text-white">
+            <h3 className="text-xl sm:text-2xl font-bold text-white">
               Membership <span className="text-yellow-400">Breakdown</span>
             </h3>
           </div>
-          <div className="flex flex-col md:flex-row md:items-center gap-2 text-sm">
+          <div className="flex flex-col md:flex-row md:items-center gap-2 text-xs sm:text-sm">
             <div className="flex items-center">
-              <span className="h-2.5 w-2.5 bg-green-500 rounded-full mr-1.5"></span>
+              <span className="h-2 w-2 sm:h-2.5 sm:w-2.5 bg-green-500 rounded-full mr-1 sm:mr-1.5"></span>
               <span className="text-green-400 font-medium">Current Active Memberships</span>
             </div>
             <span className="text-gray-500 hidden md:inline">•</span>
-            <span className="text-gray-400">Ranked by total membership value (Crown: $500, PayPig: $100, CashCow: $5)</span>
+            <span className="text-gray-400">Ranked by value (Crown: $500, PayPig: $100, Cash\u00A0Cow: $10)</span>
           </div>
         </div>
         
-        <div className="flex items-center gap-3 bg-gray-800/80 rounded-lg px-4 py-2 border border-gray-700/50">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-gray-800/80 rounded-lg px-3 py-2 sm:px-4 border border-gray-700/50">
           <div className="flex items-center">
-            <div className="h-3 w-3 bg-yellow-500 rounded-full mr-2"></div>
-            <span className="text-gray-300 text-sm mr-2">Crown:</span>
-            <span className="font-semibold text-white mr-3">{totals.crown.toLocaleString()}</span>
+            <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 bg-yellow-500 rounded-full mr-1.5 sm:mr-2"></div>
+            <span className="text-gray-300 text-xs sm:text-sm mr-1 sm:mr-2">Crown:</span>
+            <span className="font-semibold text-white text-xs sm:text-sm mr-2 sm:mr-3">{totals.crown.toLocaleString()}</span>
           </div>
           <div className="flex items-center">
-            <div className="h-3 w-3 bg-pink-500 rounded-full mr-2"></div>
-            <span className="text-gray-300 text-sm mr-2">Pay Pig:</span>
-            <span className="font-semibold text-white mr-3">{totals.pig.toLocaleString()}</span>
+            <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 bg-pink-500 rounded-full mr-1.5 sm:mr-2"></div>
+            <span className="text-gray-300 text-xs sm:text-sm mr-1 sm:mr-2">PayPig:</span>
+            <span className="font-semibold text-white text-xs sm:text-sm mr-2 sm:mr-3">{totals.pig.toLocaleString()}</span>
           </div>
           <div className="flex items-center">
-            <div className="h-3 w-3 bg-sky-500 rounded-full mr-2"></div>
-            <span className="text-gray-300 text-sm mr-2">Cash Cow:</span>
-            <span className="font-semibold text-white">{totals.cow.toLocaleString()}</span>
+            <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 bg-sky-500 rounded-full mr-1.5 sm:mr-2"></div>
+            <span className="text-gray-300 text-xs sm:text-sm mr-1 sm:mr-2">CashCow:</span>
+            <span className="font-semibold text-white text-xs sm:text-sm">{totals.cow.toLocaleString()}</span>
           </div>
         </div>
       </div>
       
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 min-h-[350px] shadow-lg">
-          <div className="mb-4">
-            <div className="text-lg font-medium text-gray-200">Membership Distribution (Top 5)</div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-gray-800/30 p-4 sm:p-6 rounded-xl border border-gray-700/50 min-h-[300px] sm:min-h-[350px] shadow-lg">
+          <div className="mb-3 sm:mb-4">
+            <div className="text-base sm:text-lg font-medium text-gray-200">Membership Distribution (Top 5)</div>
             <div className="text-xs text-gray-400 mt-1">Stacked by membership counts • Sorted by total value</div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
@@ -209,9 +209,9 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 shadow-lg">
-          <div className="mb-4">
-            <div className="text-lg font-medium text-gray-200">Complete Rankings</div>
+        <div className="bg-gray-800/30 p-4 sm:p-6 rounded-xl border border-gray-700/50 shadow-lg">
+          <div className="mb-3 sm:mb-4">
+            <div className="text-base sm:text-lg font-medium text-gray-200">Complete Rankings</div>
             <div className="text-xs text-gray-400 mt-1">Ranked by total membership value • Current active memberships only</div>
           </div>
             <RankingsTable
@@ -228,32 +228,32 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 mb-6"> {/* Added mb-6 */}
-        <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 flex flex-col items-center text-center shadow-lg">
-          <div className="p-3 rounded-full bg-yellow-500/20 mb-3 flex items-center justify-center">
-            <Crown className="h-8 w-8 text-yellow-400" />
+      <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6">
+        <div className="bg-gray-800/30 p-4 sm:p-6 rounded-xl border border-gray-700/50 flex flex-col items-center text-center shadow-lg">
+          <div className="p-2 sm:p-3 rounded-full bg-yellow-500/20 mb-2 sm:mb-3 flex items-center justify-center">
+            <Crown className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-400" />
           </div>
-          <h3 className="text-lg font-bold text-white">Crown Tier</h3>
-          <p className="text-yellow-400 font-bold text-2xl mt-1">{totals.crown.toLocaleString()}</p>
-          <p className="text-gray-400 text-sm mt-2">Premium supporters with exclusive benefits</p>
+          <h3 className="text-base sm:text-lg font-bold text-white">Crown Tier</h3>
+          <p className="text-yellow-400 font-bold text-xl sm:text-2xl mt-1">{totals.crown.toLocaleString()}</p>
+          <p className="text-gray-400 text-xs sm:text-sm mt-2">Premium supporters with exclusive benefits</p>
         </div>
         
-        <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 flex flex-col items-center text-center shadow-lg">
-          <div className="p-3 rounded-full bg-pink-500/20 mb-3 flex items-center justify-center">
-            <PiggyBank className="h-8 w-8 text-pink-400" />
+        <div className="bg-gray-800/30 p-4 sm:p-6 rounded-xl border border-gray-700/50 flex flex-col items-center text-center shadow-lg">
+          <div className="p-2 sm:p-3 rounded-full bg-pink-500/20 mb-2 sm:mb-3 flex items-center justify-center">
+            <PiggyBank className="h-6 w-6 sm:h-8 sm:w-8 text-pink-400" />
           </div>
-          <h3 className="text-lg font-bold text-white">Pay Pig Tier</h3>
-          <p className="text-pink-400 font-bold text-2xl mt-1">{totals.pig.toLocaleString()}</p>
-          <p className="text-gray-400 text-sm mt-2">Mid-tier supporters with special perks</p>
+          <h3 className="text-base sm:text-lg font-bold text-white">Pay Pig Tier</h3>
+          <p className="text-pink-400 font-bold text-xl sm:text-2xl mt-1">{totals.pig.toLocaleString()}</p>
+          <p className="text-gray-400 text-xs sm:text-sm mt-2">Mid-tier supporters with special perks</p>
         </div>
         
-        <div className="bg-gray-800/30 p-6 rounded-xl border border-gray-700/50 flex flex-col items-center text-center shadow-lg">
-          <div className="p-3 rounded-full bg-sky-500/20 mb-3 flex items-center justify-center">
-            <Icon iconNode={cowHead} className="h-8 w-8 text-sky-400" />
+        <div className="bg-gray-800/30 p-4 sm:p-6 rounded-xl border border-gray-700/50 flex flex-col items-center text-center shadow-lg">
+          <div className="p-2 sm:p-3 rounded-full bg-sky-500/20 mb-2 sm:mb-3 flex items-center justify-center">
+            <Icon iconNode={cowHead} className="h-6 w-6 sm:h-8 sm:w-8 text-sky-400" />
           </div>
-          <h3 className="text-lg font-bold text-white">Cash Cow Tier</h3>
-          <p className="text-sky-400 font-bold text-2xl mt-1">{totals.cow.toLocaleString()}</p>
-          <p className="text-gray-400 text-sm mt-2">Basic membership with standard benefits</p>
+          <h3 className="text-base sm:text-lg font-bold text-white">Cash Cow Tier</h3>
+          <p className="text-sky-400 font-bold text-xl sm:text-2xl mt-1">{totals.cow.toLocaleString()}</p>
+          <p className="text-gray-400 text-xs sm:text-sm mt-2">Basic membership with standard benefits</p>
         </div>
       </div>
     </div>

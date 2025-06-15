@@ -9,12 +9,12 @@ interface LeaderboardTabsProps {
 
 const LeaderboardTabs = ({ activeTab, onTabChange }: LeaderboardTabsProps) => {
   return (
-    <div className="relative border-b border-gray-700/50 mb-6">
-      <div className="flex flex-col md:flex-row">
+    <div className="relative border-b border-gray-700/50 mb-4 sm:mb-6">
+      <div className="flex flex-row overflow-x-auto scrollbar-hide">
         <TabButton 
           isActive={activeTab === "superchats"}
           onClick={() => onTabChange("superchats")}
-          icon={<Star className={cn("h-4 w-4", "text-white")} />}
+          icon={<Star className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", "text-white")} />}
           label="Superchats"
           color={activeTab === "superchats" ? "from-red-600 to-red-500" : "from-blue-600 to-blue-400"}
           textColor={activeTab === "superchats" ? "text-lolcow-red" : "text-white"}
@@ -24,8 +24,10 @@ const LeaderboardTabs = ({ activeTab, onTabChange }: LeaderboardTabsProps) => {
         <TabButton 
           isActive={activeTab === "gifted"}
           onClick={() => onTabChange("gifted")}
-          icon={<Users className={cn("h-4 w-4", activeTab === "gifted" ? "text-white" : "text-white")} />}
-          label="Gifted Members"
+          icon={<Users className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", activeTab === "gifted" ? "text-white" : "text-white")} />}
+          label="Gifted"
+          labelMobile="Gifted"
+          labelDesktop="Gifted Members"
           color="from-green-600 to-green-400" 
           textColor={activeTab === "gifted" ? "text-white" : "text-gray-400"}
           indicator="bg-green-500"
@@ -34,7 +36,7 @@ const LeaderboardTabs = ({ activeTab, onTabChange }: LeaderboardTabsProps) => {
         <TabButton 
           isActive={activeTab === "breakdown"}
           onClick={() => onTabChange("breakdown")}
-          icon={<BarChart className={cn("h-4 w-4", activeTab === "breakdown" ? "text-white" : "text-white")} />}
+          icon={<BarChart className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", activeTab === "breakdown" ? "text-white" : "text-white")} />}
           label="Breakdown"
           color="from-yellow-600 to-yellow-400"
           textColor={activeTab === "breakdown" ? "text-white" : "text-gray-400"}
@@ -50,30 +52,35 @@ interface TabButtonProps {
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  labelMobile?: string;
+  labelDesktop?: string;
   color: string;
   textColor: string;
   indicator: string;
 }
 
-const TabButton = ({ isActive, onClick, icon, label, color, textColor, indicator }: TabButtonProps) => {
+const TabButton = ({ isActive, onClick, icon, label, labelMobile, labelDesktop, color, textColor, indicator }: TabButtonProps) => {
   return (
     <button 
       onClick={onClick}
       className={cn(
-        "flex-1 flex items-center justify-center gap-2 py-4 px-6 transition-all duration-200 font-medium relative",
+        "flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-4 px-3 sm:px-6 transition-all duration-200 font-medium relative min-w-fit",
         isActive 
           ? textColor
           : "text-gray-400 hover:text-white"
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         <span className={cn(
-          "flex items-center justify-center p-1 rounded-full",
+          "flex items-center justify-center p-0.5 sm:p-1 rounded-full",
           isActive ? `bg-gradient-to-r ${color}` : "bg-gray-700/50"
         )}>
           {icon}
         </span>
-        <span>{label}</span>
+        <span className="text-sm sm:text-base">
+          <span className="inline sm:hidden">{labelMobile || label}</span>
+          <span className="hidden sm:inline">{labelDesktop || label}</span>
+        </span>
       </div>
       
       {isActive && (

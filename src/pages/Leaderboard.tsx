@@ -292,9 +292,9 @@ const Leaderboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <div className="flex justify-center mb-8">
-          <div className="bg-slate-700/50 border border-slate-600/70 text-sm text-slate-300 px-4 py-2 rounded-full flex items-center">
-            <span className="h-2.5 w-2.5 bg-green-500 rounded-full mr-2.5"></span>
+        <div className="flex justify-center mb-6 sm:mb-8">
+          <div className="bg-slate-700/50 border border-slate-600/70 text-xs sm:text-sm text-slate-300 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full flex items-center">
+            <span className="h-2 w-2 sm:h-2.5 sm:w-2.5 bg-green-500 rounded-full mr-2 sm:mr-2.5"></span>
             Data updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
           </div>
         </div>
