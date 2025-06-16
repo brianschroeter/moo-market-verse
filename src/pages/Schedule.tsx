@@ -312,11 +312,15 @@ const WeeklyScheduleTable: React.FC<{
       const dayStream = liveStreams.find(stream => {
         if (stream.youtube_channel_id !== channel.id) return false
         
-        // Only show streams that started on this day
+        // Only show streams that started on this day (in local time)
         const streamStartTime = stream.actual_start_time_utc || stream.scheduled_start_time_utc
         if (streamStartTime) {
           const streamStartDate = new Date(streamStartTime)
-          if (streamStartDate >= targetDate && streamStartDate <= targetDateEnd) {
+          // Convert to local date string to compare day boundaries
+          const streamLocalDateStr = streamStartDate.toLocaleDateString()
+          const targetLocalDateStr = targetDate.toLocaleDateString()
+          
+          if (streamLocalDateStr === targetLocalDateStr) {
             return true
           }
         }
@@ -374,7 +378,11 @@ const WeeklyScheduleTable: React.FC<{
         if (!streamTime) return false
         
         const streamDate = new Date(streamTime)
-        return streamDate >= lastWeekDate && streamDate <= lastWeekDateEnd
+        // Compare local dates for last week's prediction
+        const streamLocalDateStr = streamDate.toLocaleDateString()
+        const lastWeekLocalDateStr = lastWeekDate.toLocaleDateString()
+        
+        return streamLocalDateStr === lastWeekLocalDateStr
       })
       
       if (lastWeekStream) {
