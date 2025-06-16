@@ -66,11 +66,11 @@ const BreakdownTab: React.FC<BreakdownTabProps> = ({ data }) => {
           return { ...item, _totalValue: totalValue }; // Store temporary value for sorting
         })
         .sort((a, b) => b._totalValue - a._totalValue)
-        .map(item => {
-          // Remove the temporary _totalValue before setting state
+        .map((item, index) => {
+          // Remove the temporary _totalValue and assign new rank based on sorted position
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { _totalValue, ...rest } = item;
-          return rest as MembershipBreakdownItem;
+          return { ...rest, rank: index + 1 } as MembershipBreakdownItem;
         });
       
       setProcessedDataForDisplay(sortedData);
