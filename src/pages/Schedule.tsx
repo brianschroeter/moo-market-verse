@@ -286,7 +286,7 @@ const WeeklyScheduleTable: React.FC<{
     slot?: ScheduleSlot, 
     stream?: LiveStream, 
     time?: string, 
-    type?: 'live' | 'streamed' | 'scheduled' | 'predicted' | 'overnight',
+    type?: 'live' | 'streamed' | 'scheduled' | 'predicted',
     note?: string 
   } => {
     // Calculate the actual date for this day in the current week
@@ -307,57 +307,16 @@ const WeeklyScheduleTable: React.FC<{
     const isPast = targetDate < now && !isToday
     const isFuture = targetDate > now && !isToday
     
-    // First, check for overnight streams (live streams from previous day)
-    // Only show streams that actually started late in the previous day (after 8 PM)
-    // This prevents showing afternoon streams as "overnight" streams
-    const previousDate = new Date(targetDate)
-    previousDate.setDate(previousDate.getDate() - 1)
-    previousDate.setHours(20, 0, 0, 0) // Only consider streams that started after 8 PM
-    
-    const previousDateEnd = new Date(targetDate)
-    previousDateEnd.setDate(previousDateEnd.getDate() - 1)
-    previousDateEnd.setHours(23, 59, 59, 999)
-    
-    const overnightStream = liveStreams.find(stream => {
-      if (stream.youtube_channel_id !== channel.id) return false
-      if (stream.status !== 'live') return false
-      
-      const streamTime = stream.actual_start_time_utc || stream.scheduled_start_time_utc
-      if (!streamTime) return false
-      
-      const streamDate = new Date(streamTime)
-      // Check if stream started late in the previous day (after 8 PM) and is still live
-      // This prevents afternoon streams from showing as overnight streams
-      return streamDate >= previousDate && streamDate <= previousDateEnd
-    })
-    
-    if (overnightStream) {
-      return {
-        stream: overnightStream,
-        time: '12:00\u00A0AM', // Non-breaking space to prevent wrapping
-        type: 'overnight',
-        note: 'Continued from yesterday'
-      }
-    }
-    
     // For today and past days, look for actual streams
     if (isToday || isPast) {
       const dayStream = liveStreams.find(stream => {
         if (stream.youtube_channel_id !== channel.id) return false
         
-        // Check if stream started on this day
+        // Only show streams that started on this day
         const streamStartTime = stream.actual_start_time_utc || stream.scheduled_start_time_utc
         if (streamStartTime) {
           const streamStartDate = new Date(streamStartTime)
           if (streamStartDate >= targetDate && streamStartDate <= targetDateEnd) {
-            return true
-          }
-        }
-        
-        // Also check if stream ended on this day (for midnight-spanning streams)
-        if (stream.actual_end_time_utc) {
-          const streamEndDate = new Date(stream.actual_end_time_utc)
-          if (streamEndDate >= targetDate && streamEndDate <= targetDateEnd) {
             return true
           }
         }
@@ -367,28 +326,7 @@ const WeeklyScheduleTable: React.FC<{
       
       if (dayStream) {
         const displayTime = dayStream.actual_start_time_utc || dayStream.scheduled_start_time_utc
-        let formattedTime = formatTime(displayTime)
-        
-        // Check if this stream started on a previous day
-        if (displayTime) {
-          const streamStartDate = new Date(displayTime)
-          const currentDayStart = new Date(targetDate)
-          currentDayStart.setHours(0, 0, 0, 0)
-          
-          if (streamStartDate < currentDayStart) {
-            // Stream started on a previous day - add day indicator
-            const dayName = streamStartDate.toLocaleDateString('en-US', { weekday: 'short' })
-            formattedTime = `${dayName} ${formattedTime}`
-            
-            // Mark this as an overnight stream
-            return { 
-              stream: dayStream, 
-              time: formattedTime,
-              type: dayStream.status === 'live' ? 'overnight' : 'streamed',
-              note: 'Started earlier'
-            }
-          }
-        }
+        const formattedTime = formatTime(displayTime)
         
         return { 
           stream: dayStream, 
@@ -533,8 +471,6 @@ const WeeklyScheduleTable: React.FC<{
                             <Badge className={`text-white text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 shadow-lg cursor-pointer transition-all whitespace-nowrap ${
                               type === 'live' 
                                 ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
-                                : type === 'overnight'
-                                ? 'bg-purple-600 hover:bg-purple-700 animate-pulse'
                                 : type === 'streamed'
                                 ? 'bg-green-600 hover:bg-green-700'
                                 : type === 'scheduled'
@@ -549,8 +485,6 @@ const WeeklyScheduleTable: React.FC<{
                               <span className={`text-[10px] sm:text-xs font-medium hidden sm:block ${
                                 type === 'live' 
                                   ? 'text-red-400' 
-                                  : type === 'overnight'
-                                  ? 'text-purple-400'
                                   : type === 'streamed'
                                   ? 'text-green-400'
                                   : type === 'scheduled'
@@ -560,7 +494,6 @@ const WeeklyScheduleTable: React.FC<{
                                   : 'text-gray-400'
                               }`}>
                                 {type === 'live' ? 'Live' 
-                                  : type === 'overnight' ? 'Live' 
                                   : type === 'streamed' ? 'Streamed' 
                                   : type === 'scheduled' ? 'Scheduled'
                                   : type === 'predicted' ? 'Usual Time'
