@@ -276,7 +276,7 @@ const Products: React.FC = () => {
           {/* Main Content with Sidebar */}
           <div className="flex gap-8">
             {/* Filters Sidebar */}
-            <aside className="w-72 flex-shrink-0 hidden lg:block">
+            <aside className="w-80 flex-shrink-0 hidden lg:block">
               <div className="sticky top-24 space-y-6">
                 {/* Active Filters Header */}
                 {(filters.collections.length > 0 || 
@@ -303,7 +303,9 @@ const Products: React.FC = () => {
                     <Package className="h-5 w-5 mr-2 text-lolcow-blue" />
                     Collections
                   </h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className={`grid gap-2 ${
+                    collections.length > 20 ? 'grid-cols-2' : 'grid-cols-1'
+                  }`}>
                     {collections.map((collection) => {
                       const productCount = allProducts.filter(p => p.collectionHandles.includes(collection.handle)).length;
                       const isChecked = filters.collections.includes(collection.handle);
@@ -311,7 +313,7 @@ const Products: React.FC = () => {
                       return (
                         <label 
                           key={collection.handle} 
-                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                          className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all duration-200 ${
                             isChecked ? 'bg-lolcow-blue/20 border border-lolcow-blue/40' : 'hover:bg-lolcow-lightgray/10'
                           }`}
                         >
@@ -326,14 +328,14 @@ const Products: React.FC = () => {
                               }));
                               setCurrentPage(1);
                             }}
-                            className="border-gray-400 data-[state=checked]:bg-lolcow-blue data-[state=checked]:border-lolcow-blue"
+                            className="border-gray-400 data-[state=checked]:bg-lolcow-blue data-[state=checked]:border-lolcow-blue flex-shrink-0 h-4 w-4"
                           />
-                          <span className={`flex-1 ${isChecked ? 'text-white font-medium' : 'text-gray-300'}`}>
+                          <span className={`flex-1 text-sm truncate ${isChecked ? 'text-white font-medium' : 'text-gray-300'}`} title={collection.title}>
                             {collection.title}
                           </span>
                           <Badge 
                             variant={isChecked ? "default" : "secondary"} 
-                            className="text-xs"
+                            className="text-xs px-1.5 py-0.5 flex-shrink-0"
                           >
                             {productCount}
                           </Badge>
