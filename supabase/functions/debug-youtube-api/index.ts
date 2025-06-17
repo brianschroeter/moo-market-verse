@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+import { createYouTubeAPIService, YouTubeAPIService } from '../_shared/youtube-api.ts'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -7,14 +9,23 @@ serve(async (req) => {
   }
 
   try {
-    // Get YouTube API key
-    const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY')
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
     
-    // Test if key exists
-    if (!youtubeApiKey) {
+    // Create YouTube API service
+    const youtubeService = createYouTubeAPIService(supabase)
+    
+    // Get an API key from the managed system
+    let apiKey
+    try {
+      apiKey = await youtubeService.getApiKey()
+    } catch (error) {
       return new Response(
         JSON.stringify({ 
-          error: 'YOUTUBE_API_KEY not found in environment',
+          error: 'Failed to get YouTube API key',
+          details: error.message,
           hasKey: false
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -23,28 +34,33 @@ serve(async (req) => {
 
     // Test a simple API call
     const testChannelId = 'UChcQ2TIYiihd9B4H50eRVlQ' // LolcowAussy
-    const url = new URL('https://www.googleapis.com/youtube/v3/search')
-    url.searchParams.set('key', youtubeApiKey)
-    url.searchParams.set('channelId', testChannelId)
-    url.searchParams.set('type', 'video')
-    url.searchParams.set('part', 'snippet')
-    url.searchParams.set('maxResults', '5')
-    url.searchParams.set('order', 'date')
+    const url = YouTubeAPIService.buildApiUrl('search', {
+      channelId: testChannelId,
+      type: 'video',
+      part: 'snippet',
+      maxResults: '5',
+      order: 'date'
+    })
 
     console.log('Testing YouTube API with channel:', testChannelId)
-    console.log('API URL:', url.toString().replace(youtubeApiKey, 'REDACTED'))
+    console.log('Using API key ID:', apiKey.id)
+    console.log('API URL:', url)
 
-    const response = await fetch(url.toString())
+    const response = await youtubeService.makeRequest(url)
     const data = await response.json()
 
     if (!response.ok) {
+      // Log the failed API call
+      await youtubeService.logApiUsage('search', [testChannelId], 100, false, JSON.stringify(data))
+      
       return new Response(
         JSON.stringify({ 
           error: 'YouTube API error',
           status: response.status,
           details: data,
           hasKey: true,
-          keyLength: youtubeApiKey.length
+          keyId: apiKey.id,
+          keyType: apiKey.id === 'env-key' ? 'environment' : 'managed'
         }),
         { 
           status: 400,
@@ -52,12 +68,16 @@ serve(async (req) => {
         }
       )
     }
+    
+    // Log successful API usage
+    await youtubeService.logApiUsage('search', [testChannelId], 100, true)
 
     return new Response(
       JSON.stringify({ 
         success: true,
         hasKey: true,
-        keyLength: youtubeApiKey.length,
+        keyId: apiKey.id,
+        keyType: apiKey.id === 'env-key' ? 'environment' : 'managed',
         videoCount: data.items?.length || 0,
         videos: data.items?.map((v: any) => ({
           id: v.id.videoId,

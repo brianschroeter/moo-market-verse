@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@^2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { createYouTubeAPIService, YouTubeAPIService } from '../_shared/youtube-api.ts';
 
 console.log(`Function "refresh-youtube-avatars" booting up...`);
 
@@ -33,13 +34,7 @@ Deno.serve(async (req) => {
     const limit = parseInt(url.searchParams.get('limit') || '10');
     const forceAll = url.searchParams.get('force_all') === 'true';
 
-    const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
-    if (!YOUTUBE_API_KEY) {
-      return new Response(JSON.stringify({ error: 'YouTube API key is not configured' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      });
-    }
+    // YouTube API service will be created after we have the admin client
 
     const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!SERVICE_ROLE_KEY) {
@@ -58,6 +53,9 @@ Deno.serve(async (req) => {
     }
 
     const supabaseAdminClient = createClient(supabaseUrl, SERVICE_ROLE_KEY);
+    
+    // Create YouTube API service with managed key system
+    const youtubeService = createYouTubeAPIService(supabaseAdminClient);
 
     // Get channels that need avatar refresh
     let query = supabaseAdminClient
@@ -104,13 +102,18 @@ Deno.serve(async (req) => {
       const channelIds = batch.map(ch => ch.youtube_channel_id).join(',');
 
       try {
-        // Fetch channel details from YouTube API
-        const youtubeUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelIds}&key=${YOUTUBE_API_KEY}`;
-        const youtubeResponse = await fetch(youtubeUrl);
+        // Fetch channel details from YouTube API using managed keys
+        const youtubeUrl = YouTubeAPIService.buildApiUrl('channels', {
+          part: 'snippet',
+          id: channelIds
+        });
+        const youtubeResponse = await youtubeService.makeRequest(youtubeUrl);
 
         if (!youtubeResponse.ok) {
           const errorData = await youtubeResponse.json();
           console.error('YouTube API Error:', errorData);
+          // Log the API usage
+          await youtubeService.logApiUsage('channels', batch.map(ch => ch.youtube_channel_id), batch.length, false, JSON.stringify(errorData));
           results.failed += batch.length;
           results.errors.push({
             channelIds: batch.map(ch => ch.youtube_channel_id),
@@ -121,6 +124,9 @@ Deno.serve(async (req) => {
         }
 
         const youtubeData = await youtubeResponse.json() as YouTubeChannelsAPIResponse;
+        
+        // Log successful API usage
+        await youtubeService.logApiUsage('channels', batch.map(ch => ch.youtube_channel_id), batch.length, true);
 
         // Update each channel with fresh data
         for (const channel of batch) {

@@ -3,13 +3,8 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with',
-  'Access-Control-Max-Age': '86400', // 24 hours
-};
+import { createYouTubeAPIService, YouTubeAPIService } from '../_shared/youtube-api.ts';
+import { corsHeaders } from '../_shared/cors.ts';
 
 serve(async (req) => {
   console.log("Received request to verify-youtube function");
@@ -144,45 +139,38 @@ serve(async (req) => {
       );
     }
 
-    // Fetch YouTube channel data using the YouTube Data API
-    const youtubeApiKey = Deno.env.get("YOUTUBE_API_KEY");
+    // Create YouTube API service with managed key system
+    const youtubeService = createYouTubeAPIService(supabaseClient);
     let youtubeAvatar = null;
     let fetchedChannelName = null;
-
-    if (!youtubeApiKey) {
-      console.error("YouTube API key not found in environment variables");
-      return new Response(
-        JSON.stringify({ 
-          error: "YouTube API key not configured",
-          message: "The server is missing the YouTube API key configuration."
-        }),
-        { 
-          status: 500, 
-          headers: { 
-            'Content-Type': 'application/json',
-            ...corsHeaders
-          } 
-        }
-      );
-    }
 
     try {
       console.log(`Fetching YouTube data for channel ID: ${youtubeChannelId}`);
       
-      // Construct YouTube API URL
-      const youtubeApiUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${youtubeChannelId}&key=${youtubeApiKey}`;
-      console.log("YouTube API URL (without key):", youtubeApiUrl.replace(youtubeApiKey, "API_KEY_HIDDEN"));
+      // Construct YouTube API URL using the service helper
+      const youtubeApiUrl = YouTubeAPIService.buildApiUrl('channels', {
+        part: 'snippet',
+        id: youtubeChannelId
+      });
+      console.log("YouTube API URL (without key):", youtubeApiUrl);
       
-      const response = await fetch(youtubeApiUrl);
+      const response = await youtubeService.makeRequest(youtubeApiUrl);
       
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`YouTube API Error: Status ${response.status}, ${errorText}`);
+        
+        // Log the failed API call
+        await youtubeService.logApiUsage('channels', [youtubeChannelId], 1, false, errorText);
+        
         throw new Error(`YouTube API returned ${response.status}: ${errorText}`);
       }
       
       const data = await response.json();
       console.log("YouTube API response items length:", data.items?.length);
+      
+      // Log successful API usage
+      await youtubeService.logApiUsage('channels', [youtubeChannelId], 1, true);
       
       if (data.items && data.items.length > 0) {
         const channelData = data.items[0];

@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+import { createYouTubeAPIService, YouTubeAPIService } from '../_shared/youtube-api.ts'
 
 // Interfaces for YouTube API responses
 interface YouTubeThumbnail {
@@ -111,13 +112,18 @@ serve(async (req: Request) => {
       })
     }
 
-    const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY') || 'AIzaSyDXWUdOgsZMacMshvvlGT6oscCkdrUngFY'
-    if (!YOUTUBE_API_KEY) {
-        return new Response(JSON.stringify({ error: 'YouTube API key is not configured' }), {
+    // Create admin Supabase client first for the YouTube service
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!SERVICE_ROLE_KEY) {
+        return new Response(JSON.stringify({ error: 'Service role key is not configured for Supabase client.' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
         });
     }
+    const supabaseAdminClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', SERVICE_ROLE_KEY);
+    
+    // Create YouTube API service with managed key system
+    const youtubeService = createYouTubeAPIService(supabaseAdminClient);
 
     let resolvedChannelId: string | null = null;
     const channelIdPattern = /^UC[0-9A-Za-z_-]{22}$/;
@@ -127,15 +133,22 @@ serve(async (req: Request) => {
       console.log(`Identifier '${identifier}' matches Channel ID pattern.`);
     } else {
       console.log(`Identifier '${identifier}' does not match Channel ID pattern, attempting username search.`);
-      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(identifier)}&type=channel&maxResults=1&key=${YOUTUBE_API_KEY}`;
+      const searchUrl = YouTubeAPIService.buildApiUrl('search', {
+        part: 'id',
+        q: identifier,
+        type: 'channel',
+        maxResults: '1'
+      });
       try {
-        const searchResponse = await fetch(searchUrl);
+        const searchResponse = await youtubeService.makeRequest(searchUrl);
         if (!searchResponse.ok) {
           const errorData = await searchResponse.json();
           console.error('YouTube Search API Error:', errorData);
+          await youtubeService.logApiUsage('search', [], 100, false, JSON.stringify(errorData));
           // Do not throw yet, channel might still be found by ID if it was a malformed ID mistaken for username
         } else {
           const searchData = await searchResponse.json() as YouTubeSearchAPIResponse;
+          await youtubeService.logApiUsage('search', [], 100, true);
           if (searchData.items && searchData.items.length > 0 && searchData.items[0].id.channelId) {
             resolvedChannelId = searchData.items[0].id.channelId;
             console.log(`Username '${identifier}' resolved to Channel ID: ${resolvedChannelId}`);
@@ -145,6 +158,7 @@ serve(async (req: Request) => {
         }
       } catch (searchFetchError) {
          console.error('Error fetching YouTube search results:', searchFetchError);
+         await youtubeService.logApiUsage('search', [], 100, false, searchFetchError.message);
          // Allow to proceed, maybe the initial identifier was an ID after all but failed regex for some reason
       }
     }
@@ -161,15 +175,20 @@ serve(async (req: Request) => {
     let canonicalChannelId = resolvedChannelId; // Start with the initially resolved ID
 
     // Always fetch channel details using the resolvedChannelId for consistency
-    const channelDetailsUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${resolvedChannelId}&key=${YOUTUBE_API_KEY}`;
+    const channelDetailsUrl = YouTubeAPIService.buildApiUrl('channels', {
+      part: 'snippet',
+      id: resolvedChannelId
+    });
     try {
-        const channelDetailsResponse = await fetch(channelDetailsUrl);
+        const channelDetailsResponse = await youtubeService.makeRequest(channelDetailsUrl);
         if (!channelDetailsResponse.ok) {
             const errorData = await channelDetailsResponse.json();
             console.error('YouTube Channels API Error (fetching details for resolved ID):', errorData);
+            await youtubeService.logApiUsage('channels', [resolvedChannelId], 1, false, JSON.stringify(errorData));
             // Fallback: canonicalChannelId remains the initially resolvedChannelId
         } else {
             const channelDetailsData = await channelDetailsResponse.json() as YouTubeChannelsAPIResponse;
+            await youtubeService.logApiUsage('channels', [resolvedChannelId], 1, true);
             if (channelDetailsData.items && channelDetailsData.items.length > 0) {
                 // --- Use the ID *from the response* as the canonical ID ---
                 canonicalChannelId = channelDetailsData.items[0].id; 
@@ -187,20 +206,12 @@ serve(async (req: Request) => {
         }
     } catch (channelFetchError) {
         console.error('Error fetching YouTube channel details for resolved ID:', channelFetchError);
+        await youtubeService.logApiUsage('channels', [resolvedChannelId], 1, false, channelFetchError.message);
         // Fallback: canonicalChannelId remains the initially resolvedChannelId
     }
 
     // --- Use the canonicalChannelId (best effort) for the membership query ---
-    console.log(`Querying memberships using canonicalChannelId: ${canonicalChannelId}`); 
-
-    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!SERVICE_ROLE_KEY) {
-        return new Response(JSON.stringify({ error: 'Service role key is not configured for Supabase client.' }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 500,
-        });
-    }
-    const supabaseAdminClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', SERVICE_ROLE_KEY);
+    console.log(`Querying memberships using canonicalChannelId: ${canonicalChannelId}`);
 
     // Update the avatar URL in the database if we fetched it successfully
     if (channelTitle && channelPfpUrl) {
@@ -255,4 +266,4 @@ serve(async (req: Request) => {
       status: 500,
     })
   }
-}) 
+})
