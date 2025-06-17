@@ -512,7 +512,7 @@ const Products: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
                 {visibleProducts.flatMap((product, index) => {
                   // Insert Coming Soon card at the specified position
                   const items = [];
@@ -583,7 +583,7 @@ const Products: React.FC = () => {
             <div className="mt-16 max-w-6xl mx-auto">
               <ProductRecommendations
                 allProducts={allProducts}
-                maxRecommendations={4}
+                maxRecommendations={3}
                 title="Discover More LolCow Gear"
               />
             </div>

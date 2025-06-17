@@ -158,19 +158,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
               <span className="sr-only">Quick View</span>
             </Button>
             
-            {/* View Details Button */}
-            <Button
-              asChild
-              className="bg-lolcow-darkgray hover:bg-lolcow-lightgray text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-lolcow-lightgray/25 px-4 py-3"
-              size="default"
-              title="View Details"
-            >
-              <Link to={`/shop/products/${product.handle}`} onClick={handleProductClick}>
-                <Eye className="h-4 w-4" />
-                <span className="sr-only">View Details</span>
-              </Link>
-            </Button>
-            
             {/* Shop Button */}
             <Button
               onClick={handleShopClick}

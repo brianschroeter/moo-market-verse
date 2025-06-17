@@ -107,33 +107,11 @@ const SocialProofBadges: React.FC<SocialProofBadgesProps> = ({
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
-      {/* Live Viewer Count */}
-      <Badge className="bg-blue-600/90 hover:bg-blue-600 text-white border-0 backdrop-blur-sm text-xs animate-pulse">
-        <Eye className="h-3 w-3 mr-1" />
-        {metrics.viewerCount} viewing
-      </Badge>
-      
-      {/* Stock Urgency */}
-      {showUrgency && metrics.stockLevel <= 5 && (
-        <Badge className="bg-red-600/90 hover:bg-red-600 text-white border-0 backdrop-blur-sm text-xs animate-pulse">
-          <Clock className="h-3 w-3 mr-1" />
-          Only {metrics.stockLevel} left!
-        </Badge>
-      )}
-      
       {/* Hot Item Indicator */}
       {isHot && (
         <Badge className="bg-orange-600/90 hover:bg-orange-600 text-white border-0 backdrop-blur-sm text-xs">
           <Flame className="h-3 w-3 mr-1" />
           Selling fast! 🔥
-        </Badge>
-      )}
-      
-      {/* Popular Item (for products with high viewer count) */}
-      {metrics.viewerCount > 10 && (
-        <Badge className="bg-purple-600/90 hover:bg-purple-600 text-white border-0 backdrop-blur-sm text-xs">
-          <Users className="h-3 w-3 mr-1" />
-          Popular choice
         </Badge>
       )}
     </div>
