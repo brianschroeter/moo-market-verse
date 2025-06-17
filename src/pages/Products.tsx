@@ -6,6 +6,8 @@ import Footer from "@/components/Footer";
 import ProductCard from "@/components/shop/ProductCard";
 import ProductSkeleton from "@/components/shop/ProductSkeleton";
 import ComingSoonCard from "@/components/shop/ComingSoonCard";
+import RecentlyViewed from "@/components/shop/RecentlyViewed";
+import ProductRecommendations from "@/components/shop/ProductRecommendations";
 import { getCollections, getCollectionProducts } from "@/services/shopify/shopifyStorefrontService";
 import { Product, Collection } from "@/services/types/shopify-types";
 import { Loader2, ChevronLeft, ChevronRight, Filter, X, Search, Package } from "lucide-react";
@@ -575,8 +577,22 @@ const Products: React.FC = () => {
           )}
             </div>
           </div>
+          
+          {/* Smart Product Recommendations */}
+          {!isLoading && allProducts.length > 0 && (
+            <div className="mt-16 max-w-6xl mx-auto">
+              <ProductRecommendations
+                allProducts={allProducts}
+                maxRecommendations={4}
+                title="Discover More LolCow Gear"
+              />
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Recently Viewed Products */}
+      <RecentlyViewed />
 
       <Footer />
     </div>

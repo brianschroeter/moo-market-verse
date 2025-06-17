@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Product } from "@/services/types/shopify-types";
 import { formatPrice } from "@/services/shopify/shopifyStorefrontService";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBag, Star, ExternalLink, Eye, Sparkles, TrendingUp, Clock, Flame } from "lucide-react";
+import { ShoppingBag, Star, ExternalLink, Eye, Sparkles, TrendingUp, Clock, Flame, Zap } from "lucide-react";
+import QuickViewModal from "./QuickViewModal";
+import SocialProofBadges from "./SocialProofBadges";
+import { trackProductView } from "./RecentlyViewed";
 
 interface ProductCardProps {
   product: Product;
@@ -13,13 +16,21 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHot = false }) => {
+  const [showQuickView, setShowQuickView] = useState(false);
+  
+  const handleProductClick = () => {
+    trackProductView(product);
+  };
+  
   const handleShopClick = () => {
+    trackProductView(product);
     // Open Shopify store product page in new tab
     window.open(`https://lolcow.co/products/${product.handle}`, '_blank');
   };
 
   return (
-    <div className={`group relative bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-2xl overflow-hidden border border-lolcow-lightgray/20 hover:border-lolcow-blue/40 transition-all duration-500 transform hover:scale-[1.03] hover:shadow-2xl hover:shadow-lolcow-blue/30 ${className}`}>
+    <>
+      <div className={`group relative bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-2xl overflow-hidden border border-lolcow-lightgray/20 hover:border-lolcow-blue/40 transition-all duration-500 transform hover:scale-[1.03] hover:shadow-2xl hover:shadow-lolcow-blue/30 ${className}`}>
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-lolcow-blue/10 to-lolcow-red/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-2xl" />
       
@@ -28,7 +39,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
         <div className="absolute inset-0 -translate-x-full group-hover:animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       </div>
       {/* Image Section - Clickable to go to product detail */}
-      <Link to={`/shop/products/${product.handle}`} className="block relative aspect-[4/3] overflow-hidden">
+      <Link to={`/shop/products/${product.handle}`} onClick={handleProductClick} className="block relative aspect-[4/3] overflow-hidden">
         {product.featuredImageUrl ? (
           <img
             src={product.featuredImageUrl}
@@ -92,12 +103,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
           )}
         </div>
 
-        {/* Availability Badge */}
-        {!product.available && (
-          <Badge className="absolute top-4 right-4 bg-gray-600/90 text-white border-0 backdrop-blur-sm">
-            Sold Out
-          </Badge>
-        )}
+        {/* Social Proof Badges */}
+        <div className="absolute top-4 right-4">
+          {!product.available ? (
+            <Badge className="bg-gray-600/90 text-white border-0 backdrop-blur-sm">
+              Sold Out
+            </Badge>
+          ) : (
+            <SocialProofBadges productId={product.id} isHot={isHot} />
+          )}
+        </div>
         
         {/* View Details Overlay on Hover */}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
@@ -111,7 +126,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
       {/* Content Section */}
       <div className="p-8">
         <div className="min-h-[140px]">
-          <Link to={`/shop/products/${product.handle}`}>
+          <Link to={`/shop/products/${product.handle}`} onClick={handleProductClick}>
             <h3 className="font-fredoka font-bold text-2xl text-white group-hover:text-lolcow-blue transition-colors duration-300 mb-3 line-clamp-2">
               {product.title}
             </h3>
@@ -130,15 +145,29 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
             {formatPrice(product.priceRange.min, product.priceRange.currencyCode)}
           </span>
           
-          {/* View Details Button */}
+          {/* Action Buttons */}
           <div className="flex gap-2">
+            {/* Quick View Button */}
+            <Button
+              onClick={() => setShowQuickView(true)}
+              className="bg-lolcow-darkgray hover:bg-lolcow-lightgray text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-lolcow-lightgray/25 px-4 py-3"
+              size="default"
+              title="Quick View"
+            >
+              <Zap className="h-4 w-4" />
+              <span className="sr-only">Quick View</span>
+            </Button>
+            
+            {/* View Details Button */}
             <Button
               asChild
               className="bg-lolcow-darkgray hover:bg-lolcow-lightgray text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-lolcow-lightgray/25 px-4 py-3"
               size="default"
+              title="View Details"
             >
-              <Link to={`/shop/products/${product.handle}`}>
+              <Link to={`/shop/products/${product.handle}`} onClick={handleProductClick}>
                 <Eye className="h-4 w-4" />
+                <span className="sr-only">View Details</span>
               </Link>
             </Button>
             
@@ -146,7 +175,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
             <Button
               onClick={handleShopClick}
               disabled={!product.available}
-              className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold transition-all duration-300 group/btn hover:shadow-lg hover:shadow-lolcow-blue/25 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3"
+              className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold transition-all duration-300 group/btn hover:shadow-lg hover:shadow-lolcow-blue/25 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 flex-1"
               size="default"
             >
               {product.available ? 'Shop' : 'Sold Out'}
@@ -158,6 +187,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
         </div>
       </div>
     </div>
+    
+    {/* Quick View Modal */}
+    <QuickViewModal
+      product={product}
+      isOpen={showQuickView}
+      onClose={() => setShowQuickView(false)}
+      isHot={isHot}
+    />
+    </>
   );
 };
 
