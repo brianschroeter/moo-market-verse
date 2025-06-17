@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/shop/ProductCard";
 import ProductSkeleton from "@/components/shop/ProductSkeleton";
+import ComingSoonCard from "@/components/shop/ComingSoonCard";
 import { getCollections, getCollectionProducts } from "@/services/shopify/shopifyStorefrontService";
 import { Product, Collection } from "@/services/types/shopify-types";
 import { Loader2, ChevronLeft, ChevronRight, Filter, X, Search, Package } from "lucide-react";
@@ -40,6 +41,7 @@ interface FilterState {
 const ITEMS_PER_PAGE = 24;
 const INITIAL_LOAD_LIMIT = 48; // Load fewer products initially
 const LOAD_MORE_COUNT = 24; // Load this many more when "Load More" is clicked
+const COMING_SOON_POSITION = 12; // Position where Coming Soon card appears
 
 const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -509,15 +511,39 @@ const Products: React.FC = () => {
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-                {visibleProducts.map((product, index) => (
-                  <div
-                    key={product.id}
-                    className="animate-fadeIn"
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <ProductCard product={product} />
-                  </div>
-                ))}
+                {visibleProducts.flatMap((product, index) => {
+                  // Insert Coming Soon card at the specified position
+                  const items = [];
+                  
+                  // Add the Coming Soon card at the specified position
+                  if (index === COMING_SOON_POSITION) {
+                    items.push(
+                      <div
+                        key="coming-soon"
+                        className="animate-fadeIn"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <ComingSoonCard />
+                      </div>
+                    );
+                  }
+                  
+                  // Add the product card with HOT badge for top 6 products
+                  items.push(
+                    <div
+                      key={product.id}
+                      className="animate-fadeIn"
+                      style={{ animationDelay: `${(index + (index >= COMING_SOON_POSITION ? 1 : 0)) * 50}ms` }}
+                    >
+                      <ProductCard 
+                        product={product} 
+                        isHot={index < 6} // First 6 products get HOT badge
+                      />
+                    </div>
+                  );
+                  
+                  return items;
+                })}
               </div>
 
               {/* Load More Button */}

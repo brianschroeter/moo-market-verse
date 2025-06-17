@@ -4,14 +4,15 @@ import { Product } from "@/services/types/shopify-types";
 import { formatPrice } from "@/services/shopify/shopifyStorefrontService";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBag, Star, ExternalLink, Eye, Sparkles, TrendingUp, Clock } from "lucide-react";
+import { ShoppingBag, Star, ExternalLink, Eye, Sparkles, TrendingUp, Clock, Flame } from "lucide-react";
 
 interface ProductCardProps {
   product: Product;
   className?: string;
+  isHot?: boolean; // For top 6 products
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, className = "" }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHot = false }) => {
   const handleShopClick = () => {
     // Open Shopify store product page in new tab
     window.open(`https://lolcow.co/products/${product.handle}`, '_blank');
@@ -45,6 +46,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "" }) =>
         
         {/* Product Badges */}
         <div className="absolute top-4 left-4 flex flex-col gap-2">
+          {/* HOT Badge - for top 6 products */}
+          {isHot && (
+            <Badge className="bg-orange-600/90 hover:bg-orange-600 text-white border-0 backdrop-blur-sm text-sm animate-pulse">
+              <Flame className="h-4 w-4 mr-1" />
+              HOT
+            </Badge>
+          )}
+          
           {/* Best Seller Badge - only if product has "bestseller" tag */}
           {product.tags.some(tag => tag.toLowerCase().includes('bestseller')) && (
             <Badge className="bg-lolcow-red/90 hover:bg-lolcow-red text-white border-0 backdrop-blur-sm text-sm">
@@ -53,11 +62,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "" }) =>
             </Badge>
           )}
           
-          {/* New Product Badge - if product has "new" tag or was created recently */}
-          {product.tags.some(tag => tag.toLowerCase().includes('new')) && (
+          {/* New Product Badge - if product has "new" tag or date-based new tags */}
+          {(product.tags.some(tag => 
+            tag.toLowerCase().includes('new') || 
+            tag.toLowerCase().includes('just-arrived') ||
+            tag.toLowerCase().includes('fresh') ||
+            tag.toLowerCase().includes('latest')
+          )) && (
             <Badge className="bg-lolcow-blue/90 hover:bg-lolcow-blue text-white border-0 backdrop-blur-sm text-sm">
               <Sparkles className="h-4 w-4 mr-1" />
-              New
+              NEW
             </Badge>
           )}
           
