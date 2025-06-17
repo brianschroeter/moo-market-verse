@@ -87,7 +87,7 @@ const Products: React.FC = () => {
         setAllProducts(uniqueProducts);
         
         // Calculate max price from all products
-        const prices = uniqueProducts.map(p => parseFloat(p.price.replace(/[^0-9.]/g, "")));
+        const prices = uniqueProducts.map(p => p.priceRange.max);
         const calculatedMaxPrice = Math.ceil(Math.max(...prices, 100));
         setMaxPrice(calculatedMaxPrice);
         setFilters(prev => ({ ...prev, priceRange: [0, calculatedMaxPrice] }));
@@ -124,7 +124,7 @@ const Products: React.FC = () => {
 
     // Apply price filter
     filtered = filtered.filter(product => {
-      const price = parseFloat(product.price.replace(/[^0-9.]/g, ""));
+      const price = product.priceRange.min;
       return price >= filters.priceRange[0] && price <= filters.priceRange[1];
     });
 
