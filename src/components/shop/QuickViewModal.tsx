@@ -52,7 +52,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl bg-gradient-to-br from-lolcow-darkgray to-lolcow-black border-lolcow-lightgray/20 text-white p-0 overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] bg-gradient-to-br from-lolcow-darkgray to-lolcow-black border-lolcow-lightgray/20 text-white p-0 overflow-hidden">
         <Button
           onClick={onClose}
           className="absolute right-4 top-4 z-10 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full p-2"
@@ -62,7 +62,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
           <X className="h-5 w-5" />
         </Button>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-0 max-h-[90vh] overflow-hidden">
           {/* Image Section */}
           <div className="relative aspect-square overflow-hidden bg-lolcow-lightgray">
             {product.featuredImageUrl ? (
@@ -108,24 +108,24 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
           </div>
           
           {/* Content Section */}
-          <div className="p-8 flex flex-col">
-            <DialogHeader className="mb-6">
-              <DialogTitle className="text-3xl font-fredoka text-white">
+          <div className="p-6 flex flex-col max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-2xl font-fredoka text-white">
                 {product.title}
               </DialogTitle>
               {product.vendor && (
-                <p className="text-gray-400 mt-2">by {product.vendor}</p>
+                <p className="text-gray-400 mt-1 text-sm">by {product.vendor}</p>
               )}
             </DialogHeader>
             
-            <div className="flex-grow space-y-6">
+            <div className="flex-grow space-y-4">
               {/* Price */}
-              <div className="flex items-baseline gap-4">
-                <span className="text-4xl font-bold text-white">
+              <div className="flex items-baseline gap-3">
+                <span className="text-3xl font-bold text-white">
                   {formatPrice(product.priceRange.min, product.priceRange.currencyCode)}
                 </span>
                 {product.priceRange.min !== product.priceRange.max && (
-                  <span className="text-gray-400">
+                  <span className="text-gray-400 text-lg">
                     - {formatPrice(product.priceRange.max, product.priceRange.currencyCode)}
                   </span>
                 )}
@@ -134,8 +134,8 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
               {/* Description */}
               {product.description && (
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-gray-300">Description</h3>
-                  <p className="text-gray-400 leading-relaxed">
+                  <h3 className="font-semibold text-gray-300 text-sm">Description</h3>
+                  <p className="text-gray-400 leading-relaxed text-sm line-clamp-3">
                     {product.description}
                   </p>
                 </div>
@@ -143,19 +143,19 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
               
               {/* Quantity Selector */}
               <div className="space-y-2">
-                <label className="font-semibold text-gray-300">Quantity</label>
-                <div className="flex items-center gap-4">
+                <label className="font-semibold text-gray-300 text-sm">Quantity</label>
+                <div className="flex items-center gap-3">
                   <Button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="bg-lolcow-lightgray hover:bg-lolcow-lightgray/80 w-10 h-10 p-0"
+                    className="bg-lolcow-lightgray hover:bg-lolcow-lightgray/80 w-8 h-8 p-0 text-lg"
                     size="icon"
                   >
                     -
                   </Button>
-                  <span className="text-xl font-semibold w-12 text-center">{quantity}</span>
+                  <span className="text-lg font-semibold w-8 text-center">{quantity}</span>
                   <Button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="bg-lolcow-lightgray hover:bg-lolcow-lightgray/80 w-10 h-10 p-0"
+                    className="bg-lolcow-lightgray hover:bg-lolcow-lightgray/80 w-8 h-8 p-0 text-lg"
                     size="icon"
                   >
                     +
@@ -164,21 +164,21 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
               </div>
               
               {/* Action Buttons */}
-              <div className="space-y-3 pt-4">
+              <div className="space-y-3 pt-2">
                 <Button
                   onClick={handleAddToCart}
                   disabled={!product.available || isAddingToCart}
-                  className="w-full bg-lolcow-blue hover:bg-lolcow-blue/80 text-white py-6 text-lg font-semibold"
-                  size="lg"
+                  className="w-full bg-lolcow-blue hover:bg-lolcow-blue/80 text-white py-4 text-base font-semibold"
+                  size="default"
                 >
                   {isAddingToCart ? (
                     <span className="flex items-center gap-2">
-                      <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Adding to Cart...
+                      <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Adding...
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
-                      <ShoppingBag className="h-5 w-5" />
+                      <ShoppingBag className="h-4 w-4" />
                       {product.available ? 'Add to Cart' : 'Sold Out'}
                     </span>
                   )}
@@ -188,18 +188,20 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
                   <Button
                     asChild
                     variant="outline"
-                    className="flex-1 border-lolcow-lightgray hover:bg-lolcow-lightgray/20"
+                    className="flex-1 border-lolcow-lightgray hover:bg-lolcow-lightgray/20 py-2"
+                    size="sm"
                   >
                     <Link to={`/shop/products/${product.handle}`}>
                       <Eye className="h-4 w-4 mr-2" />
-                      View Details
+                      Details
                     </Link>
                   </Button>
                   
                   <Button
                     onClick={handleShopClick}
                     variant="outline"
-                    className="flex-1 border-lolcow-lightgray hover:bg-lolcow-lightgray/20"
+                    className="flex-1 border-lolcow-lightgray hover:bg-lolcow-lightgray/20 py-2"
+                    size="sm"
                   >
                     Shop Now
                     <ExternalLink className="h-4 w-4 ml-2" />
@@ -210,10 +212,10 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
             
             {/* Tags */}
             {product.tags.length > 0 && (
-              <div className="mt-6 pt-6 border-t border-lolcow-lightgray/20">
-                <div className="flex flex-wrap gap-2">
-                  {product.tags.slice(0, 5).map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
+              <div className="mt-4 pt-4 border-t border-lolcow-lightgray/20">
+                <div className="flex flex-wrap gap-1">
+                  {product.tags.slice(0, 4).map((tag, index) => (
+                    <Badge key={index} variant="secondary" className="text-xs px-2 py-1">
                       {tag}
                     </Badge>
                   ))}
