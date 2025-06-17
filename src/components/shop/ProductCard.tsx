@@ -4,7 +4,7 @@ import { Product } from "@/services/types/shopify-types";
 import { formatPrice } from "@/services/shopify/shopifyStorefrontService";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBag, Star, ExternalLink, Eye, Sparkles, TrendingUp, Clock, Flame, Zap } from "lucide-react";
+import { ShoppingBag, Star, Eye, Sparkles, TrendingUp, Clock, Flame, Zap } from "lucide-react";
 import QuickViewModal from "./QuickViewModal";
 import SocialProofBadges from "./SocialProofBadges";
 import { trackProductView } from "./RecentlyViewed";
@@ -13,9 +13,10 @@ interface ProductCardProps {
   product: Product;
   className?: string;
   isHot?: boolean; // For top 6 products
+  hideQuickView?: boolean; // Hide quick view button
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHot = false }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHot = false, hideQuickView = false }) => {
   const [showQuickView, setShowQuickView] = useState(false);
   
   const handleProductClick = () => {
@@ -24,8 +25,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
   
   const handleShopClick = () => {
     trackProductView(product);
-    // Open Shopify store product page in new tab
-    window.open(`https://lolcow.co/products/${product.handle}`, '_blank');
+    // Navigate to custom product page
+    window.location.href = `/shop/products/${product.handle}`;
   };
 
   return (
@@ -56,19 +57,19 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
         {/* Product Badges */}
-        <div className="absolute top-4 left-4 flex flex-col gap-2">
+        <div className="absolute top-4 left-4 flex flex-wrap gap-2 max-w-[200px]">
           {/* HOT Badge - for top 6 products */}
           {isHot && (
-            <Badge className="bg-orange-600/90 hover:bg-orange-600 text-white border-0 backdrop-blur-sm text-sm animate-pulse">
-              <Flame className="h-4 w-4 mr-1" />
+            <Badge className="bg-orange-600/90 hover:bg-orange-600 text-white border-0 backdrop-blur-sm text-sm animate-slow-pulse w-fit">
+              <Flame className="h-4 w-4 mr-1 flex-shrink-0" />
               HOT
             </Badge>
           )}
           
           {/* Best Seller Badge - only if product has "bestseller" tag */}
           {product.tags.some(tag => tag.toLowerCase().includes('bestseller')) && (
-            <Badge className="bg-lolcow-red/90 hover:bg-lolcow-red text-white border-0 backdrop-blur-sm text-sm">
-              <Star className="h-4 w-4 mr-1" />
+            <Badge className="bg-lolcow-red/90 hover:bg-lolcow-red text-white border-0 backdrop-blur-sm text-sm w-fit">
+              <Star className="h-4 w-4 mr-1 flex-shrink-0" />
               Best Seller
             </Badge>
           )}
@@ -80,27 +81,49 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
             tag.toLowerCase().includes('fresh') ||
             tag.toLowerCase().includes('latest')
           )) && (
-            <Badge className="bg-lolcow-blue/90 hover:bg-lolcow-blue text-white border-0 backdrop-blur-sm text-sm">
-              <Sparkles className="h-4 w-4 mr-1" />
+            <Badge className="bg-lolcow-blue/90 hover:bg-lolcow-blue text-white border-0 backdrop-blur-sm text-sm w-fit">
+              <Sparkles className="h-4 w-4 mr-1 flex-shrink-0" />
               NEW
             </Badge>
           )}
           
           {/* Sale Badge - if product has "sale" or "discount" tag */}
           {product.tags.some(tag => tag.toLowerCase().includes('sale') || tag.toLowerCase().includes('discount')) && (
-            <Badge className="bg-green-600/90 hover:bg-green-600 text-white border-0 backdrop-blur-sm text-sm">
-              <TrendingUp className="h-4 w-4 mr-1" />
+            <Badge className="bg-green-600/90 hover:bg-green-600 text-white border-0 backdrop-blur-sm text-sm w-fit">
+              <TrendingUp className="h-4 w-4 mr-1 flex-shrink-0" />
               Sale
             </Badge>
           )}
           
           {/* Limited Edition Badge - if product has "limited" tag */}
           {product.tags.some(tag => tag.toLowerCase().includes('limited')) && (
-            <Badge className="bg-purple-600/90 hover:bg-purple-600 text-white border-0 backdrop-blur-sm text-sm">
-              <Clock className="h-4 w-4 mr-1" />
+            <Badge className="bg-purple-600/90 hover:bg-purple-600 text-white border-0 backdrop-blur-sm text-sm w-fit">
+              <Clock className="h-4 w-4 mr-1 flex-shrink-0" />
               Limited Edition
             </Badge>
           )}
+          
+          {/* Additional Product Tags */}
+          {product.tags
+            .filter(tag => 
+              !tag.toLowerCase().includes('bestseller') &&
+              !tag.toLowerCase().includes('new') &&
+              !tag.toLowerCase().includes('just-arrived') &&
+              !tag.toLowerCase().includes('fresh') &&
+              !tag.toLowerCase().includes('latest') &&
+              !tag.toLowerCase().includes('sale') &&
+              !tag.toLowerCase().includes('discount') &&
+              !tag.toLowerCase().includes('limited') &&
+              !tag.toLowerCase().includes('shop-all') &&
+              !tag.toLowerCase().includes('printful') &&
+              !tag.toLowerCase().includes('personalize')
+            )
+            .slice(0, 3)
+            .map((tag, index) => (
+              <Badge key={index} variant="secondary" className="text-xs backdrop-blur-sm border-0 w-fit truncate max-w-[140px]">
+                {tag}
+              </Badge>
+            ))}
         </div>
 
         {/* Social Proof Badges */}
@@ -147,22 +170,24 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
           
           {/* Action Buttons */}
           <div className="flex gap-2">
-            {/* Quick View Button */}
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Quick View clicked for:', product.title);
-                setShowQuickView(true);
-              }}
-              className="bg-lolcow-darkgray hover:bg-lolcow-lightgray text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-lolcow-lightgray/25 px-4 py-3 z-10 relative"
-              size="default"
-              title="Quick View - Preview product details"
-            >
-              <Zap className="h-4 w-4" />
-              <span className="ml-2 hidden sm:inline">Quick View</span>
-              <span className="sr-only">Quick View</span>
-            </Button>
+            {/* Quick View Button - Only show on large screens (3 column layout) and if not hidden */}
+            {!hideQuickView && (
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Quick View clicked for:', product.title);
+                  setShowQuickView(true);
+                }}
+                className="hidden 2xl:flex bg-lolcow-darkgray hover:bg-lolcow-lightgray text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-lolcow-lightgray/25 px-4 py-3 z-10 relative"
+                size="default"
+                title="Quick View - Preview product details"
+              >
+                <Zap className="h-4 w-4" />
+                <span className="ml-2 hidden sm:inline">Quick View</span>
+                <span className="sr-only">Quick View</span>
+              </Button>
+            )}
             
             {/* Shop Button */}
             <Button
@@ -175,12 +200,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
               disabled={!product.available}
               className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold transition-all duration-300 group/btn hover:shadow-lg hover:shadow-lolcow-blue/25 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 flex-1 z-10 relative"
               size="default"
-              title="Shop - Opens product page in new tab"
+              title="Shop - View product details"
             >
-              {product.available ? 'Shop' : 'Sold Out'}
-              {product.available && (
-                <ExternalLink className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
-              )}
+              {product.available ? 'Shop Now' : 'Sold Out'}
             </Button>
           </div>
         </div>

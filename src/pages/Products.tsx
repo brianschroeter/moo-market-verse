@@ -10,7 +10,7 @@ import RecentlyViewed from "@/components/shop/RecentlyViewed";
 import ProductRecommendations from "@/components/shop/ProductRecommendations";
 import { getCollections, getCollectionProducts } from "@/services/shopify/shopifyStorefrontService";
 import { Product, Collection } from "@/services/types/shopify-types";
-import { Loader2, ChevronLeft, ChevronRight, Filter, X, Search, Package } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Filter, X, Search, Package, Star, ShoppingCart, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import "@/styles/products.css";
+import "@/styles/animations.css";
+import "@/styles/hero.css";
 
 // Enhanced product type that includes collection information
 interface ProductWithCollections extends Product {
@@ -60,6 +62,8 @@ const Products: React.FC = () => {
   const [isLoadingAllProducts, setIsLoadingAllProducts] = useState(true);
   const [visibleProductCount, setVisibleProductCount] = useState(INITIAL_LOAD_LIMIT);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isFilterLoading, setIsFilterLoading] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
 
   // Fetch all collections
   const { data: collectionsResponse, isLoading: collectionsLoading } = useQuery({
@@ -204,38 +208,92 @@ const Products: React.FC = () => {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleProductCount(INITIAL_LOAD_LIMIT);
-  }, [filters]);
+    // Add loading animation when filters change
+    if (!isLoadingAllProducts) {
+      setIsFilterLoading(true);
+      setTimeout(() => setIsFilterLoading(false), 500);
+    }
+  }, [filters, sortOption]);
+
+  // Page load animation
+  useEffect(() => {
+    setTimeout(() => setIsPageLoading(false), 1500);
+  }, []);
 
   const isLoading = collectionsLoading || isLoadingAllProducts;
 
   return (
-    <div className="flex flex-col min-h-screen bg-lolcow-black">
+    <>
+      {/* Page Loader */}
+      {isPageLoading && (
+        <div className="page-loader">
+          <div className="loader-content">
+            <div className="loader-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="40" stroke="url(#gradient)" strokeWidth="4" fill="none" />
+                <path d="M30 50 Q50 30 70 50 Q50 70 30 50" fill="url(#gradient)" />
+                <defs>
+                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FF3366" />
+                    <stop offset="50%" stopColor="#FF6B6B" />
+                    <stop offset="100%" stopColor="#4ECDC4" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <div className="loader-progress">
+              <div className="loader-progress-bar" />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className={`flex flex-col min-h-screen bg-lolcow-black ${isPageLoading ? 'opacity-0' : 'opacity-100'}`} style={{ transition: 'opacity 0.5s ease-out' }}>
       <Navbar />
       
       <main className="flex-grow">
         {/* Hero Section */}
         <section className="relative py-16 bg-gradient-to-br from-lolcow-darkgray via-lolcow-black to-lolcow-darkgray overflow-hidden">
-          {/* Animated background elements */}
+          {/* Animated background */}
           <div className="absolute inset-0">
-            <div className="absolute top-0 left-0 w-72 h-72 bg-lolcow-blue/20 rounded-full blur-3xl animate-float" />
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-lolcow-red/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+            {/* Gradient orbs */}
+            <div className="absolute top-0 left-0 w-72 h-72 bg-lolcow-blue/20 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-lolcow-red/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+            
+            {/* Grid pattern */}
+            <div className="absolute inset-0 opacity-[0.03]" style={{
+              backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+                               linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)`,
+              backgroundSize: '50px 50px'
+            }} />
           </div>
           
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 className="text-4xl md:text-6xl font-fredoka text-white mb-4 animate-fadeInUp">
-              All Products
+            <h1 className="text-4xl md:text-6xl font-fredoka text-white mb-4">
+              <span className="bg-gradient-to-r from-lolcow-blue via-white to-lolcow-red bg-clip-text text-transparent">
+                All Products
+              </span>
             </h1>
-            <p className="text-lg md:text-xl text-gray-300 mb-6 animate-fadeInUp" style={{ animationDelay: '100ms' }}>
+            <p className="text-lg md:text-xl text-gray-300 mb-6 max-w-2xl mx-auto">
               Browse our complete collection of LolCow merchandise
             </p>
-            <div className="flex justify-center gap-4 animate-fadeInUp" style={{ animationDelay: '200ms' }}>
-              <Badge variant="secondary" className="text-sm px-3 py-1">
-                <Package className="h-4 w-4 mr-2" />
-                {allProducts.length} Products
-              </Badge>
-              <Badge variant="secondary" className="text-sm px-3 py-1">
-                {collections.length} Collections
-              </Badge>
+            
+            {/* Stats badges */}
+            <div className="flex flex-wrap justify-center gap-4">
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2 flex items-center gap-2">
+                <Package className="h-4 w-4 text-lolcow-blue" />
+                <span className="text-sm text-white">
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin inline" />
+                  ) : (
+                    `${allProducts.length} Products`
+                  )}
+                </span>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-lolcow-red" />
+                <span className="text-sm text-white">{collections.length} Collections</span>
+              </div>
             </div>
           </div>
         </section>
@@ -494,10 +552,31 @@ const Products: React.FC = () => {
             )}
 
             {/* Products Container */}
-            <div className="flex-1">
+            <div className="flex-1 relative">{/* Filter Loading Overlay */}
+              {isFilterLoading && (
+                <div className="fixed inset-0 bg-lolcow-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+                  <div className="loader-content">
+                    <div className="loader-logo">
+                      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-24 h-24">
+                        <circle cx="50" cy="50" r="40" stroke="url(#gradient-filter)" strokeWidth="4" fill="none" />
+                        <path d="M30 50 Q50 30 70 50 Q50 70 30 50" fill="url(#gradient-filter)" />
+                        <defs>
+                          <linearGradient id="gradient-filter" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#FF3366" />
+                            <stop offset="50%" stopColor="#FF6B6B" />
+                            <stop offset="100%" stopColor="#4ECDC4" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                    </div>
+                    <p className="text-white text-sm mt-4">Updating products...</p>
+                  </div>
+                </div>
+              )}
+              
               {/* Products Grid */}
               {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-6 mb-12">
               {Array.from({ length: 12 }).map((_, index) => (
                 <ProductSkeleton key={index} />
               ))}
@@ -512,7 +591,7 @@ const Products: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+              <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-6 mb-12">
                 {visibleProducts.flatMap((product, index) => {
                   // Insert Coming Soon card at the specified position
                   const items = [];
@@ -595,7 +674,8 @@ const Products: React.FC = () => {
       <RecentlyViewed />
 
       <Footer />
-    </div>
+      </div>
+    </>
   );
 };
 

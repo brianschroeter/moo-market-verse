@@ -6,8 +6,9 @@ import Footer from "@/components/Footer";
 import ProductGrid from "@/components/shop/ProductGrid";
 import { getCollectionProducts } from "@/services/shopify/shopifyStorefrontService";
 import { Product } from "@/services/types/shopify-types";
-import { ChevronLeft, Home, ShoppingBag } from "lucide-react";
+import { ChevronLeft, Home, ShoppingBag, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import "@/styles/collection.css";
 
 const CollectionPage: React.FC = () => {
   const { collection: collectionHandle } = useParams<{ collection: string }>();
@@ -75,19 +76,20 @@ const CollectionPage: React.FC = () => {
       
       <main className="flex-grow bg-lolcow-black">
         {/* Breadcrumb */}
-        <section className="py-6 bg-lolcow-darkgray border-b border-lolcow-lightgray">
+        <section className="collection-breadcrumb py-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <nav className="flex items-center space-x-2 text-sm">
-              <Link to="/" className="text-gray-300 hover:text-lolcow-blue transition-colors flex items-center">
-                <Home className="h-4 w-4 mr-1" />
+              <Link to="/" className="text-gray-400 hover:text-white transition-all duration-300 flex items-center group">
+                <Home className="h-4 w-4 mr-1 group-hover:scale-110 transition-transform" />
                 Home
               </Link>
-              <span className="text-gray-500">/</span>
-              <Link to="/shop" className="text-gray-300 hover:text-lolcow-blue transition-colors">
+              <span className="text-gray-600">/</span>
+              <Link to="/shop" className="text-gray-400 hover:text-white transition-all duration-300">
                 Shop
               </Link>
-              <span className="text-gray-500">/</span>
-              <span className="text-white font-medium">
+              <span className="text-gray-600">/</span>
+              <span className="text-white font-medium flex items-center">
+                <Sparkles className="h-3 w-3 mr-1 text-lolcow-blue" />
                 {collection?.title || collectionHandle}
               </span>
             </nav>
@@ -96,16 +98,23 @@ const CollectionPage: React.FC = () => {
 
         {/* Collection Header */}
         {collection && (
-          <section className="relative py-12 bg-gradient-to-br from-lolcow-darkgray via-lolcow-black to-lolcow-darkgray overflow-hidden">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-5">
-              <div 
-                style={{
-                  backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-                  backgroundSize: '30px 30px'
-                }}
-                className="w-full h-full"
-              />
+          <section className="collection-header-bg py-16">
+            {/* Animated gradient overlay */}
+            <div className="collection-gradient-overlay" />
+            
+            {/* Grid pattern */}
+            <div className="collection-grid-pattern" />
+            
+            {/* Floating orbs */}
+            <div className="collection-orb w-96 h-96 bg-lolcow-blue/20 -top-48 -left-48" />
+            <div className="collection-orb w-64 h-64 bg-lolcow-red/20 -bottom-32 -right-32" style={{ animationDelay: '7s' }} />
+            
+            {/* Floating elements */}
+            <div className="collection-float-element top-20 right-20">
+              <ShoppingBag className="h-16 w-16 text-lolcow-blue" />
+            </div>
+            <div className="collection-float-element bottom-20 left-20" style={{ animationDelay: '10s' }}>
+              <Sparkles className="h-12 w-12 text-lolcow-red" />
             </div>
             
             {/* Background Image (if available) */}
@@ -131,20 +140,22 @@ const CollectionPage: React.FC = () => {
                     Back to Collections
                   </Link>
                   
-                  <div className="flex items-center gap-3 mb-3">
-                    <h1 className="text-3xl md:text-4xl font-fredoka text-white">
+                  <div className="flex items-center gap-4 mb-4">
+                    <h1 className="collection-title text-4xl md:text-5xl font-fredoka text-white">
                       {collection.title}
                     </h1>
-                    <div className="flex items-center gap-2 text-sm text-lolcow-blue bg-lolcow-blue/10 px-3 py-1 rounded-full border border-lolcow-blue/20">
+                    <div className="product-count-badge flex items-center gap-2 text-sm text-white px-4 py-2 rounded-full">
                       <ShoppingBag className="h-4 w-4" />
-                      <span>{allProducts.length} {allProducts.length === 1 ? 'Product' : 'Products'}</span>
+                      <span className="font-semibold">{allProducts.length} {allProducts.length === 1 ? 'Product' : 'Products'}</span>
                     </div>
                   </div>
                   
                   {collection.description && (
-                    <p className="text-lg text-gray-300 leading-relaxed max-w-2xl">
-                      {collection.description}
-                    </p>
+                    <div className="collection-description max-w-2xl">
+                      <p className="text-lg text-gray-300 leading-relaxed">
+                        {collection.description}
+                      </p>
+                    </div>
                   )}
                 </div>
                 
@@ -166,8 +177,11 @@ const CollectionPage: React.FC = () => {
         )}
 
         {/* Products Section */}
-        <section className="py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="py-16 relative">
+          {/* Subtle background gradient */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-lolcow-darkgray/20 to-transparent opacity-50" />
+          
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             {error ? (
               <div className="text-center py-12">
                 <ShoppingBag className="h-16 w-16 text-red-500 opacity-50 mx-auto mb-4" />

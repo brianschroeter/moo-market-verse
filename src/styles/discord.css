@@ -1,0 +1,418 @@
+/* Discord section specific animations and effects */
+
+/* Discord-themed gradient animation */
+@keyframes discord-gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.discord-gradient-bg {
+  background: linear-gradient(
+    135deg,
+    #5865F2,
+    #7289DA,
+    #99AAB5,
+    #7289DA,
+    #5865F2
+  );
+  background-size: 400% 400%;
+  animation: discord-gradient 15s ease infinite;
+}
+
+/* Discord blob animation */
+@keyframes discord-blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.discord-blob {
+  animation: discord-blob 6s ease-in-out infinite;
+}
+
+/* Discord wave animation - create a flowing wave effect */
+@keyframes discord-wave-flow {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.discord-wave {
+  animation: discord-wave-flow 20s linear infinite;
+}
+
+/* Presence indicator animation */
+@keyframes presence-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+}
+
+.presence-pulse {
+  animation: presence-pulse 2s ease-in-out infinite;
+}
+
+/* Discord logo float */
+@keyframes discord-float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-20px) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(10px) rotate(5deg);
+  }
+}
+
+.discord-float {
+  animation: discord-float 4s ease-in-out infinite;
+}
+
+/* Counter animation */
+@keyframes counter-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.counter-pop {
+  animation: counter-pop 0.5s ease-out;
+}
+
+/* Discord ripple effect */
+@keyframes discord-ripple {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.discord-ripple {
+  position: absolute;
+  border-radius: 50%;
+  animation: discord-ripple 1.5s ease-out infinite;
+}
+
+/* Glass card shimmer */
+@keyframes glass-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.glass-shimmer {
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: glass-shimmer 3s ease-in-out infinite;
+}
+
+/* Discord button glow */
+@keyframes discord-glow {
+  0%, 100% {
+    box-shadow: 
+      0 0 20px rgba(88, 101, 242, 0.5),
+      0 0 40px rgba(88, 101, 242, 0.3),
+      inset 0 0 20px rgba(88, 101, 242, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 0 30px rgba(88, 101, 242, 0.7),
+      0 0 60px rgba(88, 101, 242, 0.4),
+      inset 0 0 30px rgba(88, 101, 242, 0.2);
+  }
+}
+
+.discord-button-glow {
+  animation: discord-glow 2s ease-in-out infinite;
+}
+
+/* Floating Discord icons */
+@keyframes icon-float-1 {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(50px, -30px) rotate(180deg);
+  }
+  66% {
+    transform: translate(-30px, 20px) rotate(360deg);
+  }
+}
+
+@keyframes icon-float-2 {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(-40px, 40px) rotate(-180deg);
+  }
+  66% {
+    transform: translate(60px, -20px) rotate(-360deg);
+  }
+}
+
+.icon-float-1 {
+  animation: icon-float-1 20s ease-in-out infinite;
+}
+
+.icon-float-2 {
+  animation: icon-float-2 25s ease-in-out infinite;
+}
+
+/* Glassmorphism for stats cards */
+.discord-glass {
+  background: rgba(88, 101, 242, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(88, 101, 242, 0.2);
+  box-shadow: 
+    0 8px 32px 0 rgba(88, 101, 242, 0.2),
+    inset 0 0 20px rgba(255, 255, 255, 0.05);
+}
+
+.discord-glass:hover {
+  background: rgba(88, 101, 242, 0.15);
+  border-color: rgba(88, 101, 242, 0.3);
+  box-shadow: 
+    0 8px 32px 0 rgba(88, 101, 242, 0.3),
+    inset 0 0 20px rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Animated mesh gradient background */
+.discord-mesh {
+  background-image: 
+    radial-gradient(at 40% 20%, rgba(88, 101, 242, 0.3) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(114, 137, 218, 0.2) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(153, 170, 181, 0.2) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(88, 101, 242, 0.3) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(114, 137, 218, 0.2) 0px, transparent 50%);
+}
+
+/* Message bubble animation */
+@keyframes message-float {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+.message-bubble {
+  animation: message-float 8s ease-in-out infinite;
+}
+
+/* Discord particles */
+@keyframes particle-rise {
+  0% {
+    transform: translateY(100vh) translateX(0) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100vh) translateX(100px) scale(1);
+    opacity: 0;
+  }
+}
+
+.discord-particle {
+  position: absolute;
+  animation: particle-rise 15s linear infinite;
+}
+
+/* Enhanced glassmorphism for benefit cards */
+.benefit-glass {
+  background: linear-gradient(135deg, rgba(88, 101, 242, 0.1) 0%, rgba(114, 137, 218, 0.05) 100%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 8px 32px 0 rgba(88, 101, 242, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 -20px 40px -20px rgba(88, 101, 242, 0.1);
+}
+
+/* Animated server preview cards */
+@keyframes server-slide {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  10%, 90% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+.server-preview {
+  animation: server-slide 10s ease-in-out infinite;
+}
+
+/* Discord notification badge */
+@keyframes notification-bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+.notification-badge {
+  animation: notification-bounce 2s ease-in-out infinite;
+  background: #ed4245;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Voice channel wave animation */
+@keyframes voice-wave {
+  0%, 100% {
+    height: 5px;
+  }
+  50% {
+    height: 20px;
+  }
+}
+
+.voice-wave {
+  background: #3ba55d;
+  width: 3px;
+  margin: 0 1px;
+  border-radius: 3px;
+  animation: voice-wave 1s ease-in-out infinite;
+}
+
+.voice-wave:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.voice-wave:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.voice-wave:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+/* Enhanced Discord button states */
+.discord-button-enhanced {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #5865F2 0%, #7289DA 100%);
+  transition: all 0.3s ease;
+}
+
+.discord-button-enhanced:hover {
+  background: linear-gradient(135deg, #7289DA 0%, #5865F2 100%);
+  transform: translateY(-2px);
+}
+
+.discord-button-enhanced::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+.discord-button-enhanced:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Typing indicator animation */
+@keyframes typing-dot {
+  0%, 80%, 100% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #b9bbbe;
+  animation: typing-dot 1.4s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}

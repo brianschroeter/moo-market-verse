@@ -1,0 +1,369 @@
+/* Schedule Page Enhanced Styles */
+
+/* Hero Section Background - Unique Neon Circuit Theme */
+@keyframes neon-pulse {
+  0%, 100% {
+    filter: brightness(1) contrast(1);
+  }
+  50% {
+    filter: brightness(1.2) contrast(1.1);
+  }
+}
+
+@keyframes circuit-flow {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 100%;
+  }
+}
+
+.schedule-hero-gradient {
+  background: 
+    radial-gradient(ellipse at top left, rgba(168, 85, 247, 0.15) 0%, transparent 40%),
+    radial-gradient(ellipse at bottom right, rgba(59, 130, 246, 0.15) 0%, transparent 40%),
+    radial-gradient(ellipse at center, rgba(236, 72, 153, 0.1) 0%, transparent 60%);
+  animation: neon-pulse 4s ease-in-out infinite;
+}
+
+/* Circuit Board Pattern */
+.circuit-pattern {
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  background-image: 
+    linear-gradient(0deg, transparent 24%, rgba(168, 85, 247, 0.4) 25%, rgba(168, 85, 247, 0.4) 26%, transparent 27%, transparent 74%, rgba(168, 85, 247, 0.4) 75%, rgba(168, 85, 247, 0.4) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, rgba(59, 130, 246, 0.4) 25%, rgba(59, 130, 246, 0.4) 26%, transparent 27%, transparent 74%, rgba(59, 130, 246, 0.4) 75%, rgba(59, 130, 246, 0.4) 76%, transparent 77%, transparent);
+  background-size: 50px 50px;
+  animation: circuit-flow 20s linear infinite;
+}
+
+/* Animated Wave Background */
+@keyframes wave-flow {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+  50% {
+    transform: translateX(-25%) translateY(-10px);
+  }
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.schedule-wave-bg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  height: 200px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 100px,
+    rgba(239, 68, 68, 0.05) 100px,
+    rgba(239, 68, 68, 0.05) 200px
+  );
+  animation: wave-flow 20s linear infinite;
+}
+
+/* Neon Time Elements */
+@keyframes neon-flicker {
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 10px currentColor) drop-shadow(0 0 20px currentColor);
+  }
+  50% {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 5px currentColor) drop-shadow(0 0 15px currentColor);
+  }
+}
+
+@keyframes hologram-rotate {
+  0% {
+    transform: translate(0, 0) rotateY(0deg) rotateX(0deg);
+  }
+  25% {
+    transform: translate(20px, -15px) rotateY(45deg) rotateX(10deg);
+  }
+  50% {
+    transform: translate(-15px, -25px) rotateY(90deg) rotateX(-10deg);
+  }
+  75% {
+    transform: translate(-20px, -10px) rotateY(135deg) rotateX(5deg);
+  }
+  100% {
+    transform: translate(0, 0) rotateY(180deg) rotateX(0deg);
+  }
+}
+
+.neon-calendar {
+  animation: hologram-rotate 15s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.6));
+}
+
+.neon-clock {
+  animation: neon-flicker 2s ease-in-out infinite;
+  color: #3B82F6;
+}
+
+.neon-tv {
+  animation: neon-flicker 3s ease-in-out infinite;
+  animation-delay: 0.5s;
+  color: #EC4899;
+}
+
+.neon-radio {
+  animation: neon-flicker 2.5s ease-in-out infinite;
+  animation-delay: 1s;
+  color: #10B981;
+}
+
+/* Live Pulse Animation */
+@keyframes live-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+  }
+}
+
+.live-indicator::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: inherit;
+  border-radius: inherit;
+  animation: live-pulse 2s infinite;
+}
+
+/* Schedule Grid Pattern */
+.schedule-grid-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.3;
+}
+
+/* Time Slot Animations */
+@keyframes slot-highlight {
+  0%, 100% {
+    background: rgba(59, 130, 246, 0.1);
+    transform: scale(1);
+  }
+  50% {
+    background: rgba(59, 130, 246, 0.2);
+    transform: scale(1.02);
+  }
+}
+
+.time-slot-active {
+  animation: slot-highlight 3s ease-in-out infinite;
+}
+
+/* Neon Plasma Orbs */
+@keyframes plasma-morph {
+  0% {
+    transform: scale(1) rotate(0deg);
+    border-radius: 50%;
+  }
+  25% {
+    transform: scale(1.3) rotate(90deg);
+    border-radius: 40% 60% 60% 40%;
+  }
+  50% {
+    transform: scale(1.1) rotate(180deg);
+    border-radius: 60% 40% 40% 60%;
+  }
+  75% {
+    transform: scale(1.2) rotate(270deg);
+    border-radius: 40% 60% 60% 40%;
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+    border-radius: 50%;
+  }
+}
+
+.neon-orb {
+  position: absolute;
+  filter: blur(40px);
+  animation: plasma-morph 15s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+.orb-purple {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.8) 0%, rgba(168, 85, 247, 0.4) 40%, transparent 70%);
+  box-shadow: 0 0 80px rgba(168, 85, 247, 0.6);
+}
+
+.orb-cyan {
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.8) 0%, rgba(6, 182, 212, 0.4) 40%, transparent 70%);
+  box-shadow: 0 0 80px rgba(6, 182, 212, 0.6);
+  animation-delay: -5s;
+}
+
+.orb-pink {
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.8) 0%, rgba(236, 72, 153, 0.4) 40%, transparent 70%);
+  box-shadow: 0 0 80px rgba(236, 72, 153, 0.6);
+  animation-delay: -10s;
+}
+
+/* Channel Avatar Glow */
+@keyframes avatar-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
+  }
+}
+
+.channel-avatar-glow {
+  animation: avatar-glow 3s ease-in-out infinite;
+}
+
+/* Day Header Effects */
+.day-header-today {
+  position: relative;
+  overflow: hidden;
+}
+
+.day-header-today::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.2) 0%,
+    rgba(236, 72, 153, 0.2) 100%
+  );
+  animation: schedule-gradient-shift 10s ease infinite;
+}
+
+/* Video Card Hover Effects */
+@keyframes card-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.video-card-hover:hover {
+  animation: card-float 1s ease-in-out infinite;
+}
+
+/* Decorative Elements */
+.schedule-decoration {
+  position: absolute;
+  pointer-events: none;
+}
+
+.calendar-icon-float {
+  animation: float-calendar 15s ease-in-out infinite;
+}
+
+.clock-icon-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.5;
+  }
+}
+
+/* Filter Pills Enhanced */
+.filter-pill-active {
+  position: relative;
+  overflow: hidden;
+}
+
+.filter-pill-active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Weekly Table Enhancements */
+.weekly-table-cell {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.weekly-table-cell:hover {
+  z-index: 10;
+}
+
+.weekly-table-cell:hover::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(139, 92, 246, 0.2) 0%,
+    transparent 70%
+  );
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* Stats Card Animations */
+@keyframes stat-counter {
+  0% {
+    transform: scale(1) rotateY(0deg);
+  }
+  50% {
+    transform: scale(1.05) rotateY(180deg);
+  }
+  100% {
+    transform: scale(1) rotateY(360deg);
+  }
+}
+
+.stat-value-animate {
+  display: inline-block;
+  animation: stat-counter 3s ease-in-out infinite;
+  animation-delay: var(--stat-delay, 0s);
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .schedule-wave-bg {
+    height: 100px;
+  }
+  
+  .streaming-orb {
+    filter: blur(40px);
+  }
+  
+  .schedule-grid-pattern {
+    background-size: 30px 30px;
+  }
+}

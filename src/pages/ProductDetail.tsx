@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import "@/styles/animations.css";
 
 // IMPORTANT: Personalization Fee Setup
 // To charge the $10 personalization fee, you need to:
@@ -185,24 +186,23 @@ const ProductDetail: React.FC = () => {
     return (
       <div className="flex flex-col min-h-screen">
         <Navbar />
-        <main className="flex-grow bg-lolcow-black py-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              <div className="space-y-4">
-                <Skeleton className="aspect-square w-full rounded-lg" />
-                <div className="grid grid-cols-4 gap-2">
-                  {[1, 2, 3, 4].map(i => (
-                    <Skeleton key={i} className="aspect-square rounded-lg" />
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-6">
-                <Skeleton className="h-12 w-3/4" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-20 w-1/3" />
-                <Skeleton className="h-32 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
+        <main className="flex-grow bg-lolcow-black flex items-center justify-center">
+          <div className="loader-content">
+            <div className="loader-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-32 h-32">
+                <circle cx="50" cy="50" r="40" stroke="url(#gradient-loader)" strokeWidth="4" fill="none" />
+                <path d="M30 50 Q50 30 70 50 Q50 70 30 50" fill="url(#gradient-loader)" />
+                <defs>
+                  <linearGradient id="gradient-loader" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FF3366" />
+                    <stop offset="50%" stopColor="#FF6B6B" />
+                    <stop offset="100%" stopColor="#4ECDC4" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <div className="loader-progress mt-8">
+              <div className="loader-progress-bar" />
             </div>
           </div>
         </main>
@@ -390,7 +390,12 @@ const ProductDetail: React.FC = () => {
                 )}
 
                 {/* Variant Options */}
-                {groupedOptions.length > 0 && (
+                {groupedOptions.length > 0 && 
+                 // Hide if the only option is "Title" with "Default Title" value
+                 !(groupedOptions.length === 1 && 
+                   groupedOptions[0].name === "Title" && 
+                   groupedOptions[0].values.length === 1 && 
+                   groupedOptions[0].values[0] === "Default Title") && (
                   <div className="space-y-4">
                     {groupedOptions.map(option => (
                       <div key={option.name} className="bg-lolcow-darkgray/30 p-4 rounded-lg">
@@ -676,12 +681,12 @@ const ProductDetail: React.FC = () => {
           <section className="py-16 bg-lolcow-darkgray">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <h2 className="text-2xl font-fredoka text-white mb-8">You May Also Like</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {relatedProducts
                   .filter(p => p.handle !== handle)
-                  .slice(0, 4)
+                  .slice(0, 3)
                   .map((relatedProduct) => (
-                    <ProductCard key={relatedProduct.id} product={relatedProduct} />
+                    <ProductCard key={relatedProduct.id} product={relatedProduct} hideQuickView={true} />
                   ))}
               </div>
             </div>

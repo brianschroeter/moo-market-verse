@@ -64,6 +64,9 @@ export default {
           black: '#121212',
           darkgray: '#1E1E1E',
           lightgray: '#333333',
+        },
+        discord: {
+          blurple: '#5865F2',
         }
       },
       borderRadius: {

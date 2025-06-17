@@ -39,16 +39,11 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
   
   const previewProducts = collectionData?.products || [];
   
-  // Calculate price range from preview products
-  const priceRange = previewProducts.length > 0 ? {
-    min: Math.min(...previewProducts.map(p => p.priceRange.min)),
-    max: Math.max(...previewProducts.map(p => p.priceRange.max)),
-  } : null;
   
   return (
     <div 
-      className={`group relative bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-xl overflow-hidden border border-lolcow-lightgray/20 hover:border-lolcow-blue/40 transition-all duration-300 ${
-        isListView ? 'flex gap-6 p-6 transform hover:scale-[1.02] hover:shadow-xl hover:shadow-lolcow-blue/10' : 'flex flex-col transform hover:scale-105 hover:shadow-2xl hover:shadow-lolcow-blue/20'
+      className={`collection-card group ${
+        isListView ? 'flex gap-6 p-6' : 'flex flex-col'
       } ${className}`}
       onMouseEnter={() => {
         setShowPreview(true);
@@ -58,15 +53,8 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
         setIsHovered(false);
       }}
     >
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-lolcow-blue/20 to-lolcow-red/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl" />
-      
-      {/* Shimmer effect overlay */}
-      <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
-        <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-      </div>
       {/* Image Section */}
-      <div className={`relative overflow-hidden ${
+      <div className={`collection-card-image ${
         isListView ? 'w-32 h-32 rounded-lg flex-shrink-0' : 'aspect-square'
       }`}>
         {imageUrl ? (
@@ -81,13 +69,11 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
           </div>
         )}
         
-        {/* Overlay Effects */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
           {isNew && (
-            <Badge className="bg-lolcow-red/90 text-white border-0 backdrop-blur-sm animate-pulse">
+            <Badge className="bg-lolcow-red/90 text-white border-0 backdrop-blur-sm animate-slow-pulse">
               <Sparkles className="h-3 w-3 mr-1" />
               NEW
             </Badge>
@@ -107,7 +93,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
         </div>
         
         {/* Product Count Badge */}
-        <Badge className={`absolute top-3 right-3 bg-lolcow-blue/90 hover:bg-lolcow-blue text-white border-0 backdrop-blur-sm ${
+        <Badge className={`collection-card-badge ${
           isListView ? 'text-xs' : 'text-sm'
         }`}>
           <Package className="h-3 w-3 mr-1" />
@@ -116,7 +102,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
       </div>
       
       {/* Content Section */}
-      <div className={`${isListView ? 'flex-1 flex flex-col justify-between' : 'p-6 flex flex-col flex-1'}`}>
+      <div className={`collection-card-content ${isListView ? 'flex-1 flex flex-col justify-between' : 'flex flex-col flex-1'}`}>
         <div className="flex-1">
           <h3 className={`font-fredoka font-bold text-white group-hover:text-lolcow-blue transition-colors duration-300 ${
             isListView ? 'text-xl mb-2' : 'text-xl mb-3'
@@ -135,14 +121,6 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
           </div>
         </div>
         
-        {/* Price Range and Stats */}
-        {priceRange && isHovered && (
-          <div className="mt-3 text-sm text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <span className="font-medium">
-              ${priceRange.min.toFixed(0)} - ${priceRange.max.toFixed(0)}
-            </span>
-          </div>
-        )}
         
         {/* Footer Section - Always at bottom */}
         <div className="flex items-center justify-between mt-4">
@@ -157,7 +135,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
           {/* Enhanced Shop Button */}
           <Button
             asChild
-            className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold transition-all duration-300 group/btn hover:shadow-lg hover:shadow-lolcow-blue/25"
+            className="relative z-40 bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold transition-all duration-300 group/btn hover:shadow-lg hover:shadow-lolcow-blue/25"
             size={isListView ? "sm" : "default"}
           >
             <Link to={`/shop/collections/${handle}`}>
@@ -168,25 +146,40 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
         </div>
       </div>
       
-      {/* Product Preview on Hover (Desktop only) */}
+      {/* Product Preview on Hover (Desktop only) - Positioned above button */}
       {!isListView && showPreview && previewProducts.length > 0 && (
-        <div className="hidden lg:block absolute inset-x-0 bottom-0 bg-black/95 backdrop-blur-sm p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 rounded-b-xl z-20">
+        <div className="hidden lg:block absolute inset-x-0 top-full mt-2 bg-black/95 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 ease-out rounded-xl z-30 pointer-events-none p-4 shadow-2xl">
+          <div className="mb-2">
+            <p className="text-xs text-gray-300 uppercase tracking-wider font-semibold">
+              Featured Products
+            </p>
+          </div>
           <div className="grid grid-cols-4 gap-2">
             {previewProducts.slice(0, 4).map((product, idx) => (
               <div 
                 key={product.id} 
-                className="relative group/preview opacity-0 animate-[fadeInUp_0.3s_ease-out_forwards]"
-                style={{ animationDelay: `${idx * 50}ms` }}
+                className="relative group/preview opacity-0 translate-y-2 transition-all duration-200 ease-out"
+                style={{ 
+                  animationDelay: `${idx * 50}ms`,
+                  animation: isHovered ? `fadeInUp 0.3s ease-out ${idx * 50}ms forwards` : 'none'
+                }}
               >
-                <img 
-                  src={product.featuredImageUrl || '/placeholder.svg'} 
-                  alt={product.title}
-                  className="w-full h-16 object-cover rounded-md group-hover/preview:scale-110 transition-transform" 
-                />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/preview:opacity-100 transition-opacity rounded-md flex items-center justify-center">
-                  <p className="text-xs text-white text-center px-1 line-clamp-2">
-                    {product.title}
-                  </p>
+                <div className="aspect-square relative overflow-hidden rounded-lg">
+                  <img 
+                    src={product.featuredImageUrl || '/placeholder.svg'} 
+                    alt={product.title}
+                    className="w-full h-full object-cover" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent">
+                    <div className="absolute bottom-1 left-1 right-1">
+                      <p className="text-xs text-white font-medium line-clamp-1 leading-tight">
+                        {product.title}
+                      </p>
+                      <p className="text-xs text-gray-300">
+                        ${product.priceRange.min.toFixed(0)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

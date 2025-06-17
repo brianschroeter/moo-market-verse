@@ -1,0 +1,546 @@
+/* Main Animation System */
+
+/* ===========================
+   Core Animation Variables
+   =========================== */
+:root {
+  --animation-duration-fast: 0.3s;
+  --animation-duration-normal: 0.6s;
+  --animation-duration-slow: 1s;
+  --animation-duration-slower: 1.5s;
+  
+  --animation-timing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --animation-timing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --animation-timing-elastic: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  
+  --animation-delay-stagger: 0.1s;
+  --animation-distance: 30px;
+  --animation-distance-far: 60px;
+}
+
+/* ===========================
+   Page Loading Animation
+   =========================== */
+.page-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #121212;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+}
+
+.page-loader.loaded {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loader-content {
+  text-align: center;
+}
+
+.loader-logo {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 2rem;
+  position: relative;
+}
+
+.loader-logo svg {
+  width: 100%;
+  height: 100%;
+  animation: loader-pulse 2s ease-in-out infinite;
+}
+
+.loader-progress {
+  width: 200px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+.loader-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #FF3366, #FF6B6B, #4ECDC4);
+  animation: loader-progress 2s ease-out forwards;
+  transform-origin: left;
+}
+
+@keyframes loader-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes loader-progress {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+/* ===========================
+   Scroll-Triggered Animations
+   =========================== */
+
+/* Base animation state */
+.animate-on-scroll {
+  opacity: 0;
+  will-change: transform, opacity;
+  transition: all var(--animation-duration-normal) var(--animation-timing-smooth);
+}
+
+/* Show content immediately if no JS */
+.no-js .animate-on-scroll {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Fade animations */
+.fade-up {
+  transform: translateY(var(--animation-distance));
+}
+
+.fade-down {
+  transform: translateY(calc(var(--animation-distance) * -1));
+}
+
+.fade-left {
+  transform: translateX(var(--animation-distance));
+}
+
+.fade-right {
+  transform: translateX(calc(var(--animation-distance) * -1));
+}
+
+.fade-up-far {
+  transform: translateY(var(--animation-distance-far));
+}
+
+/* Scale animations */
+.scale-in {
+  transform: scale(0.9);
+}
+
+.scale-in-bounce {
+  transform: scale(0.8);
+}
+
+/* Rotate animations */
+.rotate-in {
+  transform: rotate(-5deg);
+}
+
+/* Fade in up animation for product previews */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slow pulse animation for badges */
+@keyframes slowPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-slow-pulse {
+  animation: slowPulse 3s ease-in-out infinite;
+}
+
+.rotate-in-3d {
+  transform: perspective(1000px) rotateX(20deg);
+}
+
+/* Slide animations */
+.slide-in-bottom {
+  transform: translateY(100%);
+}
+
+.slide-in-top {
+  transform: translateY(-100%);
+}
+
+/* Blur animations */
+.blur-in {
+  filter: blur(10px);
+}
+
+/* Animation triggers when in view */
+.animate-on-scroll.in-view {
+  opacity: 1;
+  transform: translate(0) scale(1) rotate(0);
+  filter: blur(0);
+  transition: all var(--animation-duration-normal) var(--animation-timing-smooth);
+}
+
+/* Longer duration variants */
+.animate-on-scroll.duration-slow.in-view {
+  transition-duration: var(--animation-duration-slow);
+}
+
+.animate-on-scroll.duration-slower.in-view {
+  transition-duration: var(--animation-duration-slower);
+}
+
+/* Different timing functions */
+.animate-on-scroll.timing-bounce.in-view {
+  transition-timing-function: var(--animation-timing-bounce);
+}
+
+.animate-on-scroll.timing-elastic.in-view {
+  transition-timing-function: var(--animation-timing-elastic);
+}
+
+/* Staggered animations for groups */
+.stagger-container .animate-on-scroll {
+  transition-delay: calc(var(--stagger-index, 0) * var(--animation-delay-stagger));
+}
+
+/* Hero section specific animations */
+.hero-animate {
+  animation-fill-mode: both;
+  animation-duration: var(--animation-duration-slow);
+  animation-timing-function: var(--animation-timing-smooth);
+}
+
+.hero-title {
+  animation-name: heroTitleIn;
+  animation-delay: 0.2s;
+}
+
+.hero-subtitle {
+  animation-name: heroSubtitleIn;
+  animation-delay: 0.4s;
+}
+
+.hero-cta {
+  animation-name: heroCtaIn;
+  animation-delay: 0.6s;
+}
+
+@keyframes heroTitleIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes heroSubtitleIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroCtaIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ===========================
+   Parallax Effects
+   =========================== */
+.parallax-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.parallax-element {
+  will-change: transform;
+  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.parallax-slow {
+  --parallax-speed: 0.5;
+}
+
+.parallax-medium {
+  --parallax-speed: 0.7;
+}
+
+.parallax-fast {
+  --parallax-speed: 1.2;
+}
+
+/* ===========================
+   Section Reveal Animations
+   =========================== */
+.section-reveal {
+  position: relative;
+  overflow: hidden;
+}
+
+.section-reveal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #121212;
+  transform-origin: left;
+  transform: scaleX(1);
+  z-index: 10;
+  transition: transform 0.8s var(--animation-timing-smooth);
+}
+
+.section-reveal.revealed::before {
+  transform: scaleX(0);
+  transform-origin: right;
+}
+
+/* ===========================
+   Smooth Scroll Enhancement
+   =========================== */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #FF3366, #4ECDC4);
+  border-radius: 6px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #FF6B6B, #45B7B8);
+}
+
+/* ===========================
+   Performance Optimizations
+   =========================== */
+
+/* Use GPU acceleration for animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Reduce animations on mobile */
+@media (max-width: 768px) {
+  :root {
+    --animation-distance: 20px;
+    --animation-distance-far: 40px;
+  }
+  
+  .animate-on-scroll {
+    transition-duration: var(--animation-duration-fast) !important;
+  }
+  
+  /* Disable complex animations on mobile */
+  .parallax-element {
+    transform: none !important;
+  }
+  
+  .rotate-in-3d {
+    transform: none;
+  }
+}
+
+/* ===========================
+   Accessibility
+   =========================== */
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-on-scroll {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+  
+  .parallax-element {
+    transform: none !important;
+  }
+  
+  .page-loader {
+    display: none !important;
+  }
+  
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ===========================
+   Loading Skeleton Animations
+   =========================== */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 2s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ===========================
+   Micro-interactions Enhancement
+   =========================== */
+.hover-lift {
+  transition: transform 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+}
+
+.hover-scale {
+  transition: transform 0.3s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.hover-rotate {
+  transition: transform 0.3s ease;
+}
+
+.hover-rotate:hover {
+  transform: rotate(5deg);
+}
+
+/* ===========================
+   Text Reveal Animations
+   =========================== */
+.text-reveal {
+  position: relative;
+  overflow: hidden;
+}
+
+.text-reveal .word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(100%);
+  animation: textReveal 0.8s var(--animation-timing-smooth) forwards;
+}
+
+.text-reveal .word:nth-child(n) {
+  animation-delay: calc(var(--word-index, 0) * 0.05s);
+}
+
+@keyframes textReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===========================
+   Number Counter Animation
+   =========================== */
+.counter-animate {
+  display: inline-block;
+  animation: counterPulse 0.6s var(--animation-timing-bounce);
+}
+
+@keyframes counterPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ===========================
+   Section Transitions
+   =========================== */
+.section-transition {
+  position: relative;
+}
+
+.section-transition::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, #121212);
+  pointer-events: none;
+  z-index: 1;
+}

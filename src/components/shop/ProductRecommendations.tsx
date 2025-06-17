@@ -3,7 +3,7 @@ import { Product } from "@/services/types/shopify-types";
 import { formatPrice } from "@/services/shopify/shopifyStorefrontService";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Sparkles } from "lucide-react";
+import { ChevronRight, Sparkles, Star, TrendingUp, Clock, ShoppingBag } from "lucide-react";
 
 interface ProductRecommendationsProps {
   currentProduct?: Product;
@@ -101,36 +101,103 @@ const ProductRecommendations: React.FC<ProductRecommendationsProps> = ({
         </Link>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
         {recommendations.map((product) => (
           <Link
             key={product.id}
             to={`/shop/products/${product.handle}`}
             className="group block"
           >
-            <div className="bg-gradient-to-br from-lolcow-lightgray/20 to-lolcow-darkgray/20 rounded-lg overflow-hidden border border-lolcow-lightgray/10 hover:border-lolcow-blue/40 transition-all duration-300">
+            <div className="group relative bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-2xl overflow-hidden border border-lolcow-lightgray/20 hover:border-lolcow-blue/40 transition-all duration-500 transform hover:scale-[1.03] hover:shadow-2xl hover:shadow-lolcow-blue/30">
+              {/* Animated gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-lolcow-blue/10 to-lolcow-red/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-2xl" />
+              
+              {/* Shimmer effect */}
+              <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                <div className="absolute inset-0 -translate-x-full group-hover:animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+              </div>
+              
               {/* Image */}
-              <div className="aspect-square relative overflow-hidden bg-lolcow-lightgray/10">
+              <div className="relative aspect-square overflow-hidden bg-lolcow-lightgray/10">
                 {product.featuredImageUrl ? (
                   <img
                     src={product.featuredImageUrl}
                     alt={product.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-2xl">🛍️</span>
+                  <div className="w-full h-full bg-gradient-to-br from-lolcow-lightgray to-lolcow-darkgray flex items-center justify-center">
+                    <ShoppingBag className="h-16 w-16 text-lolcow-blue opacity-60" />
                   </div>
                 )}
                 
+                {/* Overlay Effects */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                
                 {/* Badges */}
-                <div className="absolute top-2 left-2">
-                  {product.tags.some(tag => tag.toLowerCase().includes('new')) && (
-                    <Badge className="bg-lolcow-blue/90 text-white border-0 backdrop-blur-sm text-xs">
+                <div className="absolute top-2 left-2 flex flex-col gap-1">
+                  {product.tags.some(tag => tag.toLowerCase().includes('bestseller')) && (
+                    <Badge className="bg-lolcow-red/90 hover:bg-lolcow-red text-white border-0 backdrop-blur-sm text-xs">
+                      <Star className="h-3 w-3 mr-1" />
+                      Best Seller
+                    </Badge>
+                  )}
+                  
+                  {(product.tags.some(tag => 
+                    tag.toLowerCase().includes('new') || 
+                    tag.toLowerCase().includes('just-arrived') ||
+                    tag.toLowerCase().includes('fresh') ||
+                    tag.toLowerCase().includes('latest')
+                  )) && (
+                    <Badge className="bg-lolcow-blue/90 hover:bg-lolcow-blue text-white border-0 backdrop-blur-sm text-xs">
+                      <Sparkles className="h-3 w-3 mr-1" />
                       NEW
                     </Badge>
                   )}
+                  
+                  {product.tags.some(tag => tag.toLowerCase().includes('sale') || tag.toLowerCase().includes('discount')) && (
+                    <Badge className="bg-green-600/90 hover:bg-green-600 text-white border-0 backdrop-blur-sm text-xs">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      Sale
+                    </Badge>
+                  )}
+                  
+                  {product.tags.some(tag => tag.toLowerCase().includes('limited')) && (
+                    <Badge className="bg-purple-600/90 hover:bg-purple-600 text-white border-0 backdrop-blur-sm text-xs">
+                      <Clock className="h-3 w-3 mr-1" />
+                      Limited
+                    </Badge>
+                  )}
+                  
+                  {/* Additional Product Tags */}
+                  {product.tags
+                    .filter(tag => 
+                      !tag.toLowerCase().includes('bestseller') &&
+                      !tag.toLowerCase().includes('new') &&
+                      !tag.toLowerCase().includes('just-arrived') &&
+                      !tag.toLowerCase().includes('fresh') &&
+                      !tag.toLowerCase().includes('latest') &&
+                      !tag.toLowerCase().includes('sale') &&
+                      !tag.toLowerCase().includes('discount') &&
+                      !tag.toLowerCase().includes('limited') &&
+                      !tag.toLowerCase().includes('shop-all') &&
+                      !tag.toLowerCase().includes('printful') &&
+                      !tag.toLowerCase().includes('personalize')
+                    )
+                    .slice(0, 2)
+                    .map((tag, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs backdrop-blur-sm border-0">
+                        {tag}
+                      </Badge>
+                    ))}
                 </div>
+                
+                {/* Availability Badge */}
+                {!product.available && (
+                  <Badge className="absolute top-2 right-2 bg-gray-600/90 text-white border-0 backdrop-blur-sm text-xs">
+                    Sold Out
+                  </Badge>
+                )}
               </div>
               
               {/* Content */}

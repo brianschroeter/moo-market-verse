@@ -1,0 +1,336 @@
+/* Leaderboard Page Enhanced Styles */
+
+/* Hero Background Animations */
+@keyframes trophy-gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    background-position: 100% 50%;
+    filter: hue-rotate(30deg);
+  }
+}
+
+.leaderboard-hero-gradient {
+  background: linear-gradient(
+    135deg,
+    rgba(251, 191, 36, 0.15) 0%,
+    rgba(239, 68, 68, 0.15) 25%,
+    rgba(139, 92, 246, 0.15) 50%,
+    rgba(16, 185, 129, 0.15) 75%,
+    rgba(251, 191, 36, 0.15) 100%
+  );
+  background-size: 400% 400%;
+  animation: trophy-gradient 20s ease infinite;
+}
+
+/* Trophy Floating Animation */
+@keyframes trophy-float {
+  0%, 100% {
+    transform: translate(0, 0) rotate(-5deg) scale(1);
+  }
+  25% {
+    transform: translate(20px, -30px) rotate(5deg) scale(1.1);
+  }
+  50% {
+    transform: translate(-10px, -40px) rotate(-10deg) scale(1);
+  }
+  75% {
+    transform: translate(-20px, -20px) rotate(0deg) scale(1.05);
+  }
+}
+
+.floating-trophy {
+  animation: trophy-float 15s ease-in-out infinite;
+}
+
+/* Gold Particle Effects */
+@keyframes gold-particle-rise {
+  0% {
+    transform: translateY(100vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.gold-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: linear-gradient(45deg, #fbbf24, #f59e0b);
+  border-radius: 50%;
+  animation: gold-particle-rise 12s linear infinite;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+/* Rank Badge Animations */
+@keyframes rank-shine {
+  0%, 100% {
+    background-position: -200% center;
+  }
+  50% {
+    background-position: 200% center;
+  }
+}
+
+.rank-badge {
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: rank-shine 3s ease-in-out infinite;
+}
+
+.rank-1 {
+  background-color: #fbbf24;
+  color: #000;
+  font-weight: bold;
+}
+
+.rank-2 {
+  background-color: #d1d5db;
+  color: #000;
+}
+
+.rank-3 {
+  background-color: #f59e0b;
+  color: #fff;
+}
+
+/* Leaderboard Mesh Background */
+.leaderboard-mesh {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(ellipse at top left, rgba(251, 191, 36, 0.1) 0%, transparent 40%),
+    radial-gradient(ellipse at bottom right, rgba(239, 68, 68, 0.1) 0%, transparent 40%),
+    radial-gradient(ellipse at center, rgba(139, 92, 246, 0.05) 0%, transparent 60%);
+  opacity: 0.6;
+}
+
+/* Trophy Shapes Pattern */
+.trophy-pattern {
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 50px,
+    rgba(251, 191, 36, 0.5) 50px,
+    rgba(251, 191, 36, 0.5) 100px
+  );
+}
+
+/* Stats Counter Animation */
+@keyframes counter-flip {
+  0% {
+    transform: rotateX(0deg);
+  }
+  50% {
+    transform: rotateX(90deg);
+  }
+  100% {
+    transform: rotateX(0deg);
+  }
+}
+
+.counter-flip-animation {
+  display: inline-block;
+  animation: counter-flip 2s ease-in-out infinite;
+  animation-delay: var(--counter-delay, 0s);
+}
+
+/* Crown Animation for Top Players */
+@keyframes crown-bounce {
+  0%, 100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(5deg);
+  }
+}
+
+.crown-icon {
+  animation: crown-bounce 2s ease-in-out infinite;
+}
+
+/* Tab Indicator Animation */
+@keyframes tab-glow {
+  0%, 100% {
+    box-shadow: 0 2px 10px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 20px rgba(139, 92, 246, 0.5);
+  }
+}
+
+.tab-active {
+  animation: tab-glow 2s ease-in-out infinite;
+}
+
+/* Chart Bar Animations */
+@keyframes bar-grow {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+.chart-bar-animated {
+  transform-origin: bottom;
+  animation: bar-grow 1s ease-out forwards;
+  animation-delay: var(--bar-delay, 0s);
+}
+
+/* Money Rain Effect */
+@keyframes money-fall {
+  0% {
+    transform: translateY(-100px) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.money-icon {
+  position: absolute;
+  font-size: 24px;
+  animation: money-fall 10s linear infinite;
+}
+
+/* Leaderboard Orbs */
+.leaderboard-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+}
+
+.orb-gold {
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%);
+  animation: orb-stream 15s ease-in-out infinite;
+}
+
+.orb-silver {
+  background: radial-gradient(circle, rgba(209, 213, 219, 0.4) 0%, transparent 70%);
+  animation: orb-stream 20s ease-in-out infinite reverse;
+}
+
+.orb-bronze {
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.4) 0%, transparent 70%);
+  animation: orb-stream 18s ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+/* Table Row Hover Effects */
+@keyframes row-highlight {
+  0%, 100% {
+    background: rgba(139, 92, 246, 0.05);
+  }
+  50% {
+    background: rgba(139, 92, 246, 0.1);
+  }
+}
+
+.leaderboard-row:hover {
+  animation: row-highlight 1s ease-in-out infinite;
+  transform: translateX(5px);
+  transition: transform 0.3s ease;
+}
+
+/* Winner Spotlight Effect */
+@keyframes winner-spotlight {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(251, 191, 36, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 60px rgba(251, 191, 36, 0.6);
+  }
+}
+
+.winner-card {
+  animation: winner-spotlight 3s ease-in-out infinite;
+}
+
+/* Decorative Stars */
+@keyframes star-twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.star-decoration {
+  position: absolute;
+  color: #fbbf24;
+  animation: star-twinkle 2s ease-in-out infinite;
+  animation-delay: var(--star-delay, 0s);
+}
+
+/* Confetti Animation */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(45deg, #fbbf24, #f59e0b);
+  animation: confetti-fall 5s linear infinite;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .leaderboard-orb {
+    filter: blur(60px);
+  }
+  
+  .gold-particle {
+    width: 4px;
+    height: 4px;
+  }
+  
+  .money-icon {
+    font-size: 18px;
+  }
+}

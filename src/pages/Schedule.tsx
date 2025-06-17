@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ScheduleHeader from "../components/ScheduleHeader";
+import SmoothScroll from "@/components/SmoothScroll";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,11 +22,16 @@ import {
   Calendar,
   Sparkles,
   ChevronRight,
-  Youtube
+  Youtube,
+  Loader2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getProxiedImageUrl, getImageWithFallback } from "@/utils/imageProxy";
 import { useActiveSync } from "@/hooks/useActiveSync";
+import { useScrollAnimation, useParallax, useStaggeredAnimation, usePageLoader, useTextReveal } from "@/hooks/useScrollAnimation";
+import "@/styles/animations.css";
+import "@/styles/micro-interactions.css";
+import "@/styles/schedule.css";
 
 interface ScheduleData {
   channels: Channel[]
@@ -547,6 +553,17 @@ const WeeklyScheduleTable: React.FC<{
 const Schedule: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<'live' | 'replay' | 'upcoming'>('live');
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Animation hooks
+  const isPageLoading = usePageLoader(1500);
+  const heroRef = useScrollAnimation({ threshold: 0.1 });
+  const heroTitleRef = useTextReveal();
+  const statsRef = useStaggeredAnimation(2, { threshold: 0.2 });
+  const filterRef = useScrollAnimation({ threshold: 0.3 });
+  const contentRef = useScrollAnimation({ threshold: 0.1 });
+  const parallaxHeroRef = useParallax(0.3);
+  const parallaxBgRef = useParallax(0.5);
 
   // Trigger active sync when viewing the schedule
   useActiveSync();
@@ -710,24 +727,118 @@ const Schedule: React.FC = () => {
     return weeklyStreams
   }
 
+  // Animated background effect
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let time = 0;
+
+    const resizeCanvas = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    };
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const animate = () => {
+      time += 0.001;
+      
+      ctx.fillStyle = 'rgba(18, 18, 18, 0.02)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw neon-themed gradient orbs
+      const drawNeonOrb = (x: number, y: number, size: number, opacity: number, color: string) => {
+        const offsetX = Math.sin(time * 0.5) * 30;
+        const offsetY = Math.cos(time * 0.3) * 20;
+        
+        // Create multiple layers for neon effect
+        for (let i = 3; i > 0; i--) {
+          const gradient = ctx.createRadialGradient(
+            x + offsetX, y + offsetY, 0,
+            x + offsetX, y + offsetY, size * i
+          );
+          gradient.addColorStop(0, color.replace('rgb', 'rgba').replace(')', `, ${opacity * (0.3 / i)})`));
+          gradient.addColorStop(0.3, color.replace('rgb', 'rgba').replace(')', `, ${opacity * (0.2 / i)})`));
+          gradient.addColorStop(0.7, color.replace('rgb', 'rgba').replace(')', `, ${opacity * (0.1 / i)})`));
+          gradient.addColorStop(1, 'transparent');
+          
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(x + offsetX, y + offsetY, size * i, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      };
+
+      // Draw multiple neon orbs
+      drawNeonOrb(canvas.width * 0.2, canvas.height * 0.3, 150, 0.15, 'rgb(168, 85, 247)');
+      drawNeonOrb(canvas.width * 0.8, canvas.height * 0.7, 200, 0.12, 'rgb(6, 182, 212)');
+      drawNeonOrb(canvas.width * 0.5, canvas.height * 0.5, 100, 0.18, 'rgb(236, 72, 153)');
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
   if (isError) {
     return (
-      <div className="flex flex-col min-h-screen bg-gradient-to-b from-lolcow-black to-lolcow-darkgray text-white">
-        <Navbar />
-        <main className="flex-grow container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-          <div className="text-center">
-            <div className="p-4 rounded-lg bg-red-500/20 mb-4 inline-block">
-              <Tv className="h-16 w-16 text-red-400 mx-auto mb-4" />
+      <>
+        {/* Page Loader */}
+        {isPageLoading && (
+          <div className="page-loader">
+            <div className="loader-content">
+              <div className="loader-logo">
+                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="50" cy="50" r="40" stroke="url(#gradient)" strokeWidth="4" fill="none" />
+                  <path d="M30 50 Q50 30 70 50 Q50 70 30 50" fill="url(#gradient)" />
+                  <defs>
+                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#FF3366" />
+                      <stop offset="50%" stopColor="#FF6B6B" />
+                      <stop offset="100%" stopColor="#4ECDC4" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+              <div className="loader-progress">
+                <div className="loader-progress-bar" />
+              </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-fredoka mb-3 sm:mb-4 text-red-400">Schedule Unavailable</h1>
-            <p className="text-sm sm:text-base text-gray-300 mb-3 sm:mb-4">{error?.message || 'Failed to load schedule data'}</p>
-            <Button onClick={() => refetch()} className="bg-lolcow-blue hover:bg-lolcow-blue/80">
-              Try Again
-            </Button>
           </div>
-        </main>
-        <Footer />
-      </div>
+        )}
+        
+        <div className={`flex flex-col min-h-screen ${isPageLoading ? 'opacity-0' : 'opacity-100'}`} style={{ transition: 'opacity 0.5s ease-out' }}>
+          <SmoothScroll>
+            <div className="flex flex-col min-h-screen bg-gradient-to-b from-lolcow-black to-lolcow-darkgray text-white">
+              <Navbar />
+              <main className="flex-grow container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+                <div className="text-center">
+                  <div className="p-4 rounded-lg bg-red-500/20 mb-4 inline-block">
+                    <Tv className="h-16 w-16 text-red-400 mx-auto mb-4" />
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-fredoka mb-3 sm:mb-4 text-red-400">Schedule Unavailable</h1>
+                  <p className="text-sm sm:text-base text-gray-300 mb-3 sm:mb-4">{error?.message || 'Failed to load schedule data'}</p>
+                  <Button onClick={() => refetch()} className="bg-lolcow-blue hover:bg-lolcow-blue/80">
+                    Try Again
+                  </Button>
+                </div>
+              </main>
+              <Footer />
+            </div>
+          </SmoothScroll>
+        </div>
+      </>
     )
   }
 
@@ -737,9 +848,136 @@ const Schedule: React.FC = () => {
   const weeklyStreams = getWeeklyStreams()
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-lolcow-black to-lolcow-darkgray text-white">
-      <Navbar />
-      <main className="flex-grow container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+    <>
+      {/* Page Loader */}
+      {isPageLoading && (
+        <div className="page-loader">
+          <div className="loader-content">
+            <div className="loader-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="40" stroke="url(#gradient)" strokeWidth="4" fill="none" />
+                <path d="M30 50 Q50 30 70 50 Q50 70 30 50" fill="url(#gradient)" />
+                <defs>
+                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FF3366" />
+                    <stop offset="50%" stopColor="#FF6B6B" />
+                    <stop offset="100%" stopColor="#4ECDC4" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <div className="loader-progress">
+              <div className="loader-progress-bar" />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className={`flex flex-col min-h-screen ${isPageLoading ? 'opacity-0' : 'opacity-100'}`} style={{ transition: 'opacity 0.5s ease-out' }}>
+        <SmoothScroll>
+          <div className="flex flex-col min-h-screen bg-gradient-to-b from-lolcow-black to-lolcow-darkgray text-white">
+            <Navbar />
+            
+            {/* Hero Section - Unique Neon Circuit Theme */}
+            <section 
+              ref={heroRef.ref}
+              className={`relative py-24 bg-gradient-to-br from-gray-900 via-black to-purple-950 overflow-hidden animate-on-scroll fade-up ${heroRef.isInView ? 'in-view' : ''}`}
+            >
+              {/* Animated Background Canvas */}
+              <canvas 
+                ref={canvasRef}
+                className="absolute inset-0 w-full h-full pointer-events-none opacity-60"
+              />
+              
+              {/* Circuit Board Pattern */}
+              <div className="circuit-pattern" />
+              
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 schedule-hero-gradient" />
+              
+              {/* Parallax Background Elements */}
+              <div 
+                ref={parallaxHeroRef.ref}
+                className="absolute inset-0"
+              >
+                {/* Neon holographic elements */}
+                <Calendar className="absolute top-20 left-[10%] h-16 w-16 neon-calendar text-purple-400" />
+                <Clock className="absolute top-32 right-[15%] h-12 w-12 neon-clock" />
+                <Tv className="absolute bottom-40 left-[20%] h-20 w-20 neon-tv" />
+                <Radio className="absolute bottom-20 right-[10%] h-14 w-14 neon-radio" />
+                
+                {/* Neon plasma orbs */}
+                <div className="neon-orb orb-purple top-[20%] left-[25%] w-96 h-96" />
+                <div className="neon-orb orb-cyan bottom-[20%] right-[20%] w-80 h-80" />
+                <div className="neon-orb orb-pink top-[50%] left-[50%] w-64 h-64" />
+              </div>
+              
+              {/* Wave background */}
+              <div className="schedule-wave-bg" />
+              
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                {/* Animated Neon Schedule logo */}
+                <div className="flex justify-center mb-8">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-purple-500/30 rounded-full blur-3xl animate-pulse" />
+                    <div className="relative z-10 w-20 h-20 bg-gradient-to-br from-purple-600 via-pink-600 to-cyan-600 rounded-full flex items-center justify-center shadow-2xl shadow-purple-500/50">
+                      <Calendar className="h-10 w-10 text-white drop-shadow-glow" />
+                    </div>
+                    <div className="absolute -inset-4">
+                      <div className="absolute inset-0 rounded-full border-2 border-purple-400/50 animate-ping" />
+                      <div className="absolute inset-0 rounded-full border-2 border-cyan-400/50 animate-ping" style={{ animationDelay: '0.5s' }} />
+                      <div className="absolute inset-0 rounded-full border-2 border-pink-400/50 animate-ping" style={{ animationDelay: '1s' }} />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="text-center">
+                  <div 
+                    ref={heroTitleRef.ref}
+                    className={`hero-animate hero-title animate-on-scroll fade-up duration-slow ${heroRef.isInView ? 'in-view' : ''}`}
+                  >
+                    <h1 className="text-5xl md:text-7xl font-fredoka text-white mb-6 leading-tight">
+                      <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent hover-scale inline-block transition-transform duration-300 cursor-pointer">LOL</span>
+                      <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent hover-scale inline-block transition-transform duration-300 cursor-pointer">COW</span>
+                      <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent hover-scale inline-block transition-transform duration-300 cursor-pointer"> Schedule</span>
+                    </h1>
+                  </div>
+                  
+                  <div className={`hero-animate hero-subtitle animate-on-scroll fade-up duration-slow ${heroRef.isInView ? 'in-view' : ''}`}>
+                    <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed mb-8">
+                      Never miss your favorite shows! Check out what's live, catch the replays, 
+                      and see what's coming up across all LolCow channels.
+                    </p>
+                  </div>
+                  
+                  <div className={`hero-animate hero-cta animate-on-scroll fade-up duration-slow ${heroRef.isInView ? 'in-view' : ''}`}>
+                    <div className="flex flex-wrap justify-center gap-4">
+                      <Button 
+                        asChild
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-4 text-lg hover-lift transition-all duration-300 group shadow-lg shadow-purple-500/30"
+                      >
+                        <a href="#live">
+                          Watch Live Now
+                          <Radio className="h-5 w-5 ml-2 animate-pulse" />
+                        </a>
+                      </Button>
+                      <Button 
+                        asChild
+                        variant="outline"
+                        className="border-2 border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-black font-semibold px-8 py-4 text-lg hover-lift transition-all duration-300 group shadow-lg shadow-cyan-500/30"
+                      >
+                        <a href="#weekly">
+                          Weekly Schedule
+                          <Calendar className="h-5 w-5 ml-2 group-hover:rotate-12 transition-transform duration-300" />
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            
+            <main className="flex-grow container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <ScheduleHeader 
           includeRecent={true}
           onToggleRecent={() => {}}
@@ -748,8 +986,8 @@ const Schedule: React.FC = () => {
 
         {/* Enhanced Stats Row */}
         {scheduleData && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-            <div className="relative group">
+          <div ref={statsRef.ref} className={`grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8 stagger-container ${statsRef.isInView ? 'in-view' : ''}`}>
+            <div className="relative group animate-on-scroll fade-up">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-blue-600/0 rounded-xl blur-xl group-hover:from-blue-600/30 transition-all duration-500"></div>
               <div className="relative bg-gradient-to-br from-blue-800/40 to-blue-900/60 rounded-xl px-4 sm:px-6 py-4 sm:py-5 border border-blue-700/40 shadow-xl backdrop-blur-sm hover:from-blue-700/50 hover:to-blue-800/70 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
                 <div className="flex items-center">
@@ -757,14 +995,14 @@ const Schedule: React.FC = () => {
                     <Tv className="h-5 w-5 sm:h-7 sm:w-7 text-blue-400 filter drop-shadow-glow" />
                   </div>
                   <div>
-                    <div className="text-2xl sm:text-3xl font-bold text-white mb-0.5 sm:mb-1 font-fredoka">{scheduleData.stats.totalChannels}</div>
+                    <div className="text-2xl sm:text-3xl font-bold text-white mb-0.5 sm:mb-1 font-fredoka stat-value-animate" style={{ '--stat-delay': '0s' } as React.CSSProperties}>{scheduleData.stats.totalChannels}</div>
                     <div className="text-xs sm:text-sm font-medium text-blue-300 uppercase tracking-wider">Channels</div>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div className="relative group">
+            <div className="relative group animate-on-scroll fade-up">
               <div className="absolute inset-0 bg-gradient-to-r from-red-600/20 to-red-600/0 rounded-xl blur-xl group-hover:from-red-600/30 transition-all duration-500"></div>
               <div className="relative bg-gradient-to-br from-red-800/40 to-red-900/60 rounded-xl px-4 sm:px-6 py-4 sm:py-5 border border-red-700/40 shadow-xl backdrop-blur-sm hover:from-red-700/50 hover:to-red-800/70 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
                 <div className="flex items-center">
@@ -772,7 +1010,7 @@ const Schedule: React.FC = () => {
                     <Radio className="h-5 w-5 sm:h-7 sm:w-7 text-red-400 animate-pulse filter drop-shadow-glow" />
                   </div>
                   <div>
-                    <div className="text-2xl sm:text-3xl font-bold text-white mb-0.5 sm:mb-1 font-fredoka">{scheduleData.stats.liveNow}</div>
+                    <div className="text-2xl sm:text-3xl font-bold text-white mb-0.5 sm:mb-1 font-fredoka stat-value-animate" style={{ '--stat-delay': '0.5s' } as React.CSSProperties}>{scheduleData.stats.liveNow}</div>
                     <div className="text-xs sm:text-sm font-medium text-red-300 uppercase tracking-wider">Live Now</div>
                   </div>
                 </div>
@@ -783,7 +1021,7 @@ const Schedule: React.FC = () => {
 
         {/* Filter Section */}
         {scheduleData && getAvailableChannels().length > 0 && (
-          <Card className="bg-gradient-to-br from-gray-800/40 to-gray-900/60 border border-gray-700/50 shadow-lg mb-6 sm:mb-8">
+          <Card ref={filterRef.ref} className={`bg-gradient-to-br from-gray-800/40 to-gray-900/60 border border-gray-700/50 shadow-lg mb-6 sm:mb-8 animate-on-scroll fade-up ${filterRef.isInView ? 'in-view' : ''}`}>
             <CardHeader className="pb-3 sm:pb-4">
               <CardTitle className="font-fredoka text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center">
@@ -928,10 +1166,10 @@ const Schedule: React.FC = () => {
         )}
 
         {/* Main Content Sections */}
-        <div className="space-y-8 sm:space-y-10 md:space-y-12">
+        <div ref={contentRef.ref} className={`space-y-8 sm:space-y-10 md:space-y-12 animate-on-scroll fade-up ${contentRef.isInView ? 'in-view' : ''}`}>
           {/* Live Now Section */}
           {liveStreams.length > 0 && (
-            <section>
+            <section id="live">
               <div className="flex items-center mb-4 sm:mb-6">
                 <div className="flex items-center gap-3">
                   <div className="relative">
@@ -982,7 +1220,7 @@ const Schedule: React.FC = () => {
 
           {/* Weekly Schedule Section */}
           {scheduleData && (scheduleData.channels.length > 0 || scheduleData.scheduleSlots.length > 0) && (
-            <section>
+            <section id="weekly">
               <div className="flex items-center mb-4 sm:mb-6">
                 <div className="flex items-center gap-3">
                   <div className="p-2 sm:p-3 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg">
@@ -1077,9 +1315,12 @@ const Schedule: React.FC = () => {
             Schedule updated: {scheduleData ? new Date(scheduleData.lastUpdated).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Loading...'}
           </div>
         </div>
-      </main>
-      <Footer />
-    </div>
+            </main>
+            <Footer />
+          </div>
+        </SmoothScroll>
+      </div>
+    </>
   );
 };
 

@@ -3,7 +3,8 @@ import { Product } from "@/services/types/shopify-types";
 import { formatPrice } from "@/services/shopify/shopifyStorefrontService";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, History, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ChevronLeft, ChevronRight, History, X, Star, Sparkles, TrendingUp, Clock, ShoppingBag } from "lucide-react";
 
 interface RecentlyViewedProps {
   currentProductId?: string; // To exclude current product from the list
@@ -28,7 +29,7 @@ export const trackProductView = (product: Product) => {
 const RecentlyViewed: React.FC<RecentlyViewedProps> = ({ currentProductId }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [showScroll, setShowScroll] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true); // Start collapsed by default
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -147,7 +148,10 @@ const RecentlyViewed: React.FC<RecentlyViewedProps> = ({ currentProductId }) => 
               to={`/shop/products/${product.handle}`}
               className="flex-shrink-0 group"
             >
-              <div className="bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-lg overflow-hidden border border-lolcow-lightgray/20 hover:border-lolcow-blue/40 transition-all duration-300 w-40">
+              <div className="group relative bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-xl overflow-hidden border border-lolcow-lightgray/20 hover:border-lolcow-blue/40 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg hover:shadow-lolcow-blue/20 w-40">
+                {/* Animated gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-lolcow-blue/10 to-lolcow-red/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl" />
+                
                 {/* Image */}
                 <div className="aspect-square relative overflow-hidden bg-lolcow-lightgray/10">
                   {product.featuredImageUrl ? (
@@ -157,9 +161,47 @@ const RecentlyViewed: React.FC<RecentlyViewedProps> = ({ currentProductId }) => 
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-4xl">🛍️</span>
+                    <div className="w-full h-full bg-gradient-to-br from-lolcow-lightgray to-lolcow-darkgray flex items-center justify-center">
+                      <ShoppingBag className="h-8 w-8 text-lolcow-blue opacity-60" />
                     </div>
+                  )}
+                  
+                  {/* Overlay Effects */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  
+                  {/* Compact Badges */}
+                  <div className="absolute top-1 left-1 flex flex-col gap-1">
+                    {product.tags.some(tag => tag.toLowerCase().includes('bestseller')) && (
+                      <Badge className="bg-lolcow-red/90 text-white border-0 backdrop-blur-sm text-xs px-1 py-0.5">
+                        <Star className="h-2 w-2 mr-0.5" />
+                        Best
+                      </Badge>
+                    )}
+                    
+                    {(product.tags.some(tag => 
+                      tag.toLowerCase().includes('new') || 
+                      tag.toLowerCase().includes('just-arrived') ||
+                      tag.toLowerCase().includes('fresh') ||
+                      tag.toLowerCase().includes('latest')
+                    )) && (
+                      <Badge className="bg-lolcow-blue/90 text-white border-0 backdrop-blur-sm text-xs px-1 py-0.5">
+                        <Sparkles className="h-2 w-2 mr-0.5" />
+                        NEW
+                      </Badge>
+                    )}
+                    
+                    {product.tags.some(tag => tag.toLowerCase().includes('sale') || tag.toLowerCase().includes('discount')) && (
+                      <Badge className="bg-green-600/90 text-white border-0 backdrop-blur-sm text-xs px-1 py-0.5">
+                        Sale
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {/* Availability Badge */}
+                  {!product.available && (
+                    <Badge className="absolute top-1 right-1 bg-gray-600/90 text-white border-0 backdrop-blur-sm text-xs px-1 py-0.5">
+                      Sold Out
+                    </Badge>
                   )}
                 </div>
                 

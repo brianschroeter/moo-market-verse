@@ -1,3 +1,73 @@
+/* Products Page Styles */
+
+/* Hero Section Background */
+.hero-section {
+  background: linear-gradient(
+    135deg,
+    #121212 0%,
+    #1a1a1f 25%,
+    #121212 50%,
+    #1a1a1f 75%,
+    #121212 100%
+  );
+  background-size: 400% 400%;
+  animation: gradient-shift 20s ease infinite;
+}
+
+/* Animation Keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Animation Classes */
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.3s ease-out;
+}
+
+/* Product Card Animations */
+.animate-fadeIn[style*="animation-delay"] {
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+/* Filter Animation */
+.filter-loading-overlay {
+  animation: fadeIn 0.2s ease-out;
+}
+
 /* Custom scrollbar for collections filter */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
@@ -21,4 +91,43 @@
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 163, 255, 0.5) rgba(255, 255, 255, 0.1);
+}
+
+/* Floating Animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+  75% {
+    transform: translateY(20px) rotate(-5deg);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Mobile Filters Modal */
+@media (max-width: 1023px) {
+  .filter-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.5);
+  }
+  
+  .filter-modal-content {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 80%;
+    max-width: 320px;
+    background: #121212;
+    overflow-y: auto;
+    animation: slideInRight 0.3s ease-out;
+  }
 }

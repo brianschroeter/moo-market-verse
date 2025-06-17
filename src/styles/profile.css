@@ -1,0 +1,299 @@
+/* Profile Page Enhanced Styles */
+
+/* Hero Section Background - User-centric Theme */
+@keyframes profile-gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    background-position: 100% 50%;
+    filter: hue-rotate(15deg);
+  }
+}
+
+.profile-hero-gradient {
+  background: 
+    radial-gradient(ellipse at top left, rgba(59, 130, 246, 0.15) 0%, transparent 40%),
+    radial-gradient(ellipse at bottom right, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+    radial-gradient(ellipse at center, rgba(16, 185, 129, 0.1) 0%, transparent 60%);
+  animation: profile-gradient 20s ease infinite;
+}
+
+/* User Avatar Glow */
+@keyframes avatar-ring {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1);
+    opacity: 1;
+  }
+}
+
+.avatar-ring {
+  position: absolute;
+  inset: -4px;
+  background: linear-gradient(45deg, #3B82F6, #8B5CF6, #10B981, #3B82F6);
+  border-radius: 50%;
+  animation: avatar-ring 4s linear infinite;
+}
+
+.avatar-ring::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background: var(--background-color, #000);
+  border-radius: 50%;
+}
+
+/* Profile Mesh Background */
+.profile-mesh-bg {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 100px,
+      rgba(59, 130, 246, 0.03) 100px,
+      rgba(59, 130, 246, 0.03) 200px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 100px,
+      rgba(139, 92, 246, 0.03) 100px,
+      rgba(139, 92, 246, 0.03) 200px
+    );
+  opacity: 0.5;
+}
+
+/* Floating Profile Elements */
+@keyframes profile-float {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(30px, -20px) rotate(90deg);
+  }
+  50% {
+    transform: translate(-20px, -40px) rotate(180deg);
+  }
+  75% {
+    transform: translate(-30px, -15px) rotate(270deg);
+  }
+}
+
+.floating-profile-element {
+  animation: profile-float 20s ease-in-out infinite;
+  opacity: 0.3;
+}
+
+/* Connection Cards Enhancement */
+@keyframes connection-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
+.connection-card-active {
+  position: relative;
+  overflow: hidden;
+}
+
+.connection-card-active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.1) 0%,
+    rgba(139, 92, 246, 0.1) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.connection-card-active:hover::before {
+  opacity: 1;
+}
+
+/* Profile Stats Animation */
+@keyframes stat-flip {
+  0% {
+    transform: rotateX(0deg);
+  }
+  50% {
+    transform: rotateX(90deg);
+  }
+  100% {
+    transform: rotateX(0deg);
+  }
+}
+
+.profile-stat-value {
+  display: inline-block;
+  animation: stat-flip 3s ease-in-out infinite;
+  animation-delay: var(--stat-delay, 0s);
+}
+
+/* Profile Orbs */
+.profile-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  animation: orb-float 20s ease-in-out infinite;
+}
+
+.orb-blue {
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, transparent 70%);
+}
+
+.orb-purple {
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 70%);
+  animation-delay: -7s;
+}
+
+.orb-green {
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.4) 0%, transparent 70%);
+  animation-delay: -14s;
+}
+
+@keyframes orb-float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(100px, -100px) scale(1.1);
+  }
+  66% {
+    transform: translate(-100px, -50px) scale(0.9);
+  }
+}
+
+/* Achievement Badges */
+@keyframes badge-shine {
+  0%, 100% {
+    background-position: -200% center;
+  }
+  50% {
+    background-position: 200% center;
+  }
+}
+
+.achievement-badge {
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: badge-shine 4s ease-in-out infinite;
+}
+
+/* Profile Loading States */
+@keyframes skeleton-wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.profile-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.profile-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  animation: skeleton-wave 2s infinite;
+}
+
+/* Connection Status Indicators */
+@keyframes status-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-indicator {
+  position: relative;
+  display: inline-block;
+}
+
+.status-indicator::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+.status-connected::before {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+.status-disconnected::before {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+/* Profile Grid Pattern */
+.profile-grid-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.3;
+}
+
+/* Interactive Elements */
+@keyframes hover-lift {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.profile-card-hover:hover {
+  animation: hover-lift 0.5s ease-in-out;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .profile-orb {
+    filter: blur(60px);
+  }
+  
+  .profile-mesh-bg {
+    opacity: 0.3;
+  }
+  
+  .floating-profile-element {
+    opacity: 0.2;
+  }
+}

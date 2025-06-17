@@ -4,7 +4,7 @@ import { Product } from "@/services/types/shopify-types";
 import { formatPrice } from "@/services/shopify/shopifyStorefrontService";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBag, Star, ExternalLink, Eye, AlertCircle } from "lucide-react";
+import { ShoppingBag, Star, Eye, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProductCardEnhancedProps {
@@ -28,7 +28,7 @@ const ProductCardEnhanced: React.FC<ProductCardEnhancedProps> = ({
   }
 
   const handleShopClick = () => {
-    window.open(`https://lolcow.co/products/${product.handle}`, '_blank');
+    window.location.href = `/shop/products/${product.handle}`;
   };
 
   return (
@@ -133,8 +133,7 @@ const ProductCardEnhanced: React.FC<ProductCardEnhancedProps> = ({
                 className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold transition-all duration-300 group/btn hover:shadow-lg hover:shadow-lolcow-blue/25 px-6 py-3"
                 size="default"
               >
-                Shop
-                <ExternalLink className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                Shop Now
               </Button>
             ) : (
               <Button

@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import SmoothScroll from "./components/SmoothScroll";
+import ScrollToTop from "./components/ScrollToTop";
+import { initScrollAnimations } from "./utils/initScrollAnimations";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
@@ -54,6 +57,11 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
+  useEffect(() => {
+    // Initialize scroll animations when app mounts
+    initScrollAnimations();
+  }, []);
+
   return (
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
@@ -61,10 +69,12 @@ const App = () => {
           <BrowserRouter>
             <AuthProvider>
               <CartProvider>
-                <Toaster />
-                <Sonner />
-                <MiniCart />
-                <Routes>
+                <SmoothScroll>
+                  <ScrollToTop />
+                  <Toaster />
+                  <Sonner />
+                  <MiniCart />
+                  <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/shop" element={<Shop />} />
@@ -187,7 +197,8 @@ const App = () => {
                 {/* Test YouTube Edge Function Route */}
                 <Route path="/test-youtube" element={<TestYouTubeEdgeFunction />} />
                 <Route path="*" element={<NotFound />} />
-              </Routes>
+                  </Routes>
+                </SmoothScroll>
               </CartProvider>
             </AuthProvider>
           </BrowserRouter>
