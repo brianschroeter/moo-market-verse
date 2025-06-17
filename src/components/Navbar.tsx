@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut, LogIn, Shield } from "lucide-react";
+import { Menu, X, LogOut, LogIn, Shield, ShoppingCart } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { getMenuItems, MenuItem } from "@/services/menu/menu.service";
@@ -10,6 +11,7 @@ import ImpersonationBanner from "./ImpersonationBanner";
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, isAdmin, signOut } = useAuth();
+  const { cart, setIsCartOpen } = useCart();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -104,8 +106,22 @@ const Navbar: React.FC = () => {
             </div>
           </div>
 
-          {/* Right side - Auth button */}
+          {/* Right side - Cart and Auth button */}
           <div className="flex items-center space-x-4">
+            {/* Cart Icon */}
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="relative text-white hover:text-lolcow-blue transition-colors duration-200"
+              aria-label="Open cart"
+            >
+              <ShoppingCart className="h-6 w-6" />
+              {cart && cart.totalQuantity > 0 && (
+                <span className="absolute -top-2 -right-2 bg-lolcow-blue text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {cart.totalQuantity}
+                </span>
+              )}
+            </button>
+            
             <button onClick={handleAuthAction} className="btn-primary flex items-center space-x-2">
               {user ? (
                 <>

@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import CollectionCard from "@/components/shop/CollectionCard";
 import ProductCard from "@/components/shop/ProductCard";
 import FlashSalesBanner from "@/components/shop/FlashSalesBanner";
-import { getCollections, getFeaturedProducts } from "@/services/shopify/shopifyStorefrontService";
+import { getCollections, getFeaturedProducts, getNewProducts } from "@/services/shopify/shopifyStorefrontService";
 import { getActiveFlashSales } from "@/services/flashSalesService";
 import { getVisibleCollectionOrders } from "@/services/collectionOrderService";
 import { Collection } from "@/services/types/shopify-types";
@@ -30,14 +30,40 @@ const Shop: React.FC = () => {
   });
 
   const {
-    data: featuredProducts = [],
+    data: featuredProductsData,
     isLoading: featuredProductsLoading,
     error: featuredProductsError
   } = useQuery({
     queryKey: ["featured-products"],
-    queryFn: () => getFeaturedProducts(6),
+    queryFn: async () => {
+      // Get featured products - the edge function now filters out unavailable products by default
+      const products = await getFeaturedProducts(6);
+      
+      return {
+        products,
+        hasEnoughProducts: products.length >= 6,
+        availableCount: products.length, // All returned products are available now
+      };
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+  
+  const featuredProducts = featuredProductsData?.products || [];
+
+  const {
+    data: newProductsData,
+    isLoading: newProductsLoading,
+    error: newProductsError
+  } = useQuery({
+    queryKey: ["new-products"],
+    queryFn: async () => {
+      const products = await getNewProducts(4);
+      return products;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+  
+  const newProducts = newProductsData || [];
 
   const {
     data: flashSales = [],
@@ -251,15 +277,84 @@ const Shop: React.FC = () => {
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
+              
+              {/* Show message if we have fewer than expected products */}
+              {featuredProductsData && featuredProductsData.products.length < 6 && (
+                <div className="text-center mt-8 p-4 bg-lolcow-darkgray/50 rounded-lg max-w-2xl mx-auto">
+                  <p className="text-gray-300">
+                    {featuredProductsData.products.length === 0 
+                      ? "All best sellers are currently sold out. Check back soon for restocks!"
+                      : featuredProductsData.products.length < 3
+                      ? `Limited stock - only ${featuredProductsData.products.length} best seller${featuredProductsData.products.length === 1 ? '' : 's'} available!`
+                      : `Showing ${featuredProductsData.products.length} best sellers currently in stock.`}
+                  </p>
+                </div>
+              )}
 
               <div className="text-center mt-16">
                 <Button 
                   asChild
                   className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold px-10 py-4 text-lg shadow-lg hover:shadow-xl transition-all duration-300"
                 >
-                  <a href="https://lolcow.co" target="_blank" rel="noopener noreferrer">
+                  <a href="/shop/products">
                     View All Products
                     <Sparkles className="h-5 w-5 ml-2" />
+                  </a>
+                </Button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* New Products Section */}
+        {!newProductsLoading && newProducts.length > 0 && (
+          <section className="py-20 bg-gradient-to-r from-lolcow-black via-lolcow-darkgray/50 to-lolcow-black relative overflow-hidden">
+            {/* Background gradient */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute inset-0" style={{
+                backgroundImage: `linear-gradient(135deg, transparent 25%, rgba(59, 130, 246, 0.1) 25%, rgba(59, 130, 246, 0.1) 50%, transparent 50%, transparent 75%, rgba(59, 130, 246, 0.1) 75%, rgba(59, 130, 246, 0.1))`,
+                backgroundSize: '40px 40px'
+              }} />
+            </div>
+            
+            <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+              <div className="text-center mb-12">
+                <div className="inline-flex items-center gap-2 mb-4">
+                  <div className="bg-lolcow-blue text-white px-4 py-2 rounded-full text-sm font-bold animate-pulse">
+                    NEW
+                  </div>
+                  <h2 className="text-3xl md:text-4xl font-fredoka text-white">
+                    New Arrivals
+                  </h2>
+                </div>
+                <p className="text-gray-300 text-lg max-w-2xl mx-auto">
+                  Check out the latest additions to our collection
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {newProducts.map((product, index) => (
+                  <div key={product.id} className="relative">
+                    {/* NEW badge with days counter */}
+                    <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
+                      <span className="bg-lolcow-blue text-white px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+                        NEW
+                      </span>
+                    </div>
+                    <ProductCard product={product} />
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-center mt-10">
+                <Button 
+                  asChild
+                  variant="outline"
+                  className="border-lolcow-blue text-lolcow-blue hover:bg-lolcow-blue hover:text-white"
+                >
+                  <a href="/shop/products?sort=newest">
+                    View All New Products
+                    <TrendingUp className="h-4 w-4 ml-2" />
                   </a>
                 </Button>
               </div>

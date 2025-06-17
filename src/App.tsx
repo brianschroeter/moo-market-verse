@@ -13,6 +13,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Shop from "./pages/Shop";
 import CollectionPage from "./pages/CollectionPage";
 import ProductDetail from "./pages/ProductDetail";
+import Products from "./pages/Products";
 import NotFound from "./pages/NotFound";
 import TicketList from "./pages/TicketList";
 import TicketDetail from "./pages/TicketDetail";
@@ -38,6 +39,8 @@ import ShopifyOrdersPage from "./pages/admin/ShopifyOrdersPage";
 import OrderReports from "./pages/admin/OrderReports";
 import TestYouTubeEdgeFunction from "./pages/TestYouTubeEdgeFunction";
 import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
+import MiniCart from "./components/cart/MiniCart";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Create a stable QueryClient instance outside the component
@@ -57,12 +60,15 @@ const App = () => {
         <TooltipProvider>
           <BrowserRouter>
             <AuthProvider>
-              <Toaster />
-              <Sonner />
-              <Routes>
+              <CartProvider>
+                <Toaster />
+                <Sonner />
+                <MiniCart />
+                <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/shop" element={<Shop />} />
+                <Route path="/shop/products" element={<Products />} />
                 <Route path="/shop/collections/:collection" element={<CollectionPage />} />
                 <Route path="/shop/products/:handle" element={<ProductDetail />} />
                 <Route path="/profile" element={
@@ -182,6 +188,7 @@ const App = () => {
                 <Route path="/test-youtube" element={<TestYouTubeEdgeFunction />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </CartProvider>
             </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>

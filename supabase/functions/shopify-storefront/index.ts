@@ -170,6 +170,290 @@ const GET_FEATURED_PRODUCTS_QUERY = `
   }
 `;
 
+const GET_NEW_PRODUCTS_QUERY = `
+  query GetNewProducts($first: Int!) {
+    products(first: $first, sortKey: CREATED_AT, reverse: true) {
+      edges {
+        node {
+          id
+          handle
+          title
+          description
+          featuredImage {
+            url
+          }
+          priceRange {
+            minVariantPrice {
+              amount
+              currencyCode
+            }
+            maxVariantPrice {
+              amount
+              currencyCode
+            }
+          }
+          availableForSale
+          vendor
+          productType
+          tags
+          createdAt
+        }
+      }
+    }
+  }
+`;
+
+// --- Cart Mutations ---
+const CREATE_CART_MUTATION = `
+  mutation CreateCart {
+    cartCreate {
+      cart {
+        id
+        totalQuantity
+        cost {
+          totalAmount {
+            amount
+            currencyCode
+          }
+        }
+        lines(first: 100) {
+          edges {
+            node {
+              id
+              quantity
+              merchandise {
+                ... on ProductVariant {
+                  id
+                  title
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  product {
+                    id
+                    handle
+                    title
+                    featuredImage {
+                      url
+                    }
+                  }
+                }
+              }
+              attributes {
+                key
+                value
+              }
+            }
+          }
+        }
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+const ADD_TO_CART_MUTATION = `
+  mutation AddToCart($cartId: ID!, $lines: [CartLineInput!]!) {
+    cartLinesAdd(cartId: $cartId, lines: $lines) {
+      cart {
+        id
+        totalQuantity
+        cost {
+          totalAmount {
+            amount
+            currencyCode
+          }
+        }
+        lines(first: 100) {
+          edges {
+            node {
+              id
+              quantity
+              merchandise {
+                ... on ProductVariant {
+                  id
+                  title
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  product {
+                    id
+                    handle
+                    title
+                    featuredImage {
+                      url
+                    }
+                  }
+                }
+              }
+              attributes {
+                key
+                value
+              }
+            }
+          }
+        }
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+const UPDATE_CART_LINE_MUTATION = `
+  mutation UpdateCartLine($cartId: ID!, $lines: [CartLineUpdateInput!]!) {
+    cartLinesUpdate(cartId: $cartId, lines: $lines) {
+      cart {
+        id
+        totalQuantity
+        cost {
+          totalAmount {
+            amount
+            currencyCode
+          }
+        }
+        lines(first: 100) {
+          edges {
+            node {
+              id
+              quantity
+              merchandise {
+                ... on ProductVariant {
+                  id
+                  title
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  product {
+                    id
+                    handle
+                    title
+                    featuredImage {
+                      url
+                    }
+                  }
+                }
+              }
+              attributes {
+                key
+                value
+              }
+            }
+          }
+        }
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+const REMOVE_FROM_CART_MUTATION = `
+  mutation RemoveFromCart($cartId: ID!, $lineIds: [ID!]!) {
+    cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
+      cart {
+        id
+        totalQuantity
+        cost {
+          totalAmount {
+            amount
+            currencyCode
+          }
+        }
+        lines(first: 100) {
+          edges {
+            node {
+              id
+              quantity
+              merchandise {
+                ... on ProductVariant {
+                  id
+                  title
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  product {
+                    id
+                    handle
+                    title
+                    featuredImage {
+                      url
+                    }
+                  }
+                }
+              }
+              attributes {
+                key
+                value
+              }
+            }
+          }
+        }
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+const GET_CART_QUERY = `
+  query GetCart($cartId: ID!) {
+    cart(id: $cartId) {
+      id
+      totalQuantity
+      checkoutUrl
+      cost {
+        totalAmount {
+          amount
+          currencyCode
+        }
+      }
+      lines(first: 100) {
+        edges {
+          node {
+            id
+            quantity
+            merchandise {
+              ... on ProductVariant {
+                id
+                title
+                price {
+                  amount
+                  currencyCode
+                }
+                product {
+                  id
+                  handle
+                  title
+                  featuredImage {
+                    url
+                  }
+                }
+              }
+            }
+            attributes {
+              key
+              value
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 // --- Interfaces ---
 interface ShopifyGraphQLResponse<T> {
   data?: T;
@@ -316,6 +600,34 @@ function transformProductDetail(shopifyProduct: any): ProductDetail {
   };
 }
 
+// Cart transformation functions
+function transformCart(shopifyCart: any) {
+  if (!shopifyCart) return null;
+  
+  return {
+    id: shopifyCart.id,
+    totalQuantity: shopifyCart.totalQuantity || 0,
+    totalAmount: parseFloat(shopifyCart.cost?.totalAmount?.amount || "0"),
+    currencyCode: shopifyCart.cost?.totalAmount?.currencyCode || "USD",
+    checkoutUrl: shopifyCart.checkoutUrl || undefined,
+    items: shopifyCart.lines?.edges?.map((edge: any) => ({
+      id: edge.node.id,
+      variantId: edge.node.merchandise.id.replace("gid://shopify/ProductVariant/", ""),
+      productId: edge.node.merchandise.product.id.replace("gid://shopify/Product/", ""),
+      title: edge.node.merchandise.product.title,
+      variantTitle: edge.node.merchandise.title,
+      price: parseFloat(edge.node.merchandise.price.amount),
+      quantity: edge.node.quantity,
+      imageUrl: edge.node.merchandise.product.featuredImage?.url,
+      handle: edge.node.merchandise.product.handle,
+      properties: edge.node.attributes?.map((attr: any) => ({
+        key: attr.key,
+        value: attr.value,
+      })) || [],
+    })) || [],
+  };
+}
+
 serve(async (req: Request) => {
   // Handle OPTIONS request for CORS preflight
   if (req.method === "OPTIONS") {
@@ -449,27 +761,89 @@ serve(async (req: Request) => {
       // GET /featured-products
       case req.method === "GET" && path.length === 1 && path[0] === "featured-products": {
         const limit = parseInt(url.searchParams.get("limit") || "6");
+        const includeUnavailable = url.searchParams.get("includeUnavailable") === "true";
+        
+        // Fetch more products to ensure we have enough after filtering
+        const fetchLimit = includeUnavailable ? limit : Math.min(limit * 3, 50);
         
         const response = await makeShopifyRequest(GET_FEATURED_PRODUCTS_QUERY, {
-          first: Math.min(limit, 20), // Shopify limit
+          first: fetchLimit,
         });
 
         if (response.errors) {
           throw new Error(`GraphQL errors: ${response.errors.map(e => e.message).join(", ")}`);
         }
 
-        const products = response.data?.products?.edges
+        let products = response.data?.products?.edges
           ?.map((edge: any) => transformProduct(edge.node))
           ?.filter((product: Product) => 
             !product.title.toLowerCase().includes('product customization') &&
             !product.productType?.toLowerCase().includes('customization')
           ) || [];
+        
+        // Filter out unavailable products unless explicitly requested
+        if (!includeUnavailable) {
+          products = products.filter((product: Product) => product.available);
+        }
+        
+        // Slice to requested limit
+        const finalProducts = products.slice(0, limit);
 
         return new Response(JSON.stringify({
-          data: products,
+          data: finalProducts,
           pageInfo: {
-            hasNextPage: response.data?.products?.pageInfo?.hasNextPage || false,
+            hasNextPage: products.length > limit,
             endCursor: response.data?.products?.pageInfo?.endCursor,
+            totalAvailable: products.length,
+            totalFetched: response.data?.products?.edges?.length || 0,
+          },
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      // GET /new-products
+      case req.method === "GET" && path.length === 1 && path[0] === "new-products": {
+        const limit = parseInt(url.searchParams.get("limit") || "6");
+        const includeUnavailable = url.searchParams.get("includeUnavailable") === "true";
+        
+        // Fetch more products to ensure we have enough after filtering
+        const fetchLimit = includeUnavailable ? limit : Math.min(limit * 3, 50);
+        
+        const response = await makeShopifyRequest(GET_NEW_PRODUCTS_QUERY, {
+          first: fetchLimit,
+        });
+
+        if (response.errors) {
+          throw new Error(`GraphQL errors: ${response.errors.map(e => e.message).join(", ")}`);
+        }
+
+        let products = response.data?.products?.edges
+          ?.map((edge: any) => ({
+            ...transformProduct(edge.node),
+            createdAt: edge.node.createdAt,
+          }))
+          ?.filter((product: Product) => 
+            !product.title.toLowerCase().includes('product customization') &&
+            !product.productType?.toLowerCase().includes('customization')
+          ) || [];
+        
+        // Filter out unavailable products unless explicitly requested
+        if (!includeUnavailable) {
+          products = products.filter((product: Product) => product.available);
+        }
+        
+        // Slice to requested limit
+        const finalProducts = products.slice(0, limit);
+
+        return new Response(JSON.stringify({
+          data: finalProducts,
+          pageInfo: {
+            hasNextPage: products.length > limit,
+            endCursor: response.data?.products?.pageInfo?.endCursor,
+            totalAvailable: products.length,
+            totalFetched: response.data?.products?.edges?.length || 0,
           },
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -507,6 +881,192 @@ serve(async (req: Request) => {
           message: "Sync endpoint ready - full implementation coming in later phase",
           status: "pending"
         }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      // === CART ENDPOINTS ===
+      
+      // POST /cart/create
+      case req.method === "POST" && path.length === 2 && path[0] === "cart" && path[1] === "create": {
+        const response = await makeShopifyRequest(CREATE_CART_MUTATION);
+
+        if (response.errors) {
+          throw new Error(`GraphQL errors: ${response.errors.map(e => e.message).join(", ")}`);
+        }
+
+        const cart = transformCart(response.data?.cartCreate?.cart);
+        const userErrors = response.data?.cartCreate?.userErrors;
+
+        if (userErrors?.length > 0) {
+          return new Response(JSON.stringify({ 
+            error: userErrors[0].message,
+            userErrors 
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          });
+        }
+
+        return new Response(JSON.stringify({ cart }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      // POST /cart/add
+      case req.method === "POST" && path.length === 2 && path[0] === "cart" && path[1] === "add": {
+        const body = await req.json();
+        const { cartId, variantId, quantity = 1, properties = [] } = body;
+
+        if (!cartId || !variantId) {
+          return new Response(JSON.stringify({ error: "Missing required fields" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          });
+        }
+
+        // Format properties for Shopify
+        const attributes = properties.map((prop: any) => ({
+          key: prop.key,
+          value: prop.value,
+        }));
+
+        const response = await makeShopifyRequest(ADD_TO_CART_MUTATION, {
+          cartId,
+          lines: [{
+            merchandiseId: `gid://shopify/ProductVariant/${variantId}`,
+            quantity,
+            attributes,
+          }],
+        });
+
+        if (response.errors) {
+          throw new Error(`GraphQL errors: ${response.errors.map(e => e.message).join(", ")}`);
+        }
+
+        const cart = transformCart(response.data?.cartLinesAdd?.cart);
+        const userErrors = response.data?.cartLinesAdd?.userErrors;
+
+        if (userErrors?.length > 0) {
+          return new Response(JSON.stringify({ 
+            error: userErrors[0].message,
+            userErrors 
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          });
+        }
+
+        return new Response(JSON.stringify({ cart }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      // PUT /cart/update
+      case req.method === "PUT" && path.length === 2 && path[0] === "cart" && path[1] === "update": {
+        const body = await req.json();
+        const { cartId, lineId, quantity } = body;
+
+        if (!cartId || !lineId || quantity === undefined) {
+          return new Response(JSON.stringify({ error: "Missing required fields" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          });
+        }
+
+        const response = await makeShopifyRequest(UPDATE_CART_LINE_MUTATION, {
+          cartId,
+          lines: [{ id: lineId, quantity }],
+        });
+
+        if (response.errors) {
+          throw new Error(`GraphQL errors: ${response.errors.map(e => e.message).join(", ")}`);
+        }
+
+        const cart = transformCart(response.data?.cartLinesUpdate?.cart);
+        const userErrors = response.data?.cartLinesUpdate?.userErrors;
+
+        if (userErrors?.length > 0) {
+          return new Response(JSON.stringify({ 
+            error: userErrors[0].message,
+            userErrors 
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          });
+        }
+
+        return new Response(JSON.stringify({ cart }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      // DELETE /cart/remove
+      case req.method === "DELETE" && path.length === 2 && path[0] === "cart" && path[1] === "remove": {
+        const body = await req.json();
+        const { cartId, lineId } = body;
+
+        if (!cartId || !lineId) {
+          return new Response(JSON.stringify({ error: "Missing required fields" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          });
+        }
+
+        const response = await makeShopifyRequest(REMOVE_FROM_CART_MUTATION, {
+          cartId,
+          lineIds: [lineId],
+        });
+
+        if (response.errors) {
+          throw new Error(`GraphQL errors: ${response.errors.map(e => e.message).join(", ")}`);
+        }
+
+        const cart = transformCart(response.data?.cartLinesRemove?.cart);
+        const userErrors = response.data?.cartLinesRemove?.userErrors;
+
+        if (userErrors?.length > 0) {
+          return new Response(JSON.stringify({ 
+            error: userErrors[0].message,
+            userErrors 
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          });
+        }
+
+        return new Response(JSON.stringify({ cart }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      // GET /cart/{cartId}
+      case req.method === "GET" && path.length === 2 && path[0] === "cart": {
+        const cartId = decodeURIComponent(path[1]);
+        
+        const response = await makeShopifyRequest(GET_CART_QUERY, {
+          cartId,
+        });
+
+        if (response.errors) {
+          throw new Error(`GraphQL errors: ${response.errors.map(e => e.message).join(", ")}`);
+        }
+
+        const cart = transformCart(response.data?.cart);
+
+        if (!cart) {
+          return new Response(JSON.stringify({ error: "Cart not found" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 404,
+          });
+        }
+
+        return new Response(JSON.stringify({ cart }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
         });

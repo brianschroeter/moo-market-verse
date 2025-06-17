@@ -120,6 +120,23 @@ export async function getFeaturedProducts(limit: number = 6): Promise<Product[]>
 }
 
 /**
+ * Get new products (recently added)
+ */
+export async function getNewProducts(limit: number = 4): Promise<Product[]> {
+  // Request more products to account for filtering
+  const requestLimit = Math.max(limit + 3, 10); // Get extra products to ensure we have enough after filtering
+  const params: Record<string, string> = {
+    limit: requestLimit.toString()
+  };
+  
+  const response = await makeStorefrontRequest<{data: Product[], pageInfo: any}>("new-products", params);
+  const products = response.data || [];
+  
+  // Return only the requested number of products
+  return products.slice(0, limit);
+}
+
+/**
  * Search products across the store
  * Note: This will be implemented in a later phase
  */

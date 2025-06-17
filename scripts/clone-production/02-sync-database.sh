@@ -56,7 +56,7 @@ show_progress() {
 check_supabase_status() {
     log_info "Checking Supabase status..."
     
-    if ! npx supabase status --local > /dev/null 2>&1; then
+    if ! npx supabase status > /dev/null 2>&1; then
         log_error "Supabase is not running locally"
         log_info "Starting Supabase..."
         npx supabase start

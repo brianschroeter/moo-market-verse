@@ -5,12 +5,13 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/shop/ProductCard";
 import { getProductDetail, getFeaturedProducts } from "@/services/shopify/shopifyStorefrontService";
+import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ShoppingCart, Package, Star, Info, ZoomIn, Copy, Check, Ruler, Clock, Award, User } from "lucide-react";
+import { ChevronLeft, ShoppingCart, Package, Star, Info, ZoomIn, Copy, Check, Ruler, Clock, Award, User, Loader2 } from "lucide-react";
 import { ProductVariant } from "@/services/types/shopify-types";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,6 +29,7 @@ import { Label } from "@/components/ui/label";
 const ProductDetail: React.FC = () => {
   const { handle } = useParams<{ handle: string }>();
   const navigate = useNavigate();
+  const { addItem, isLoading: isCartLoading } = useCart();
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
@@ -35,6 +37,7 @@ const ProductDetail: React.FC = () => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [personalizationEnabled, setPersonalizationEnabled] = useState(false);
   const [personalizationName, setPersonalizationName] = useState("");
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const {
     data: productData,
@@ -345,12 +348,12 @@ const ProductDetail: React.FC = () => {
                     <div className="flex items-baseline gap-2">
                       <span className="text-3xl font-bold text-white">
                         {selectedVariant ? (
-                          formatPrice(selectedVariant.price + (personalizationEnabled ? 10 : 0), product.priceRange.currencyCode)
+                          formatPrice(selectedVariant.price + (personalizationEnabled && product.tags?.includes('personalize') ? 10 : 0), product.priceRange.currencyCode)
                         ) : (
-                          formatPrice(product.priceRange.min + (personalizationEnabled ? 10 : 0), product.priceRange.currencyCode)
+                          formatPrice(product.priceRange.min + (personalizationEnabled && product.tags?.includes('personalize') ? 10 : 0), product.priceRange.currencyCode)
                         )}
                       </span>
-                      {personalizationEnabled && (
+                      {personalizationEnabled && product.tags?.includes('personalize') && (
                         <span className="text-sm text-lolcow-blue">(+$10 personalization)</span>
                       )}
                     </div>
@@ -459,125 +462,125 @@ const ProductDetail: React.FC = () => {
                   </div>
                 )}
 
-                {/* Personalization Option */}
-                <div className="bg-lolcow-darkgray/30 p-4 rounded-lg space-y-4">
-                  <div className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-lolcow-blue" />
-                    <Label className="text-sm font-semibold text-white">Personalization</Label>
-                  </div>
-                  
-                  <Select
-                    value={personalizationEnabled ? "yes" : "no"}
-                    onValueChange={(value) => {
-                      setPersonalizationEnabled(value === "yes");
-                      if (value === "no") {
-                        setPersonalizationName("");
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full bg-lolcow-darkgray border-lolcow-lightgray/50 text-white">
-                      <SelectValue placeholder="Add personalization?" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-lolcow-darkgray border-lolcow-lightgray/50">
-                      <SelectItem value="no" className="text-gray-300 hover:text-white">
-                        No personalization
-                      </SelectItem>
-                      <SelectItem value="yes" className="text-gray-300 hover:text-white">
-                        Add personalization (+$10.00)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {personalizationEnabled && (
-                    <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                      <Label htmlFor="personalization-name" className="text-sm text-gray-300">
-                        Enter name for personalization
-                      </Label>
-                      <Input
-                        id="personalization-name"
-                        type="text"
-                        placeholder="Enter name here"
-                        value={personalizationName}
-                        onChange={(e) => setPersonalizationName(e.target.value)}
-                        className="bg-lolcow-darkgray border-lolcow-lightgray/50 text-white placeholder:text-gray-500"
-                        maxLength={50}
-                      />
-                      <p className="text-xs text-gray-400">
-                        {personalizationName.length}/50 characters
-                      </p>
+                {/* Personalization Option - Only show if product has 'personalize' tag */}
+                {product.tags && product.tags.includes('personalize') && (
+                  <div className="bg-lolcow-darkgray/30 p-4 rounded-lg space-y-4">
+                    <div className="flex items-center gap-2">
+                      <User className="h-5 w-5 text-lolcow-blue" />
+                      <Label className="text-sm font-semibold text-white">Personalization</Label>
                     </div>
-                  )}
-                </div>
+                    
+                    <Select
+                      value={personalizationEnabled ? "yes" : "no"}
+                      onValueChange={(value) => {
+                        setPersonalizationEnabled(value === "yes");
+                        if (value === "no") {
+                          setPersonalizationName("");
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full bg-lolcow-darkgray border-lolcow-lightgray/50 text-white">
+                        <SelectValue placeholder="Add personalization?" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-lolcow-darkgray border-lolcow-lightgray/50">
+                        <SelectItem value="no" className="text-gray-300 hover:text-white">
+                          No personalization
+                        </SelectItem>
+                        <SelectItem value="yes" className="text-gray-300 hover:text-white">
+                          Add personalization (+$10.00)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {personalizationEnabled && (
+                      <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                        <Label htmlFor="personalization-name" className="text-sm text-gray-300">
+                          Enter name for personalization
+                        </Label>
+                        <Input
+                          id="personalization-name"
+                          type="text"
+                          placeholder="ENTER NAME HERE"
+                          value={personalizationName}
+                          onChange={(e) => setPersonalizationName(e.target.value.toUpperCase())}
+                          className="bg-lolcow-darkgray border-lolcow-lightgray/50 text-white placeholder:text-gray-500 uppercase"
+                          maxLength={50}
+                        />
+                        <div className="space-y-1">
+                          <p className="text-xs text-gray-400">
+                            {personalizationName.length}/50 characters
+                          </p>
+                          <p className="text-xs text-amber-400 flex items-center gap-1">
+                            <Info className="h-3 w-3" />
+                            Name will appear in ALL CAPS on the product
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Add to Cart Button */}
                 <div className="flex flex-col gap-4 pt-4 border-t border-lolcow-lightgray/20">
                   <Button
                     size="lg"
                     className="w-full bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold py-6 text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-                    disabled={!selectedVariant?.available || (personalizationEnabled && !personalizationName.trim())}
-                    onClick={() => {
-                      if (!selectedVariant) return;
+                    disabled={!selectedVariant?.available || (personalizationEnabled && !personalizationName.trim()) || isAddingToCart || isCartLoading}
+                    onClick={async () => {
+                      if (!selectedVariant || !product) return;
                       
-                      // For personalization, we need to add both the product and a personalization fee product
-                      if (personalizationEnabled && personalizationName.trim()) {
-                        // Create form data for multiple items
-                        const form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = 'https://lolcow.co/cart/add';
-                        form.target = '_blank';
+                      setIsAddingToCart(true);
+                      try {
+                        // Add main product to cart
+                        const mainProductData = {
+                          variantId: selectedVariant.id,
+                          productId: product.id,
+                          title: product.title,
+                          variantTitle: selectedVariant.title,
+                          price: selectedVariant.price,
+                          quantity: 1,
+                          imageUrl: product.featuredImageUrl,
+                          handle: product.handle,
+                          properties: personalizationEnabled && personalizationName.trim() 
+                            ? [{ key: 'Personalization', value: personalizationName.trim() }]
+                            : undefined
+                        };
                         
-                        // Add main product
-                        const id1 = document.createElement('input');
-                        id1.type = 'hidden';
-                        id1.name = 'items[0][id]';
-                        id1.value = selectedVariant.id.split('/').pop() || '';
-                        form.appendChild(id1);
+                        await addItem(mainProductData);
                         
-                        const qty1 = document.createElement('input');
-                        qty1.type = 'hidden';
-                        qty1.name = 'items[0][quantity]';
-                        qty1.value = '1';
-                        form.appendChild(qty1);
-                        
-                        const prop1 = document.createElement('input');
-                        prop1.type = 'hidden';
-                        prop1.name = 'items[0][properties][Personalization]';
-                        prop1.value = personalizationName.trim();
-                        form.appendChild(prop1);
-                        
-                        // Add personalization fee
-                        const id2 = document.createElement('input');
-                        id2.type = 'hidden';
-                        id2.name = 'items[1][id]';
-                        id2.value = '50551599726871';
-                        form.appendChild(id2);
-                        
-                        const qty2 = document.createElement('input');
-                        qty2.type = 'hidden';
-                        qty2.name = 'items[1][quantity]';
-                        qty2.value = '1';
-                        form.appendChild(qty2);
-                        
-                        const prop2 = document.createElement('input');
-                        prop2.type = 'hidden';
-                        prop2.name = 'items[1][properties][For]';
-                        prop2.value = `${product.title} - ${personalizationName.trim()}`;
-                        form.appendChild(prop2);
-                        
-                        document.body.appendChild(form);
-                        form.submit();
-                        document.body.removeChild(form);
-                      } else {
-                        // No personalization - use simple URL method
-                        const cartUrl = new URL(`https://lolcow.co/cart/add`);
-                        cartUrl.searchParams.set('id', selectedVariant.id.split('/').pop() || '');
-                        window.open(cartUrl.toString(), '_blank', 'noopener,noreferrer');
+                        // If personalization is enabled, also add the fee
+                        if (personalizationEnabled && personalizationName.trim()) {
+                          const feeData = {
+                            variantId: '50551599726871',
+                            productId: '9893779767575', // Personalization Fee product ID
+                            title: 'Personalization Fee',
+                            variantTitle: '',
+                            price: 10,
+                            quantity: 1,
+                            handle: 'personalization-fee',
+                            properties: [
+                              { key: 'For', value: `${product.title} - ${personalizationName.trim()}` }
+                            ]
+                          };
+                          
+                          await addItem(feeData);
+                        }
+                      } catch (error) {
+                        console.error('Error adding to cart:', error);
+                        toast.error('Failed to add to cart. Please try again.');
+                      } finally {
+                        setIsAddingToCart(false);
                       }
                     }}
                   >
-                    <ShoppingCart className="h-5 w-5 mr-2" />
+                    {isAddingToCart || isCartLoading ? (
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    ) : (
+                      <ShoppingCart className="h-5 w-5 mr-2" />
+                    )}
                     {!selectedVariant?.available ? 'Out of Stock' : 
                      personalizationEnabled && !personalizationName.trim() ? 'Enter Name for Personalization' : 
+                     isAddingToCart ? 'Adding...' :
                      'Add to Cart'}
                   </Button>
                   
