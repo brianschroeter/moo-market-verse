@@ -48,7 +48,7 @@ const Shop: React.FC = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
-  const featuredProducts = featuredProductsData?.products || [];
+  const featuredProducts = React.useMemo(() => featuredProductsData?.products || [], [featuredProductsData?.products]);
 
   const {
     data: newProductsData,
@@ -63,7 +63,7 @@ const Shop: React.FC = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
-  const newProducts = newProductsData || [];
+  const newProducts = React.useMemo(() => newProductsData || [], [newProductsData]);
 
   const {
     data: flashSales = [],
@@ -83,7 +83,7 @@ const Shop: React.FC = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const collections = collectionsResponse?.data || [];
+  const collections = React.useMemo(() => collectionsResponse?.data || [], [collectionsResponse?.data]);
 
   // Update filtered collections when collections, collection orders, or search query changes
   React.useEffect(() => {
@@ -131,10 +131,16 @@ const Shop: React.FC = () => {
   };
 
   // Get statistics
-  const totalProducts = collections.reduce((sum, collection) => sum + collection.productCount, 0);
-  const avgProductsPerCollection = collections.length > 0 ? Math.round(totalProducts / collections.length) : 0;
+  const totalProducts = React.useMemo(() => 
+    collections.reduce((sum, collection) => sum + collection.productCount, 0), 
+    [collections]
+  );
+  const avgProductsPerCollection = React.useMemo(() => 
+    collections.length > 0 ? Math.round(totalProducts / collections.length) : 0, 
+    [collections, totalProducts]
+  );
 
-  const renderContent = () => {
+  const renderContent = React.useCallback(() => {
     if (isLoading) {
       return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -201,7 +207,7 @@ const Shop: React.FC = () => {
         ))}
       </div>
     );
-  };
+  }, [isLoading, error, filteredCollections, searchQuery, refetch]);
 
   return (
     <div className="flex flex-col min-h-screen">

@@ -41,8 +41,8 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
   
   // Calculate price range from preview products
   const priceRange = previewProducts.length > 0 ? {
-    min: Math.min(...previewProducts.map(p => parseFloat(p.price.replace(/[^0-9.]/g, "")))),
-    max: Math.max(...previewProducts.map(p => parseFloat(p.price.replace(/[^0-9.]/g, "")))),
+    min: Math.min(...previewProducts.map(p => p.priceRange.min)),
+    max: Math.max(...previewProducts.map(p => p.priceRange.max)),
   } : null;
   
   return (
