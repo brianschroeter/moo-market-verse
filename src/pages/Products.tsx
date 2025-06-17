@@ -4,16 +4,25 @@ import { useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/shop/ProductCard";
+import ProductSkeleton from "@/components/shop/ProductSkeleton";
 import { getCollections, getCollectionProducts } from "@/services/shopify/shopifyStorefrontService";
 import { Product, Collection } from "@/services/types/shopify-types";
-import { Loader2, ChevronLeft, ChevronRight, Filter, X, Search } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Filter, X, Search, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import "@/styles/products.css";
+
+// Enhanced product type that includes collection information
+interface ProductWithCollections extends Product {
+  collectionHandles: string[];
+  collectionTitles: string[];
+}
 
 enum SortOption {
   NAME_AZ = "name-asc",
@@ -30,6 +39,8 @@ interface FilterState {
 }
 
 const ITEMS_PER_PAGE = 24;
+const INITIAL_LOAD_LIMIT = 48; // Load fewer products initially
+const LOAD_MORE_COUNT = 24; // Load this many more when "Load More" is clicked
 
 const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -43,8 +54,10 @@ const Products: React.FC = () => {
     search: "",
   });
   const [maxPrice, setMaxPrice] = useState(500);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<ProductWithCollections[]>([]);
   const [isLoadingAllProducts, setIsLoadingAllProducts] = useState(true);
+  const [visibleProductCount, setVisibleProductCount] = useState(INITIAL_LOAD_LIMIT);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Fetch all collections
   const { data: collectionsResponse, isLoading: collectionsLoading } = useQuery({
@@ -62,7 +75,7 @@ const Products: React.FC = () => {
       
       setIsLoadingAllProducts(true);
       try {
-        const productMap = new Map<string, Product>();
+        const productMap = new Map<string, ProductWithCollections>();
         
         // Fetch products from each collection
         await Promise.all(
@@ -70,12 +83,25 @@ const Products: React.FC = () => {
             try {
               const response = await getCollectionProducts({
                 handle: collection.handle,
-                limit: 250, // Get all products from collection
+                limit: 50, // Reduced initial load per collection
               });
               
               response.products.forEach(product => {
-                // Use product ID as key to avoid duplicates
-                productMap.set(product.id, product);
+                // Check if product already exists in map
+                const existingProduct = productMap.get(product.id);
+                
+                if (existingProduct) {
+                  // Add collection to existing product
+                  existingProduct.collectionHandles.push(collection.handle);
+                  existingProduct.collectionTitles.push(collection.title);
+                } else {
+                  // Create new product with collection info
+                  productMap.set(product.id, {
+                    ...product,
+                    collectionHandles: [collection.handle],
+                    collectionTitles: [collection.title],
+                  });
+                }
               });
             } catch (error) {
               console.error(`Error fetching products from ${collection.title}:`, error);
@@ -118,8 +144,9 @@ const Products: React.FC = () => {
 
     // Apply collection filter
     if (filters.collections.length > 0) {
-      // Since we don't have collection info on products, we'll need to track this differently
-      // For now, we'll skip this filter
+      filtered = filtered.filter(product =>
+        product.collectionHandles.some(handle => filters.collections.includes(handle))
+      );
     }
 
     // Apply price filter
@@ -154,16 +181,16 @@ const Products: React.FC = () => {
     return filtered;
   }, [allProducts, filters, sortOption]);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredAndSortedProducts.length / ITEMS_PER_PAGE);
-  const paginatedProducts = filteredAndSortedProducts.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  // Progressive loading - show only visible products
+  const visibleProducts = filteredAndSortedProducts.slice(0, visibleProductCount);
+  const hasMoreProducts = visibleProductCount < filteredAndSortedProducts.length;
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setVisibleProductCount(prev => Math.min(prev + LOAD_MORE_COUNT, filteredAndSortedProducts.length));
+      setIsLoadingMore(false);
+    }, 300); // Small delay for better UX
   };
 
   const handleResetFilters = () => {
@@ -174,7 +201,13 @@ const Products: React.FC = () => {
       search: "",
     });
     setCurrentPage(1);
+    setVisibleProductCount(INITIAL_LOAD_LIMIT);
   };
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleProductCount(INITIAL_LOAD_LIMIT);
+  }, [filters]);
 
   const isLoading = collectionsLoading || isLoadingAllProducts;
 
@@ -184,12 +217,29 @@ const Products: React.FC = () => {
       
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="py-8 bg-gradient-to-r from-lolcow-darkgray to-lolcow-black">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-3xl md:text-4xl font-fredoka text-white mb-2">All Products</h1>
-            <p className="text-gray-300">
+        <section className="relative py-16 bg-gradient-to-br from-lolcow-darkgray via-lolcow-black to-lolcow-darkgray overflow-hidden">
+          {/* Animated background elements */}
+          <div className="absolute inset-0">
+            <div className="absolute top-0 left-0 w-72 h-72 bg-lolcow-blue/20 rounded-full blur-3xl animate-float" />
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-lolcow-red/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+          </div>
+          
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 className="text-4xl md:text-6xl font-fredoka text-white mb-4 animate-fadeInUp">
+              All Products
+            </h1>
+            <p className="text-lg md:text-xl text-gray-300 mb-6 animate-fadeInUp" style={{ animationDelay: '100ms' }}>
               Browse our complete collection of LolCow merchandise
             </p>
+            <div className="flex justify-center gap-4 animate-fadeInUp" style={{ animationDelay: '200ms' }}>
+              <Badge variant="secondary" className="text-sm px-3 py-1">
+                <Package className="h-4 w-4 mr-2" />
+                {allProducts.length} Products
+              </Badge>
+              <Badge variant="secondary" className="text-sm px-3 py-1">
+                {collections.length} Collections
+              </Badge>
+            </div>
           </div>
         </section>
 
@@ -201,17 +251,21 @@ const Products: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2"
+                className={`flex items-center gap-2 transition-all duration-300 ${
+                  showFilters ? 'bg-lolcow-blue text-white hover:bg-lolcow-blue/80 border-lolcow-blue' : ''
+                }`}
               >
-                <Filter className="h-4 w-4" />
+                <Filter className={`h-4 w-4 ${showFilters ? 'animate-spin' : ''}`} />
                 Filters
                 {(filters.collections.length > 0 || 
                   filters.availability !== "all" || 
                   filters.priceRange[0] > 0 || 
                   filters.priceRange[1] < maxPrice) && (
-                  <span className="ml-1 bg-lolcow-blue text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
-                    •
-                  </span>
+                  <Badge variant="destructive" className="ml-2 text-xs animate-pulse">
+                    {filters.collections.length + 
+                     (filters.availability !== "all" ? 1 : 0) + 
+                     (filters.priceRange[0] > 0 || filters.priceRange[1] < maxPrice ? 1 : 0)}
+                  </Badge>
                 )}
               </Button>
               
@@ -251,15 +305,19 @@ const Products: React.FC = () => {
 
           {/* Filters Panel */}
           {showFilters && (
-            <div className="bg-lolcow-darkgray rounded-lg p-6 mb-8">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-white">Filters</h3>
+            <div className="bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-xl p-6 mb-8 border border-lolcow-lightgray/20 animate-fadeIn">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xl font-fredoka text-white mb-1">Filter Products</h3>
+                  <p className="text-sm text-gray-400">Narrow down your search</p>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleResetFilters}
-                  className="text-gray-400 hover:text-white"
+                  className="text-gray-400 hover:text-white transition-colors"
                 >
+                  <X className="h-4 w-4 mr-1" />
                   Reset All
                 </Button>
               </div>
@@ -331,17 +389,63 @@ const Products: React.FC = () => {
                     </label>
                   </div>
                 </div>
+
+                {/* Collections */}
+                <div>
+                  <Label className="text-gray-300 mb-3 block font-semibold">Collections</Label>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                    {collections.map((collection) => {
+                      const productCount = allProducts.filter(p => p.collectionHandles.includes(collection.handle)).length;
+                      const isChecked = filters.collections.includes(collection.handle);
+                      
+                      return (
+                        <label 
+                          key={collection.handle} 
+                          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                            isChecked ? 'bg-lolcow-blue/20 border border-lolcow-blue/40' : 'hover:bg-lolcow-lightgray/10'
+                          }`}
+                        >
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              setFilters(prev => ({
+                                ...prev,
+                                collections: checked
+                                  ? [...prev.collections, collection.handle]
+                                  : prev.collections.filter(h => h !== collection.handle)
+                              }));
+                              setCurrentPage(1);
+                            }}
+                            className="border-gray-400 data-[state=checked]:bg-lolcow-blue data-[state=checked]:border-lolcow-blue"
+                          />
+                          <span className={`text-sm flex-1 ${isChecked ? 'text-white font-medium' : 'text-gray-300'}`}>
+                            {collection.title}
+                          </span>
+                          <Badge 
+                            variant={isChecked ? "default" : "secondary"} 
+                            className="text-xs"
+                          >
+                            {productCount}
+                          </Badge>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {/* Products Grid */}
           {isLoading ? (
-            <div className="flex justify-center items-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-lolcow-blue" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+              {Array.from({ length: 12 }).map((_, index) => (
+                <ProductSkeleton key={index} />
+              ))}
             </div>
           ) : filteredAndSortedProducts.length === 0 ? (
             <div className="text-center py-20">
+              <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-300 text-lg mb-4">No products found matching your criteria.</p>
               <Button onClick={handleResetFilters} variant="outline">
                 Clear Filters
@@ -350,55 +454,39 @@ const Products: React.FC = () => {
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-                {paginatedProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                {visibleProducts.map((product, index) => (
+                  <div
+                    key={product.id}
+                    className="animate-fadeIn"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <ProductCard product={product} />
+                  </div>
                 ))}
               </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2">
+              {/* Load More Button */}
+              {hasMoreProducts && (
+                <div className="flex justify-center mb-12">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
+                    onClick={handleLoadMore}
+                    disabled={isLoadingMore}
+                    size="lg"
+                    className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold px-8 py-3"
                   >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={currentPage === pageNum ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handlePageChange(pageNum)}
-                        className="w-10"
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
+                    {isLoadingMore ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Load More Products
+                        <span className="ml-2 text-sm opacity-80">
+                          ({filteredAndSortedProducts.length - visibleProductCount} remaining)
+                        </span>
+                      </>
+                    )}
                   </Button>
                 </div>
               )}

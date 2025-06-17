@@ -105,6 +105,10 @@ export default {
         "slideInRight": {
           '0%': { opacity: '0', transform: 'translateX(30px)' },
           '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        "fadeIn": {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
         }
       },
       animation: {
@@ -115,7 +119,8 @@ export default {
         "shimmer": "shimmer 3s ease-in-out infinite",
         "fadeInUp": "fadeInUp 0.6s ease-out",
         "bounceIn": "bounceIn 1s ease-out",
-        "slideInRight": "slideInRight 1s ease-out"
+        "slideInRight": "slideInRight 1s ease-out",
+        "fadeIn": "fadeIn 0.5s ease-out forwards"
       },
       fontFamily: {
         'fredoka': ['"Fredoka One"', 'cursive'],

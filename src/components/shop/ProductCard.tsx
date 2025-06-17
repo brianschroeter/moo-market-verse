@@ -4,7 +4,7 @@ import { Product } from "@/services/types/shopify-types";
 import { formatPrice } from "@/services/shopify/shopifyStorefrontService";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBag, Star, ExternalLink, Eye } from "lucide-react";
+import { ShoppingBag, Star, ExternalLink, Eye, Sparkles, TrendingUp, Clock } from "lucide-react";
 
 interface ProductCardProps {
   product: Product;
@@ -18,7 +18,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "" }) =>
   };
 
   return (
-    <div className={`group bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-xl overflow-hidden border border-lolcow-lightgray/20 hover:border-lolcow-blue/40 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl hover:shadow-lolcow-blue/20 ${className}`}>
+    <div className={`group relative bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-2xl overflow-hidden border border-lolcow-lightgray/20 hover:border-lolcow-blue/40 transition-all duration-500 transform hover:scale-[1.03] hover:shadow-2xl hover:shadow-lolcow-blue/30 ${className}`}>
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-lolcow-blue/10 to-lolcow-red/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-2xl" />
+      
+      {/* Shimmer effect */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+        <div className="absolute inset-0 -translate-x-full group-hover:animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      </div>
       {/* Image Section - Clickable to go to product detail */}
       <Link to={`/shop/products/${product.handle}`} className="block relative aspect-[4/3] overflow-hidden">
         {product.featuredImageUrl ? (
@@ -36,11 +43,40 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "" }) =>
         {/* Overlay Effects */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
-        {/* Best Seller Badge */}
-        <Badge className="absolute top-4 left-4 bg-lolcow-red/90 hover:bg-lolcow-red text-white border-0 backdrop-blur-sm text-sm">
-          <Star className="h-4 w-4 mr-1" />
-          Best Seller
-        </Badge>
+        {/* Product Badges */}
+        <div className="absolute top-4 left-4 flex flex-col gap-2">
+          {/* Best Seller Badge - only if product has "bestseller" tag */}
+          {product.tags.some(tag => tag.toLowerCase().includes('bestseller')) && (
+            <Badge className="bg-lolcow-red/90 hover:bg-lolcow-red text-white border-0 backdrop-blur-sm text-sm">
+              <Star className="h-4 w-4 mr-1" />
+              Best Seller
+            </Badge>
+          )}
+          
+          {/* New Product Badge - if product has "new" tag or was created recently */}
+          {product.tags.some(tag => tag.toLowerCase().includes('new')) && (
+            <Badge className="bg-lolcow-blue/90 hover:bg-lolcow-blue text-white border-0 backdrop-blur-sm text-sm">
+              <Sparkles className="h-4 w-4 mr-1" />
+              New
+            </Badge>
+          )}
+          
+          {/* Sale Badge - if product has "sale" or "discount" tag */}
+          {product.tags.some(tag => tag.toLowerCase().includes('sale') || tag.toLowerCase().includes('discount')) && (
+            <Badge className="bg-green-600/90 hover:bg-green-600 text-white border-0 backdrop-blur-sm text-sm">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              Sale
+            </Badge>
+          )}
+          
+          {/* Limited Edition Badge - if product has "limited" tag */}
+          {product.tags.some(tag => tag.toLowerCase().includes('limited')) && (
+            <Badge className="bg-purple-600/90 hover:bg-purple-600 text-white border-0 backdrop-blur-sm text-sm">
+              <Clock className="h-4 w-4 mr-1" />
+              Limited Edition
+            </Badge>
+          )}
+        </div>
 
         {/* Availability Badge */}
         {!product.available && (
