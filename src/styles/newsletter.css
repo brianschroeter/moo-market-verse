@@ -1,0 +1,480 @@
+/* Newsletter Section Styles */
+
+/* Main section background */
+.newsletter-section {
+  position: relative;
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 50%, #1a1a1a 100%);
+  overflow: hidden;
+}
+
+/* Animated gradient mesh background */
+.newsletter-gradient-mesh {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(0, 163, 255, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 24, 1, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 20%, rgba(88, 101, 242, 0.08) 0%, transparent 40%);
+  filter: blur(40px);
+  animation: gradient-shift 20s ease-in-out infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(-20px, -30px) scale(1.1);
+  }
+  66% {
+    transform: translate(20px, 10px) scale(0.95);
+  }
+}
+
+/* Floating envelope animations */
+.envelope-float {
+  position: absolute;
+  opacity: 0.1;
+  animation: envelope-drift 20s ease-in-out infinite;
+}
+
+.envelope-float-1 {
+  animation-duration: 15s;
+  animation-delay: 0s;
+}
+
+.envelope-float-2 {
+  animation-duration: 20s;
+  animation-delay: -5s;
+}
+
+.envelope-float-3 {
+  animation-duration: 25s;
+  animation-delay: -10s;
+}
+
+@keyframes envelope-drift {
+  0%, 100% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-30px) translateX(20px) rotate(5deg);
+  }
+  50% {
+    transform: translateY(20px) translateX(-30px) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(-20px) translateX(40px) rotate(3deg);
+  }
+}
+
+/* Paper plane animation */
+.paper-plane {
+  position: absolute;
+  opacity: 0.15;
+  animation: fly-across 30s linear infinite;
+}
+
+@keyframes fly-across {
+  from {
+    transform: translateX(-100px) translateY(0) rotate(-10deg);
+  }
+  to {
+    transform: translateX(calc(100vw + 100px)) translateY(-50px) rotate(10deg);
+  }
+}
+
+/* Newsletter container with glassmorphism */
+.newsletter-container {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 48px;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 20px 40px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s ease;
+}
+
+.newsletter-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.3) 20%, 
+    rgba(255, 255, 255, 0.3) 80%, 
+    transparent
+  );
+  animation: shimmer 3s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.newsletter-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 30px 60px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Newsletter title with gradient */
+.newsletter-title {
+  background: linear-gradient(135deg, #ffffff 0%, #00A3FF 50%, #FF1801 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-flow 8s ease infinite;
+  background-size: 200% 200%;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Email input with advanced styling */
+.newsletter-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px 20px;
+  color: white;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.newsletter-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  transition: all 0.3s ease;
+}
+
+.newsletter-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(0, 163, 255, 0.5);
+  box-shadow: 
+    0 0 0 4px rgba(0, 163, 255, 0.1),
+    0 0 20px rgba(0, 163, 255, 0.2),
+    inset 0 0 20px rgba(0, 163, 255, 0.05);
+  transform: translateY(-1px);
+}
+
+.newsletter-input:focus::placeholder {
+  opacity: 0.6;
+  transform: translateY(-2px);
+}
+
+/* Input validation states */
+.newsletter-input.valid {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.newsletter-input.invalid {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.05);
+  animation: input-shake 0.5s ease;
+}
+
+@keyframes input-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+/* Newsletter button with advanced effects */
+.newsletter-button {
+  background: linear-gradient(135deg, #00A3FF 0%, #0080CC 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 32px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 
+    0 4px 15px rgba(0, 163, 255, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.newsletter-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.newsletter-button:hover::before {
+  left: 100%;
+}
+
+.newsletter-button:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 
+    0 8px 25px rgba(0, 163, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.newsletter-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.newsletter-button.loading {
+  color: transparent;
+  pointer-events: none;
+}
+
+.newsletter-button.loading::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  top: 50%;
+  left: 50%;
+  margin-left: -10px;
+  margin-top: -10px;
+  border: 2px solid white;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: button-spinner 0.8s linear infinite;
+}
+
+@keyframes button-spinner {
+  to { transform: rotate(360deg); }
+}
+
+/* Success/Error message animations */
+.newsletter-message {
+  margin-top: 16px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: message-slide-in 0.5s ease forwards;
+}
+
+@keyframes message-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.newsletter-message.success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+.newsletter-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* Success checkmark animation */
+.success-checkmark {
+  width: 20px;
+  height: 20px;
+  animation: checkmark-draw 0.6s ease forwards;
+}
+
+@keyframes checkmark-draw {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+/* Floating particles */
+.newsletter-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(0, 163, 255, 0.4);
+  border-radius: 50%;
+  animation: particle-float 15s linear infinite;
+}
+
+@keyframes particle-float {
+  from {
+    transform: translateY(100vh) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100px) translateX(100px);
+    opacity: 0;
+  }
+}
+
+/* Pattern overlay */
+.newsletter-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255, 255, 255, 0.02) 35px, rgba(255, 255, 255, 0.02) 70px),
+    repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(0, 163, 255, 0.02) 35px, rgba(0, 163, 255, 0.02) 70px);
+  animation: pattern-drift 30s linear infinite;
+}
+
+@keyframes pattern-drift {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(70px, 70px);
+  }
+}
+
+/* Gradient orbs */
+.newsletter-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.3;
+  animation: orb-float 20s ease-in-out infinite;
+}
+
+.newsletter-orb-1 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(0, 163, 255, 0.4) 0%, transparent 70%);
+  top: -150px;
+  left: -150px;
+}
+
+.newsletter-orb-2 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255, 24, 1, 0.3) 0%, transparent 70%);
+  bottom: -100px;
+  right: -100px;
+  animation-delay: -10s;
+}
+
+.newsletter-orb-3 {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(88, 101, 242, 0.3) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: -5s;
+}
+
+@keyframes orb-float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -30px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+/* Wave animation at bottom */
+.newsletter-wave {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 100px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 100'%3E%3Cpath fill='%231a1a1a' fill-opacity='1' d='M0,50 C360,100 720,0 1440,50 L1440,100 L0,100 Z'%3E%3C/path%3E%3C/svg%3E");
+  background-size: cover;
+  animation: wave-motion 10s ease-in-out infinite;
+}
+
+@keyframes wave-motion {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-50px);
+  }
+}
+
+/* Simple fade-in animation for validation icons */
+.animate-fade-in {
+  animation: simple-fade-in 0.3s ease;
+}
+
+@keyframes simple-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .newsletter-container {
+    padding: 32px 24px;
+  }
+  
+  .newsletter-title {
+    font-size: 2rem;
+  }
+  
+  .newsletter-input,
+  .newsletter-button {
+    font-size: 14px;
+    padding: 14px 18px;
+  }
+}
