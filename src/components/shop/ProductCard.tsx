@@ -115,10 +115,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
         </div>
         
         {/* View Details Overlay on Hover */}
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
           <div className="text-white text-center">
             <Eye className="h-8 w-8 mx-auto mb-2" />
-            <span className="text-sm font-medium">View Details</span>
+            <span className="text-sm font-medium">Click to View Details</span>
           </div>
         </div>
       </Link>
@@ -149,21 +149,33 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, className = "", isHo
           <div className="flex gap-2">
             {/* Quick View Button */}
             <Button
-              onClick={() => setShowQuickView(true)}
-              className="bg-lolcow-darkgray hover:bg-lolcow-lightgray text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-lolcow-lightgray/25 px-4 py-3"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Quick View clicked for:', product.title);
+                setShowQuickView(true);
+              }}
+              className="bg-lolcow-darkgray hover:bg-lolcow-lightgray text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-lolcow-lightgray/25 px-4 py-3 z-10 relative"
               size="default"
-              title="Quick View"
+              title="Quick View - Preview product details"
             >
               <Zap className="h-4 w-4" />
+              <span className="ml-2 hidden sm:inline">Quick View</span>
               <span className="sr-only">Quick View</span>
             </Button>
             
             {/* Shop Button */}
             <Button
-              onClick={handleShopClick}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Shop clicked for:', product.title);
+                handleShopClick();
+              }}
               disabled={!product.available}
-              className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold transition-all duration-300 group/btn hover:shadow-lg hover:shadow-lolcow-blue/25 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 flex-1"
+              className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold transition-all duration-300 group/btn hover:shadow-lg hover:shadow-lolcow-blue/25 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 flex-1 z-10 relative"
               size="default"
+              title="Shop - Opens product page in new tab"
             >
               {product.available ? 'Shop' : 'Sold Out'}
               {product.available && (
