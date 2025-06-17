@@ -34,7 +34,6 @@ enum SortOption {
 interface FilterState {
   collections: string[];
   priceRange: [number, number];
-  availability: "all" | "in-stock" | "out-of-stock";
   search: string;
 }
 
@@ -50,7 +49,6 @@ const Products: React.FC = () => {
   const [filters, setFilters] = useState<FilterState>({
     collections: [],
     priceRange: [0, 500],
-    availability: "all",
     search: "",
   });
   const [maxPrice, setMaxPrice] = useState(500);
@@ -155,12 +153,8 @@ const Products: React.FC = () => {
       return price >= filters.priceRange[0] && price <= filters.priceRange[1];
     });
 
-    // Apply availability filter
-    if (filters.availability === "in-stock") {
-      filtered = filtered.filter(product => product.available);
-    } else if (filters.availability === "out-of-stock") {
-      filtered = filtered.filter(product => !product.available);
-    }
+    // Always show in-stock products first
+    filtered = filtered.filter(product => product.available);
 
     // Apply sorting
     filtered.sort((a, b) => {
@@ -197,7 +191,6 @@ const Products: React.FC = () => {
     setFilters({
       collections: [],
       priceRange: [0, maxPrice],
-      availability: "all",
       search: "",
     });
     setCurrentPage(1);
@@ -243,45 +236,22 @@ const Products: React.FC = () => {
           </div>
         </section>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Controls Bar */}
+        <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Search and Sort Bar */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-            {/* Left side - Filter button and search */}
-            <div className="flex items-center gap-4 w-full sm:w-auto">
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center gap-2 transition-all duration-300 ${
-                  showFilters ? 'bg-lolcow-blue text-white hover:bg-lolcow-blue/80 border-lolcow-blue' : ''
-                }`}
-              >
-                <Filter className={`h-4 w-4 ${showFilters ? 'animate-spin' : ''}`} />
-                Filters
-                {(filters.collections.length > 0 || 
-                  filters.availability !== "all" || 
-                  filters.priceRange[0] > 0 || 
-                  filters.priceRange[1] < maxPrice) && (
-                  <Badge variant="destructive" className="ml-2 text-xs animate-pulse">
-                    {filters.collections.length + 
-                     (filters.availability !== "all" ? 1 : 0) + 
-                     (filters.priceRange[0] > 0 || filters.priceRange[1] < maxPrice ? 1 : 0)}
-                  </Badge>
-                )}
-              </Button>
-              
-              <div className="relative flex-1 sm:flex-initial">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  type="text"
-                  placeholder="Search products..."
-                  value={filters.search}
-                  onChange={(e) => {
-                    setFilters(prev => ({ ...prev, search: e.target.value }));
-                    setCurrentPage(1);
-                  }}
-                  className="pl-10 pr-4 py-2 w-full sm:w-64"
-                />
-              </div>
+            {/* Left side - Search */}
+            <div className="relative flex-1 sm:flex-initial">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Input
+                type="text"
+                placeholder="Search products..."
+                value={filters.search}
+                onChange={(e) => {
+                  setFilters(prev => ({ ...prev, search: e.target.value }));
+                  setCurrentPage(1);
+                }}
+                className="pl-10 pr-4 py-3 w-full sm:w-96 text-base"
+              />
             </div>
 
             {/* Right side - Sort and results count */}
@@ -303,97 +273,37 @@ const Products: React.FC = () => {
             </div>
           </div>
 
-          {/* Filters Panel */}
-          {showFilters && (
-            <div className="bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-xl p-6 mb-8 border border-lolcow-lightgray/20 animate-fadeIn">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-xl font-fredoka text-white mb-1">Filter Products</h3>
-                  <p className="text-sm text-gray-400">Narrow down your search</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResetFilters}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Reset All
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Price Range */}
-                <div>
-                  <Label className="text-gray-300 mb-2 block">Price Range</Label>
-                  <div className="space-y-4">
-                    <Slider
-                      value={filters.priceRange}
-                      onValueChange={(value) => {
-                        setFilters(prev => ({ ...prev, priceRange: value as [number, number] }));
-                        setCurrentPage(1);
-                      }}
-                      max={maxPrice}
-                      step={10}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-sm text-gray-400">
-                      <span>${filters.priceRange[0]}</span>
-                      <span>${filters.priceRange[1]}</span>
-                    </div>
+          {/* Main Content with Sidebar */}
+          <div className="flex gap-8">
+            {/* Filters Sidebar */}
+            <aside className="w-72 flex-shrink-0 hidden lg:block">
+              <div className="sticky top-24 space-y-6">
+                {/* Active Filters Header */}
+                {(filters.collections.length > 0 || 
+                  filters.priceRange[0] > 0 || 
+                  filters.priceRange[1] < maxPrice) && (
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm text-gray-400">
+                      {filters.collections.length + (filters.priceRange[0] > 0 || filters.priceRange[1] < maxPrice ? 1 : 0)} filters active
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleResetFilters}
+                      className="text-gray-400 hover:text-white transition-colors text-xs"
+                    >
+                      Clear all
+                    </Button>
                   </div>
-                </div>
+                )}
 
-                {/* Availability */}
-                <div>
-                  <Label className="text-gray-300 mb-2 block">Availability</Label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="availability"
-                        checked={filters.availability === "all"}
-                        onChange={() => {
-                          setFilters(prev => ({ ...prev, availability: "all" }));
-                          setCurrentPage(1);
-                        }}
-                        className="text-lolcow-blue"
-                      />
-                      <span className="text-gray-300">All Products</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="availability"
-                        checked={filters.availability === "in-stock"}
-                        onChange={() => {
-                          setFilters(prev => ({ ...prev, availability: "in-stock" }));
-                          setCurrentPage(1);
-                        }}
-                        className="text-lolcow-blue"
-                      />
-                      <span className="text-gray-300">In Stock</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="availability"
-                        checked={filters.availability === "out-of-stock"}
-                        onChange={() => {
-                          setFilters(prev => ({ ...prev, availability: "out-of-stock" }));
-                          setCurrentPage(1);
-                        }}
-                        className="text-lolcow-blue"
-                      />
-                      <span className="text-gray-300">Out of Stock</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Collections */}
-                <div>
-                  <Label className="text-gray-300 mb-3 block font-semibold">Collections</Label>
-                  <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                {/* Collections Filter */}
+                <div className="bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-xl p-5 border border-lolcow-lightgray/20">
+                  <h3 className="text-lg font-fredoka text-white mb-4 flex items-center">
+                    <Package className="h-5 w-5 mr-2 text-lolcow-blue" />
+                    Collections
+                  </h3>
+                  <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                     {collections.map((collection) => {
                       const productCount = allProducts.filter(p => p.collectionHandles.includes(collection.handle)).length;
                       const isChecked = filters.collections.includes(collection.handle);
@@ -401,7 +311,7 @@ const Products: React.FC = () => {
                       return (
                         <label 
                           key={collection.handle} 
-                          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
                             isChecked ? 'bg-lolcow-blue/20 border border-lolcow-blue/40' : 'hover:bg-lolcow-lightgray/10'
                           }`}
                         >
@@ -418,7 +328,7 @@ const Products: React.FC = () => {
                             }}
                             className="border-gray-400 data-[state=checked]:bg-lolcow-blue data-[state=checked]:border-lolcow-blue"
                           />
-                          <span className={`text-sm flex-1 ${isChecked ? 'text-white font-medium' : 'text-gray-300'}`}>
+                          <span className={`flex-1 ${isChecked ? 'text-white font-medium' : 'text-gray-300'}`}>
                             {collection.title}
                           </span>
                           <Badge 
@@ -432,12 +342,155 @@ const Products: React.FC = () => {
                     })}
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* Products Grid */}
-          {isLoading ? (
+                {/* Price Range Filter */}
+                <div className="bg-gradient-to-br from-lolcow-darkgray to-lolcow-black rounded-xl p-5 border border-lolcow-lightgray/20">
+                  <h3 className="text-lg font-fredoka text-white mb-4">Price Range</h3>
+                  <div className="space-y-4">
+                    <Slider
+                      value={filters.priceRange}
+                      onValueChange={(value) => {
+                        setFilters(prev => ({ ...prev, priceRange: value as [number, number] }));
+                        setCurrentPage(1);
+                      }}
+                      max={maxPrice}
+                      step={10}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-300">${filters.priceRange[0]}</span>
+                      <span className="text-gray-300">${filters.priceRange[1]}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            {/* Mobile Filter Button */}
+            <div className="lg:hidden fixed bottom-6 right-6 z-40">
+              <Button
+                onClick={() => setShowFilters(!showFilters)}
+                className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white rounded-full shadow-2xl p-4"
+              >
+                <Filter className="h-6 w-6" />
+                {(filters.collections.length > 0 || 
+                  filters.priceRange[0] > 0 || 
+                  filters.priceRange[1] < maxPrice) && (
+                  <Badge variant="destructive" className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center">
+                    {filters.collections.length + (filters.priceRange[0] > 0 || filters.priceRange[1] < maxPrice ? 1 : 0)}
+                  </Badge>
+                )}
+              </Button>
+            </div>
+
+            {/* Mobile Filters Modal */}
+            {showFilters && (
+              <div className="lg:hidden fixed inset-0 bg-black/50 z-50 animate-fadeIn">
+                <div className="absolute right-0 top-0 h-full w-80 bg-lolcow-black p-6 overflow-y-auto animate-slideInRight">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-fredoka text-white">Filters</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowFilters(false)}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Collections Filter */}
+                    <div>
+                      <h4 className="text-lg font-fredoka text-white mb-4 flex items-center">
+                        <Package className="h-5 w-5 mr-2 text-lolcow-blue" />
+                        Collections
+                      </h4>
+                      <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                        {collections.map((collection) => {
+                          const productCount = allProducts.filter(p => p.collectionHandles.includes(collection.handle)).length;
+                          const isChecked = filters.collections.includes(collection.handle);
+                          
+                          return (
+                            <label 
+                              key={collection.handle} 
+                              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                                isChecked ? 'bg-lolcow-blue/20 border border-lolcow-blue/40' : 'hover:bg-lolcow-lightgray/10'
+                              }`}
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={(checked) => {
+                                  setFilters(prev => ({
+                                    ...prev,
+                                    collections: checked
+                                      ? [...prev.collections, collection.handle]
+                                      : prev.collections.filter(h => h !== collection.handle)
+                                  }));
+                                  setCurrentPage(1);
+                                }}
+                                className="border-gray-400 data-[state=checked]:bg-lolcow-blue data-[state=checked]:border-lolcow-blue"
+                              />
+                              <span className={`flex-1 ${isChecked ? 'text-white font-medium' : 'text-gray-300'}`}>
+                                {collection.title}
+                              </span>
+                              <Badge 
+                                variant={isChecked ? "default" : "secondary"} 
+                                className="text-xs"
+                              >
+                                {productCount}
+                              </Badge>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Price Range Filter */}
+                    <div>
+                      <h4 className="text-lg font-fredoka text-white mb-4">Price Range</h4>
+                      <div className="space-y-4">
+                        <Slider
+                          value={filters.priceRange}
+                          onValueChange={(value) => {
+                            setFilters(prev => ({ ...prev, priceRange: value as [number, number] }));
+                            setCurrentPage(1);
+                          }}
+                          max={maxPrice}
+                          step={10}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-300">${filters.priceRange[0]}</span>
+                          <span className="text-gray-300">${filters.priceRange[1]}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 flex gap-3">
+                    <Button
+                      onClick={handleResetFilters}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      onClick={() => setShowFilters(false)}
+                      className="flex-1 bg-lolcow-blue hover:bg-lolcow-blue/80"
+                    >
+                      Apply Filters
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Products Container */}
+            <div className="flex-1">
+              {/* Products Grid */}
+              {isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
               {Array.from({ length: 12 }).map((_, index) => (
                 <ProductSkeleton key={index} />
@@ -492,6 +545,8 @@ const Products: React.FC = () => {
               )}
             </>
           )}
+            </div>
+          </div>
         </div>
       </main>
 
