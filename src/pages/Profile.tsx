@@ -243,48 +243,6 @@ const Profile: React.FC = () => {
                     </p>
                   </div>
                   
-                  {/* Quick Stats */}
-                  <div ref={statsRef.ref} className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 max-w-3xl mx-auto stagger-container ${statsRef.isInView ? 'in-view' : ''}`}>
-                    <div className="bg-blue-500/10 rounded-xl p-4 text-center transform transition-all duration-300 hover:scale-105 animate-on-scroll fade-up border border-blue-500/20">
-                      <div className="flex items-center justify-center space-x-2 mb-2">
-                        <MessageSquare className="h-5 w-5 text-blue-400" />
-                      </div>
-                      <div className="text-2xl font-bold text-white profile-stat-value" style={{ '--stat-delay': '0s' } as React.CSSProperties}>
-                        {profile?.discord_connections?.length || 0}
-                      </div>
-                      <span className="text-xs text-gray-500">Discord Servers</span>
-                    </div>
-                    
-                    <div className="bg-purple-500/10 rounded-xl p-4 text-center transform transition-all duration-300 hover:scale-105 animate-on-scroll fade-up border border-purple-500/20">
-                      <div className="flex items-center justify-center space-x-2 mb-2">
-                        <Youtube className="h-5 w-5 text-purple-400" />
-                      </div>
-                      <div className="text-2xl font-bold text-white profile-stat-value" style={{ '--stat-delay': '0.5s' } as React.CSSProperties}>
-                        {profile?.youtube_connections?.length || 0}
-                      </div>
-                      <span className="text-xs text-gray-500">YouTube Channels</span>
-                    </div>
-                    
-                    <div className="bg-green-500/10 rounded-xl p-4 text-center transform transition-all duration-300 hover:scale-105 animate-on-scroll fade-up border border-green-500/20">
-                      <div className="flex items-center justify-center space-x-2 mb-2">
-                        <Award className="h-5 w-5 text-green-400" />
-                      </div>
-                      <div className="text-2xl font-bold text-white profile-stat-value" style={{ '--stat-delay': '1s' } as React.CSSProperties}>
-                        {profile?.user_roles?.includes('admin') ? 'Admin' : 'Member'}
-                      </div>
-                      <span className="text-xs text-gray-500">Account Type</span>
-                    </div>
-                    
-                    <div className="bg-yellow-500/10 rounded-xl p-4 text-center transform transition-all duration-300 hover:scale-105 animate-on-scroll fade-up border border-yellow-500/20">
-                      <div className="flex items-center justify-center space-x-2 mb-2">
-                        <Sparkles className="h-5 w-5 text-yellow-400" />
-                      </div>
-                      <div className="text-2xl font-bold text-white">
-                        Active
-                      </div>
-                      <span className="text-xs text-gray-500">Status</span>
-                    </div>
-                  </div>
                   
                   <div className={`hero-animate hero-cta animate-on-scroll fade-up duration-slow ${heroRef.isInView ? 'in-view' : ''}`}>
                     <div className="flex flex-wrap justify-center gap-4">
