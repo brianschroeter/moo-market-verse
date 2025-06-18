@@ -3,7 +3,6 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import SmoothScroll from "@/components/SmoothScroll";
 import YouTubeConnections from "@/components/YouTubeConnections";
-import Announcements from "../components/Announcements";
 import ProfileHeader from "../components/profile/ProfileHeader";
 import DiscordConnections from "../components/profile/DiscordConnections";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -198,12 +197,6 @@ const Profile: React.FC = () => {
                 ref={parallaxHeroRef.ref}
                 className="absolute inset-0"
               >
-                {/* Floating profile elements */}
-                <User className="absolute top-20 left-[10%] h-16 w-16 text-blue-500/30 floating-profile-element" />
-                <Shield className="absolute top-32 right-[15%] h-12 w-12 text-purple-500/30 floating-profile-element" style={{ animationDelay: '5s' }} />
-                <Award className="absolute bottom-40 left-[20%] h-20 w-20 text-green-500/20 floating-profile-element" style={{ animationDelay: '10s' }} />
-                <Settings className="absolute bottom-20 right-[10%] h-14 w-14 text-blue-400/20 floating-profile-element" style={{ animationDelay: '15s' }} />
-                
                 {/* Profile orbs */}
                 <div className="profile-orb orb-blue top-[20%] left-[25%] w-96 h-96" />
                 <div className="profile-orb orb-purple bottom-[20%] right-[20%] w-80 h-80" />
@@ -226,7 +219,7 @@ const Profile: React.FC = () => {
                         <User className="h-12 w-12 text-white" />
                       )}
                     </div>
-                    <div className="absolute -bottom-2 -right-2 bg-green-500 rounded-full p-1.5 border-4 border-lolcow-black">
+                    <div className="absolute -bottom-2 -right-2 bg-green-500 rounded-full p-1.5 border-4 border-lolcow-black z-20">
                       <Shield className="h-4 w-4 text-white" />
                     </div>
                   </div>
@@ -351,10 +344,6 @@ const Profile: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Announcements & Featured */}
-                  <div className={`col-span-1 lg:col-span-3 animate-on-scroll fade-up ${contentRef.isInView ? 'in-view' : ''}`}>
-                    <Announcements loadFromDb={true} />
-                  </div>
                 </div>
               </div>
             </main>

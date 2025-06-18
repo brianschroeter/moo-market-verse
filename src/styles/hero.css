@@ -415,6 +415,7 @@
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+  justify-content: center;
   animation: fadeInUp 0.8s ease-out 0.3s both;
 }
 

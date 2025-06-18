@@ -491,12 +491,12 @@ const Leaderboard: React.FC = () => {
                 <div className="text-center">
                   <div 
                     ref={heroTitleRef.ref}
-                    className={`hero-animate hero-title animate-on-scroll fade-up duration-slow ${heroRef.isInView ? 'in-view' : ''}`}
+                    className={`hero-animate animate-on-scroll fade-up duration-slow ${heroRef.isInView ? 'in-view' : ''}`}
                   >
                     <h1 className="text-5xl md:text-7xl font-fredoka text-white mb-6 leading-tight">
-                      <span className="text-yellow-400 hover-scale inline-block transition-transform duration-300 cursor-pointer">LOL</span>
-                      <span className="text-yellow-500 hover-scale inline-block transition-transform duration-300 cursor-pointer">COW</span>
-                      <span className="text-white hover-scale inline-block transition-transform duration-300 cursor-pointer"> Leaderboard</span>
+                      <span className="text-yellow-400 hover-scale transition-transform duration-300 cursor-pointer">LOL</span>
+                      <span className="text-yellow-500 hover-scale transition-transform duration-300 cursor-pointer">COW</span>
+                      <span className="text-white hover-scale transition-transform duration-300 cursor-pointer"> Leaderboard</span>
                     </h1>
                   </div>
                   
@@ -546,14 +546,24 @@ const Leaderboard: React.FC = () => {
                   <div className={`hero-animate hero-cta animate-on-scroll fade-up duration-slow ${heroRef.isInView ? 'in-view' : ''}`}>
                     <div className="flex flex-wrap justify-center gap-4">
                       <Button 
-                        onClick={() => setTabValue('superchats')}
+                        onClick={() => {
+                          setTabValue('superchats');
+                          setTimeout(() => {
+                            contentRef.ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }, 100);
+                        }}
                         className="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-8 py-4 text-lg hover-lift transition-all duration-300 group"
                       >
                         View Superchats
                         <DollarSign className="h-5 w-5 ml-2 group-hover:scale-110 transition-transform duration-300" />
                       </Button>
                       <Button 
-                        onClick={() => setTabValue('breakdown')}
+                        onClick={() => {
+                          setTabValue('breakdown');
+                          setTimeout(() => {
+                            contentRef.ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }, 100);
+                        }}
                         variant="outline"
                         className="border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black font-semibold px-8 py-4 text-lg hover-lift transition-all duration-300 group"
                       >

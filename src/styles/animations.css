@@ -466,10 +466,15 @@ html {
 
 .hover-scale {
   transition: transform 0.3s ease;
+  display: inline-block;
+  transform-origin: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform;
 }
 
 .hover-scale:hover {
-  transform: scale(1.05);
+  transform: scale(1.05) translateZ(0);
 }
 
 .hover-rotate {

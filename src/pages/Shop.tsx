@@ -118,6 +118,10 @@ const Shop: React.FC = () => {
 
   // Update filtered collections when collections, collection orders, or search query changes
   React.useEffect(() => {
+    console.log('=== Collection Ordering Debug ===');
+    console.log('Total collections:', collections.length);
+    console.log('Collection titles from database:', collections.map(c => c.title));
+    
     let filtered = collections;
     
     // Apply search filter
@@ -128,31 +132,87 @@ const Shop: React.FC = () => {
       );
     }
     
-    // Sort by custom order if available, otherwise by name
-    if (collectionOrders.length > 0) {
-      // Create a map of collection handles to their display order
-      const orderMap = new Map(collectionOrders.map(order => [order.collection_handle, order.display_order]));
+    // Define the desired collection order with priority
+    // Lower number = higher priority
+    const orderPriority: { [key: string]: number } = {
+      'lolcow live': 1,
+      'lolcow queen': 2,
+      'lolcow queens': 2,  // Alternative spelling
+      'lolcow rewind': 3,
+      'lolcow nerd': 4,
+      'lolcow test': 5,
+      'mafia milkers': 6,
+      'lolcow techtalk': 7,
+      'lolcow tech talk': 7, // Alternative with space
+      'lolcow cafe': 8,
+      'lolcow aussy': 9,
+      'lolcow aussie': 9,  // Alternative spelling
+      'lolcow ausi': 9,    // Another alternative
+      'angry grandpa': 10
+    };
+    
+    console.log('Order priority map:', orderPriority);
+    
+    // Sort collections according to the desired order
+    filtered = [...filtered].sort((a, b) => {
+      // Normalize titles for comparison (trim whitespace, lowercase, remove extra spaces)
+      const normalizeTitle = (title: string) => title.trim().toLowerCase().replace(/\s+/g, ' ');
       
-      filtered = [...filtered].sort((a, b) => {
+      const normalizedA = normalizeTitle(a.title);
+      const normalizedB = normalizeTitle(b.title);
+      
+      // Get priority for each collection
+      const priorityA = orderPriority[normalizedA] ?? Number.MAX_SAFE_INTEGER;
+      const priorityB = orderPriority[normalizedB] ?? Number.MAX_SAFE_INTEGER;
+      
+      console.log(`Comparing "${a.title}" (priority: ${priorityA}) vs "${b.title}" (priority: ${priorityB})`);
+      console.log(`  - normalized A: "${normalizedA}"`);
+      console.log(`  - normalized B: "${normalizedB}"`);
+      
+      // If both collections have priority, sort by priority
+      if (priorityA !== Number.MAX_SAFE_INTEGER && priorityB !== Number.MAX_SAFE_INTEGER) {
+        console.log(`  Both have priority. Result: ${priorityA - priorityB}`);
+        return priorityA - priorityB;
+      }
+      
+      // If only one has priority, prioritize it
+      if (priorityA !== Number.MAX_SAFE_INTEGER) {
+        console.log(`  Only "${a.title}" has priority. Prioritizing it.`);
+        return -1;
+      }
+      if (priorityB !== Number.MAX_SAFE_INTEGER) {
+        console.log(`  Only "${b.title}" has priority. Prioritizing it.`);
+        return 1;
+      }
+      
+      // If neither are in the desired order, use database order if available
+      if (collectionOrders.length > 0) {
+        const orderMap = new Map(collectionOrders.map(order => [order.collection_handle, order.display_order]));
         const orderA = orderMap.get(a.handle) ?? Number.MAX_SAFE_INTEGER;
         const orderB = orderMap.get(b.handle) ?? Number.MAX_SAFE_INTEGER;
         
-        // If both have custom order, sort by display_order
+        console.log(`  Neither in desired order. Using database order:`, {
+          handleA: a.handle,
+          orderA,
+          handleB: b.handle,
+          orderB
+        });
+        
         if (orderA !== Number.MAX_SAFE_INTEGER && orderB !== Number.MAX_SAFE_INTEGER) {
           return orderA - orderB;
         }
         
-        // If one has custom order and other doesn't, prioritize the one with custom order
         if (orderA !== Number.MAX_SAFE_INTEGER) return -1;
         if (orderB !== Number.MAX_SAFE_INTEGER) return 1;
-        
-        // If neither have custom order, sort by name
-        return a.title.localeCompare(b.title);
-      });
-    } else {
-      // Sort by name by default
-      filtered = [...filtered].sort((a, b) => a.title.localeCompare(b.title));
-    }
+      }
+      
+      // Otherwise sort alphabetically
+      console.log(`  Falling back to alphabetical sort`);
+      return a.title.localeCompare(b.title);
+    });
+    
+    console.log('Final sorted order:', filtered.map(c => c.title));
+    console.log('=== End Debug ===\n');
     
     setFilteredCollections(filtered);
   }, [collections, collectionOrders, searchQuery]);
@@ -763,15 +823,13 @@ const Shop: React.FC = () => {
               </div>
               
               {/* Search hint */}
-              <div className={`mt-4 text-center animate-on-scroll fade-up ${searchSectionRef.isInView ? 'in-view' : ''}`}>
-                <p className="text-sm text-gray-400">
-                  {searchQuery ? (
-                    <>Showing collections matching "<span className="text-lolcow-blue font-semibold">{searchQuery}</span>"</>
-                  ) : (
-                    <>Try searching for <span className="text-lolcow-blue">apparel</span>, <span className="text-lolcow-red">accessories</span>, or <span className="text-white">collectibles</span></>
-                  )}
-                </p>
-              </div>
+              {searchQuery && (
+                <div className={`mt-4 text-center animate-on-scroll fade-up ${searchSectionRef.isInView ? 'in-view' : ''}`}>
+                  <p className="text-sm text-gray-400">
+                    Showing collections matching "<span className="text-lolcow-blue font-semibold">{searchQuery}</span>"
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </section>
