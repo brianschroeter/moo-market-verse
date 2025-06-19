@@ -151,7 +151,12 @@ const Shop: React.FC = () => {
 
   // Check if there are uninitialized collections
   const hasUninitializedCollections = React.useMemo(() => {
-    if (!isAdmin || collectionOrders.length === 0 || collections.length === 0) return false;
+    if (!isAdmin || collections.length === 0) return false;
+    
+    // If collection_order is empty but we have collections, we need to initialize
+    if (collectionOrders.length === 0) return true;
+    
+    // Otherwise check if any collections are missing from collection_order
     const orderedHandles = new Set(collectionOrders.map(order => order.collection_handle));
     return collections.some(collection => !orderedHandles.has(collection.handle));
   }, [isAdmin, collectionOrders, collections]);
