@@ -333,7 +333,9 @@ serve(async (req) => {
       console.log(`Processing product: ${product.id} - ${product.title}`);
       console.log(`  Status: ${product.status}, Published: ${product.published_at}`);
       console.log(`  Variants: ${product.variants?.length || 0}`);
-      console.log(`  Tags: ${product.tags?.join(', ') || 'none'}`);
+      const tags = Array.isArray(product.tags) ? product.tags : 
+                    (typeof product.tags === 'string' && product.tags ? product.tags.split(',').map(t => t.trim()) : []);
+      console.log(`  Tags: ${tags.join(', ') || 'none'}`);
       
       // Check if product should be excluded
       if (product.status !== 'active') {
@@ -365,6 +367,10 @@ serve(async (req) => {
         console.log(`  WARNING: Product has no price or price is 0`);
       }
 
+      // Ensure tags is always an array
+      const productTags = Array.isArray(product.tags) ? product.tags : 
+                         (typeof product.tags === 'string' && product.tags ? product.tags.split(',').map(t => t.trim()) : []);
+
       const { error: insertError } = await adminClient
         .from('shopify_products')
         .insert({
@@ -376,7 +382,7 @@ serve(async (req) => {
           product_type: product.product_type || '',
           price: price,
           image_url: primaryImage,
-          tags: product.tags || [],
+          tags: productTags,
           status: product.status || 'active',
           published_at: product.published_at,
           created_at: product.created_at,
