@@ -42,66 +42,25 @@ function convertToProduct(dbProduct: DatabaseProduct): Product {
     vendor: dbProduct.vendor,
     productType: dbProduct.product_type,
     tags: dbProduct.tags,
-    images: dbProduct.image_url ? [{
-      id: '1',
-      src: dbProduct.image_url,
-      altText: dbProduct.title
-    }] : [],
-    variants: [{
-      id: '1',
-      title: 'Default Title',
-      price: {
-        amount: dbProduct.price.toString(),
-        currencyCode: 'USD'
-      },
-      availableForSale: dbProduct.status === 'active',
-      selectedOptions: []
-    }],
+    featuredImageUrl: dbProduct.image_url || undefined,
     priceRange: {
-      minVariantPrice: {
-        amount: dbProduct.price.toString(),
-        currencyCode: 'USD'
-      },
-      maxVariantPrice: {
-        amount: dbProduct.price.toString(),
-        currencyCode: 'USD'
-      }
+      min: dbProduct.price,
+      max: dbProduct.price,
+      currencyCode: 'USD'
     },
-    availableForSale: dbProduct.status === 'active',
-    options: [],
-    metafields: [],
-    compareAtPriceRange: {
-      minVariantPrice: {
-        amount: dbProduct.price.toString(),
-        currencyCode: 'USD'
-      },
-      maxVariantPrice: {
-        amount: dbProduct.price.toString(),
-        currencyCode: 'USD'
-      }
-    }
+    available: dbProduct.status === 'active'
   };
 }
 
 // Convert database collection to frontend Collection type
-function convertToCollection(dbCollection: DatabaseCollection): Collection {
+function convertToCollection(dbCollection: DatabaseCollection & { product_count?: number }): Collection {
   return {
     id: dbCollection.id,
     handle: dbCollection.handle,
     title: dbCollection.title,
-    description: dbCollection.description || '',
-    image: dbCollection.image_url ? {
-      id: '1',
-      src: dbCollection.image_url,
-      altText: dbCollection.title
-    } : null,
-    products: {
-      edges: [],
-      pageInfo: {
-        hasNextPage: false,
-        hasPreviousPage: false
-      }
-    }
+    description: dbCollection.description || undefined,
+    imageUrl: dbCollection.image_url || undefined,
+    productCount: dbCollection.product_count || 0
   };
 }
 
@@ -109,13 +68,22 @@ export async function getCollectionsFromDB() {
   try {
     const { data, error } = await supabase
       .from('shopify_collections')
-      .select('*')
+      .select(`
+        *,
+        collection_products (count)
+      `)
       .order('title');
 
     if (error) throw error;
 
+    // Transform the data to include product count
+    const collectionsWithCount = (data || []).map(collection => ({
+      ...collection,
+      product_count: collection.collection_products?.[0]?.count || 0
+    }));
+
     return {
-      data: (data || []).map(convertToCollection),
+      data: collectionsWithCount.map(convertToCollection),
       error: null
     };
   } catch (error) {
