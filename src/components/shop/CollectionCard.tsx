@@ -112,11 +112,12 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
           
           <div className={`${isListView ? 'min-h-[2.5rem]' : 'min-h-[2.5rem]'}`}>
             {description && (
-              <p className={`text-gray-300 leading-relaxed line-clamp-2 ${
-                isListView ? 'text-sm' : 'text-sm'
-              }`}>
-                {description}
-              </p>
+              <div 
+                className={`text-gray-300 leading-relaxed line-clamp-2 ${
+                  isListView ? 'text-sm' : 'text-sm'
+                } [&_p]:mb-0 [&_strong]:font-semibold [&_em]:italic`}
+                dangerouslySetInnerHTML={{ __html: description }}
+              />
             )}
           </div>
         </div>
