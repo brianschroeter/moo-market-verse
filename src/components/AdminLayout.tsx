@@ -49,6 +49,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { path: "/admin/newsletter-signups", label: "Newsletter Signups", icon: <Mail className="h-5 w-5" /> },
     { path: "/admin/printful-orders", label: "Printful Orders", icon: <ShoppingBag className="h-5 w-5" /> },
     { path: "/admin/shopify-orders", label: "Shopify Orders", icon: <ShoppingBag className="h-5 w-5" /> },
+    { path: "/admin/all-products", label: "All Products", icon: <Package className="h-5 w-5" /> },
     { path: "/admin/order-reports", label: "Order Reports", icon: <BarChart3 className="h-5 w-5" /> }
   ];
   

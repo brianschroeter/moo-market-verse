@@ -40,6 +40,7 @@ import AdminCollectionOrder from "./pages/admin/AdminCollectionOrder";
 import AdminPrintfulOrders from "./pages/admin/AdminPrintfulOrders";
 import ShopifyOrdersPage from "./pages/admin/ShopifyOrdersPage";
 import OrderReports from "./pages/admin/OrderReports";
+import AdminProducts from "./pages/admin/AdminProducts";
 import TestYouTubeEdgeFunction from "./pages/TestYouTubeEdgeFunction";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
@@ -186,6 +187,12 @@ const App = () => {
                 <Route path="/admin/shopify-orders" element={
                   <ProtectedRoute requireAdmin={true}>
                     <ShopifyOrdersPage />
+                  </ProtectedRoute>
+                } />
+                {/* All Products Admin Route */}
+                <Route path="/admin/all-products" element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminProducts />
                   </ProtectedRoute>
                 } />
                 {/* Order Reports Admin Route */}

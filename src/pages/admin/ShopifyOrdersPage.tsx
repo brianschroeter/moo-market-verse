@@ -39,7 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { ShopifyPrintfulLinker } from '@/components/admin/linking/ShopifyPrintfulLinker'; // Added for order linking
 import { syncShopifyOrders, SyncShopifyOrdersResponse } from '@/services/printfulService'; // Import sync functionality
-import { syncShopifyProducts } from '@/services/shopify/productSync'; // Import product sync functionality
+import { syncShopifyProducts, SyncProductsResponse } from '@/services/shopify/productSync'; // Import product sync functionality
 
 // --- Interfaces based on shopify-orders Edge Function ---
 interface TransformedShopifyOrder {
@@ -286,7 +286,6 @@ const ShopifyOrdersPage: React.FC = () => {
 
         const { data: responseData, error: rpcError } = await supabase.functions.invoke('shopify-orders', {
           body: params,
-          headers,
         });
 
         if (rpcError) {
@@ -376,12 +375,37 @@ const ShopifyOrdersPage: React.FC = () => {
       const response = await syncShopifyProducts();
 
       if (response.success) {
-        toast.success("Product sync completed successfully!", {
-          description: `${response.products_synced || 0} products and ${response.collections_synced || 0} collections synced from Shopify`
+        let description = `Found ${response.products_found} products: ${response.products_synced} synced, ${response.products_excluded} excluded`;
+        
+        if (response.products_failed > 0) {
+          description += `, ${response.products_failed} failed`;
+        }
+        
+        toast.success("Product sync completed!", {
+          description: description,
         });
+        
+        // Show excluded products if any
+        if (response.excluded_products && response.excluded_products.length > 0) {
+          console.log('Excluded products:', response.excluded_products);
+          const excludedList = response.excluded_products.map(p => `${p.title} (${p.reason})`).join('\n');
+          toast.info("Some products were excluded", {
+            description: `${response.excluded_products.length} products excluded. Check console for details.`,
+            duration: 10000,
+          });
+        }
+        
+        // Show errors if any
+        if (response.errors && response.errors.length > 0) {
+          console.error('Sync errors:', response.errors);
+          toast.error("Some errors occurred during sync", {
+            description: `${response.errors.length} errors occurred. Check console for details.`,
+            duration: 10000,
+          });
+        }
       } else {
         toast.error("Product sync failed", {
-          description: response.error || "An unexpected error occurred"
+          description: "An unexpected error occurred"
         });
       }
     } catch (error: any) {

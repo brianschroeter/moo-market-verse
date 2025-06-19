@@ -255,7 +255,16 @@ serve(async (req) => {
 
   try {
     // Check admin access
-    const adminClient = await ensureAdmin(req);
+    const authResult = await ensureAdmin(req);
+    
+    if (authResult.errorResponse) {
+      return authResult.errorResponse;
+    }
+    
+    const adminClient = authResult.adminClient;
+    if (!adminClient) {
+      throw new Error('Failed to initialize admin client');
+    }
 
     // Get Shopify configuration
     const shopDomain = Deno.env.get('SHOPIFY_SHOP_DOMAIN');
@@ -284,6 +293,20 @@ serve(async (req) => {
       console.log(`Collection ${collection.handle} has ${productIds.length} products`);
     }
 
+    // Log sync details
+    const syncLog = {
+      started_at: new Date().toISOString(),
+      products_found: products.length,
+      collections_found: collections.length,
+      products_processed: 0,
+      products_inserted: 0,
+      products_failed: 0,
+      products_excluded: [] as any[],
+      collections_inserted: 0,
+      errors: [] as string[],
+      completed_at: '' as string,
+    };
+
     // Begin database transaction
     const { error: deleteProductsError } = await adminClient
       .from('shopify_products')
@@ -292,6 +315,7 @@ serve(async (req) => {
 
     if (deleteProductsError) {
       console.error('Error deleting existing products:', deleteProductsError);
+      syncLog.errors.push(`Delete products error: ${deleteProductsError.message}`);
     }
 
     const { error: deleteCollectionsError } = await adminClient
@@ -301,12 +325,48 @@ serve(async (req) => {
 
     if (deleteCollectionsError) {
       console.error('Error deleting existing collections:', deleteCollectionsError);
+      syncLog.errors.push(`Delete collections error: ${deleteCollectionsError.message}`);
     }
 
     // Insert products
     for (const product of products) {
+      syncLog.products_processed++;
+      
+      // Log product details for debugging
+      console.log(`Processing product: ${product.id} - ${product.title}`);
+      console.log(`  Status: ${product.status}, Published: ${product.published_at}`);
+      console.log(`  Variants: ${product.variants?.length || 0}`);
+      console.log(`  Tags: ${product.tags?.join(', ') || 'none'}`);
+      
+      // Check if product should be excluded
+      if (product.status !== 'active') {
+        console.log(`  EXCLUDED: Product status is ${product.status}`);
+        syncLog.products_excluded.push({
+          id: product.id,
+          title: product.title,
+          reason: `Status is ${product.status}, not active`,
+          handle: product.handle,
+        });
+        continue;
+      }
+      
+      if (!product.published_at) {
+        console.log(`  EXCLUDED: Product is not published`);
+        syncLog.products_excluded.push({
+          id: product.id,
+          title: product.title,
+          reason: 'Not published (no published_at date)',
+          handle: product.handle,
+        });
+        continue;
+      }
+
       const primaryImage = product.images?.[0]?.src || null;
       const price = product.variants?.[0]?.price ? parseFloat(product.variants[0].price) : 0;
+      
+      if (!price || price === 0) {
+        console.log(`  WARNING: Product has no price or price is 0`);
+      }
 
       const { error: insertError } = await adminClient
         .from('shopify_products')
@@ -328,11 +388,18 @@ serve(async (req) => {
 
       if (insertError) {
         console.error(`Error inserting product ${product.handle}:`, insertError);
+        syncLog.products_failed++;
+        syncLog.errors.push(`Product ${product.id} (${product.title}): ${insertError.message}`);
+      } else {
+        syncLog.products_inserted++;
+        console.log(`  Successfully inserted product ${product.id}`);
       }
     }
 
     // Insert collections
     for (const collection of collections) {
+      console.log(`Processing collection: ${collection.id} - ${collection.title}`);
+      
       const { error: insertError } = await adminClient
         .from('shopify_collections')
         .insert({
@@ -346,6 +413,10 @@ serve(async (req) => {
 
       if (insertError) {
         console.error(`Error inserting collection ${collection.handle}:`, insertError);
+        syncLog.errors.push(`Collection ${collection.id} (${collection.title}): ${insertError.message}`);
+      } else {
+        syncLog.collections_inserted++;
+        console.log(`  Successfully inserted collection ${collection.id}`);
       }
     }
 
@@ -377,14 +448,25 @@ serve(async (req) => {
       }
     }
 
+    syncLog.completed_at = new Date().toISOString();
+    
     const syncSummary = {
-      products_synced: products.length,
-      collections_synced: collections.length,
+      products_synced: syncLog.products_inserted,
+      products_found: syncLog.products_found,
+      products_excluded: syncLog.products_excluded.length,
+      products_failed: syncLog.products_failed,
+      collections_synced: syncLog.collections_inserted,
       collection_products_synced: collectionProducts.length,
-      timestamp: new Date().toISOString(),
+      timestamp: syncLog.completed_at,
+      excluded_products: syncLog.products_excluded,
+      errors: syncLog.errors,
     };
 
     console.log('Sync completed:', syncSummary);
+    console.log(`Products excluded: ${syncLog.products_excluded.length}`);
+    if (syncLog.products_excluded.length > 0) {
+      console.log('Excluded products:', syncLog.products_excluded);
+    }
 
     return new Response(
       JSON.stringify({
