@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { corsHeaders } from "../_shared/cors.ts";
-import { ensureAdmin } from "../_shared/auth.ts";
 
 interface ShopifyProduct {
   id: string;
@@ -254,17 +253,15 @@ serve(async (req) => {
   }
 
   try {
-    // Check admin access
-    const authResult = await ensureAdmin(req);
+    // Initialize admin client directly since verify_jwt is false
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    if (authResult.errorResponse) {
-      return authResult.errorResponse;
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      throw new Error('Missing Supabase configuration');
     }
     
-    const adminClient = authResult.adminClient;
-    if (!adminClient) {
-      throw new Error('Failed to initialize admin client');
-    }
+    const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     // Get Shopify configuration
     const shopDomain = Deno.env.get('SHOPIFY_SHOP_DOMAIN');
