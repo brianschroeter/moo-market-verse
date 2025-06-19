@@ -559,13 +559,17 @@ const ProductDetail: React.FC = () => {
                             : undefined
                         };
                         
+                        // Add main product first
                         await addItem(mainProductData);
                         
-                        // If personalization is enabled, also add the fee
+                        // If personalization is enabled, add the fee with a small delay to ensure cart state is updated
                         if (personalizationEnabled && personalizationName.trim()) {
+                          // Small delay to ensure the cart state is updated from the first addition
+                          await new Promise(resolve => setTimeout(resolve, 500));
+                          
                           const feeData = {
-                            variantId: '50551599726871',
-                            productId: '9893779767575', // Personalization Fee product ID
+                            variantId: 'gid://shopify/ProductVariant/50551599726871',
+                            productId: 'gid://shopify/Product/9893779767575', // Personalization Fee product ID
                             title: 'Personalization Fee',
                             variantTitle: '',
                             price: 10,
@@ -578,9 +582,11 @@ const ProductDetail: React.FC = () => {
                           
                           await addItem(feeData);
                         }
-                      } catch (error) {
+                      } catch (error: any) {
                         console.error('Error adding to cart:', error);
-                        toast.error('Failed to add to cart. Please try again.');
+                        // More specific error message
+                        const errorMessage = error?.message || 'Failed to add to cart. Please try again.';
+                        toast.error(errorMessage);
                       } finally {
                         setIsAddingToCart(false);
                       }

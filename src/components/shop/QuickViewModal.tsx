@@ -129,8 +129,8 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, isOpen, onClos
       // If personalization is enabled, also add the fee
       if (personalizationEnabled && personalizationName.trim() && product.tags?.includes('personalize')) {
         const feeData = {
-          variantId: '50551599726871',
-          productId: '9893779767575',
+          variantId: 'gid://shopify/ProductVariant/50551599726871',
+          productId: 'gid://shopify/Product/9893779767575',
           title: 'Personalization Fee',
           variantTitle: '',
           price: 10,
