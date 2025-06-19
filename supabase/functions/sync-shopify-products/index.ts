@@ -304,13 +304,36 @@ serve(async (req) => {
       completed_at: '' as string,
     };
 
+    // Check if tables exist before trying to delete
+    console.log('Checking if tables exist...');
+    
+    // Try to check if shopify_products table exists
+    const { data: productsTableCheck, error: productsCheckError } = await adminClient
+      .from('shopify_products')
+      .select('id')
+      .limit(1);
+    
+    if (productsCheckError && productsCheckError.message.includes('does not exist')) {
+      console.error('Table shopify_products does not exist. Please create it first.');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Database tables not found. Please run the migration to create shopify_products, shopify_collections, and collection_products tables.',
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+
     // Begin database transaction
     const { error: deleteProductsError } = await adminClient
       .from('shopify_products')
       .delete()
       .neq('id', '0'); // Delete all products
 
-    if (deleteProductsError) {
+    if (deleteProductsError && !deleteProductsError.message.includes('does not exist')) {
       console.error('Error deleting existing products:', deleteProductsError);
       syncLog.errors.push(`Delete products error: ${deleteProductsError.message}`);
     }
@@ -320,7 +343,7 @@ serve(async (req) => {
       .delete()
       .neq('id', '0'); // Delete all collections
 
-    if (deleteCollectionsError) {
+    if (deleteCollectionsError && !deleteCollectionsError.message.includes('does not exist')) {
       console.error('Error deleting existing collections:', deleteCollectionsError);
       syncLog.errors.push(`Delete collections error: ${deleteCollectionsError.message}`);
     }
