@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import ProductCard from "./shop/ProductCard";
 import { getNewProducts } from "@/services/shopify/shopifyStorefrontService";
+import { getNewProductsFromDB } from "@/services/shopify/databaseProductService";
 import { Product } from "@/services/types/shopify-types";
 import { Loader2, Sparkles, Star, Zap, ShoppingBag, TrendingUp } from "lucide-react";
 import { useStaggeredAnimation } from "@/hooks/useScrollAnimation";
@@ -18,10 +19,18 @@ const FeaturedProducts: React.FC = () => {
     const loadProducts = async () => {
       try {
         setLoading(true);
-        // Fetch the newest products
-        const newProducts = await getNewProducts(6);
-        setProducts(newProducts);
-        setError(null);
+        // Try database first
+        const dbResult = await getNewProductsFromDB(6);
+        if (dbResult.data.length > 0) {
+          setProducts(dbResult.data);
+          setError(null);
+        } else {
+          // Fallback to API if database is empty
+          console.log('No new products in database, falling back to API');
+          const newProducts = await getNewProducts(6);
+          setProducts(newProducts);
+          setError(null);
+        }
       } catch (err) {
         console.error("Failed to load newest products", err);
         setError("Failed to load newest products");

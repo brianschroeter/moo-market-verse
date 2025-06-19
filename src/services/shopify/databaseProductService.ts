@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Product, Collection } from "@/services/types/shopify-types";
+import { Product, Collection, ProductDetail, ProductImage, ProductVariant } from "@/services/types/shopify-types";
 
 export interface DatabaseProduct {
   id: string;
@@ -49,6 +49,45 @@ function convertToProduct(dbProduct: DatabaseProduct): Product {
       currencyCode: 'USD'
     },
     available: dbProduct.status === 'active'
+  };
+}
+
+// Convert database product to ProductDetail type with full information
+function convertToProductDetail(dbProduct: DatabaseProduct): ProductDetail {
+  const images: ProductImage[] = dbProduct.image_url ? [{
+    url: dbProduct.image_url,
+    altText: dbProduct.title
+  }] : [];
+  
+  const variants: ProductVariant[] = [{
+    id: `variant-${dbProduct.id}`,
+    title: 'Default Title',
+    price: dbProduct.price,
+    available: dbProduct.status === 'active',
+    selectedOptions: [{
+      name: 'Title',
+      value: 'Default Title'
+    }]
+  }];
+  
+  return {
+    id: dbProduct.id,
+    handle: dbProduct.handle,
+    title: dbProduct.title,
+    description: dbProduct.description || '',
+    descriptionHtml: dbProduct.description || '',
+    vendor: dbProduct.vendor,
+    productType: dbProduct.product_type,
+    tags: dbProduct.tags,
+    featuredImageUrl: dbProduct.image_url || undefined,
+    priceRange: {
+      min: dbProduct.price,
+      max: dbProduct.price,
+      currencyCode: 'USD'
+    },
+    available: dbProduct.status === 'active',
+    images,
+    variants
   };
 }
 
@@ -244,6 +283,46 @@ export async function getFeaturedProductsFromDB(limit: number = 6) {
     return {
       data: [],
       error: error instanceof Error ? error.message : 'Failed to fetch featured products'
+    };
+  }
+}
+
+export async function getProductDetailFromDB(handle: string) {
+  try {
+    const { data, error } = await supabase
+      .from('shopify_products')
+      .select(`
+        *,
+        collection_products (
+          collection_id,
+          shopify_collections (
+            id,
+            handle,
+            title
+          )
+        )
+      `)
+      .eq('handle', handle)
+      .single();
+
+    if (error) throw error;
+
+    if (!data) {
+      return {
+        product: null,
+        error: null
+      };
+    }
+
+    return {
+      product: convertToProductDetail(data),
+      error: null
+    };
+  } catch (error) {
+    console.error('Error fetching product detail from database:', error);
+    return {
+      product: null,
+      error: error instanceof Error ? error.message : 'Failed to fetch product detail'
     };
   }
 }

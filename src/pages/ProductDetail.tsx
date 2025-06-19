@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/shop/ProductCard";
 import { getProductDetail, getFeaturedProducts } from "@/services/shopify/shopifyStorefrontService";
+import { getProductDetailFromDB, getFeaturedProductsFromDB } from "@/services/shopify/databaseProductService";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,8 +46,18 @@ const ProductDetail: React.FC = () => {
     isLoading,
     error
   } = useQuery({
-    queryKey: ["product-detail", handle],
-    queryFn: () => getProductDetail(handle!),
+    queryKey: ["product-detail-db", handle],
+    queryFn: async () => {
+      // Try database first
+      const dbResult = await getProductDetailFromDB(handle!);
+      if (dbResult.product) {
+        return { product: dbResult.product };
+      }
+      
+      // Fallback to API if not in database
+      console.log('Product not in database, falling back to API');
+      return getProductDetail(handle!);
+    },
     enabled: !!handle,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -55,8 +66,18 @@ const ProductDetail: React.FC = () => {
 
   // Fetch related products (featured products for now)
   const { data: relatedProducts = [] } = useQuery({
-    queryKey: ["related-products", handle],
-    queryFn: () => getFeaturedProducts(4),
+    queryKey: ["related-products-db", handle],
+    queryFn: async () => {
+      // Try database first
+      const dbResult = await getFeaturedProductsFromDB(4);
+      if (dbResult.data.length > 0) {
+        return dbResult.data;
+      }
+      
+      // Fallback to API if database is empty
+      console.log('No featured products in database, falling back to API');
+      return getFeaturedProducts(4);
+    },
     enabled: !!handle,
     staleTime: 5 * 60 * 1000,
   });

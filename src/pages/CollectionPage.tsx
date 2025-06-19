@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductGrid from "@/components/shop/ProductGrid";
 import { getCollectionProducts } from "@/services/shopify/shopifyStorefrontService";
+import { getCollectionProductsFromDB } from "@/services/shopify/databaseProductService";
 import { Product } from "@/services/types/shopify-types";
 import { ChevronLeft, Home, ShoppingBag, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,12 +22,29 @@ const CollectionPage: React.FC = () => {
     error,
     refetch
   } = useQuery({
-    queryKey: ["collection", collectionHandle, cursor],
-    queryFn: () => getCollectionProducts({ 
-      handle: collectionHandle!, 
-      limit: 20,
-      cursor 
-    }),
+    queryKey: ["collection-db", collectionHandle, cursor],
+    queryFn: async () => {
+      // For database, we don't support pagination with cursor yet
+      if (!cursor) {
+        // Try database first for initial load
+        const dbResult = await getCollectionProductsFromDB(collectionHandle!);
+        if (dbResult.collection && dbResult.products.length > 0) {
+          return {
+            collection: dbResult.collection,
+            products: dbResult.products,
+            pageInfo: { hasNextPage: false } // Database doesn't paginate currently
+          };
+        }
+      }
+      
+      // Fallback to API for pagination or if database is empty
+      console.log('Collection not in database or paginating, falling back to API');
+      return getCollectionProducts({ 
+        handle: collectionHandle!, 
+        limit: 20,
+        cursor 
+      });
+    },
     enabled: !!collectionHandle,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
