@@ -7,6 +7,7 @@ import CollectionCard from "@/components/shop/CollectionCard";
 import ProductCard from "@/components/shop/ProductCard";
 import FlashSalesBanner from "@/components/shop/FlashSalesBanner";
 import { getCollections, getFeaturedProducts, getNewProducts } from "@/services/shopify/shopifyStorefrontService";
+import { getNewProductsFromDB, getFeaturedProductsFromDB } from "@/services/shopify/databaseProductService";
 import { getActiveFlashSales } from "@/services/flashSalesService";
 import { getVisibleCollectionOrders } from "@/services/collectionOrderService";
 import { Collection } from "@/services/types/shopify-types";
@@ -45,15 +46,26 @@ const Shop: React.FC = () => {
     isLoading: featuredProductsLoading,
     error: featuredProductsError
   } = useQuery({
-    queryKey: ["featured-products"],
+    queryKey: ["featured-products-db"],
     queryFn: async () => {
-      // Get featured products - the edge function now filters out unavailable products by default
+      // Try database first
+      const dbResult = await getFeaturedProductsFromDB(6);
+      if (dbResult.data.length > 0) {
+        return {
+          products: dbResult.data,
+          hasEnoughProducts: dbResult.data.length >= 6,
+          availableCount: dbResult.data.length,
+        };
+      }
+      
+      // Fallback to API if database is empty
+      console.log('No featured products in database, falling back to API');
       const products = await getFeaturedProducts(6);
       
       return {
         products,
         hasEnoughProducts: products.length >= 6,
-        availableCount: products.length, // All returned products are available now
+        availableCount: products.length,
       };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -66,8 +78,15 @@ const Shop: React.FC = () => {
     isLoading: newProductsLoading,
     error: newProductsError
   } = useQuery({
-    queryKey: ["new-products"],
+    queryKey: ["new-products-db"],
     queryFn: async () => {
+      // Try database first
+      const dbResult = await getNewProductsFromDB(4);
+      if (dbResult.data.length > 0) {
+        return dbResult.data;
+      }
+      // Fallback to API if database is empty
+      console.log('No new products in database, falling back to API');
       const products = await getNewProducts(4);
       return products;
     },

@@ -205,3 +205,77 @@ export async function getAllProductsFromDB() {
     };
   }
 }
+
+export async function getNewProductsFromDB(limit: number = 4) {
+  try {
+    const { data, error } = await supabase
+      .from('shopify_products')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+
+    return {
+      data: (data || []).map(convertToProduct),
+      error: null
+    };
+  } catch (error) {
+    console.error('Error fetching new products from database:', error);
+    return {
+      data: [],
+      error: error instanceof Error ? error.message : 'Failed to fetch new products'
+    };
+  }
+}
+
+export async function getFeaturedProductsFromDB(limit: number = 6) {
+  try {
+    // First try to get products with "bestseller" tag
+    const { data, error } = await supabase
+      .from('shopify_products')
+      .select('*')
+      .eq('status', 'active')
+      .contains('tags', ['bestseller'])
+      .limit(limit);
+
+    if (error) throw error;
+
+    // If we don't have enough bestsellers, get more products ordered by published date
+    let products = data || [];
+    if (products.length < limit) {
+      // Build exclusion list safely
+      const excludeIds = products.length > 0 ? products.map(p => p.id) : [];
+      
+      let query = supabase
+        .from('shopify_products')
+        .select('*')
+        .eq('status', 'active')
+        .order('published_at', { ascending: false })
+        .limit(limit - products.length);
+      
+      // Only add the exclusion if we have IDs to exclude
+      if (excludeIds.length > 0) {
+        query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+      }
+      
+      const { data: additionalProducts, error: additionalError } = await query;
+
+      if (!additionalError && additionalProducts) {
+        products = [...products, ...additionalProducts];
+      }
+    }
+
+    return {
+      data: products.map(convertToProduct),
+      error: null
+    };
+  } catch (error) {
+    console.error('Error fetching featured products from database:', error);
+    return {
+      data: [],
+      error: error instanceof Error ? error.message : 'Failed to fetch featured products'
+    };
+  }
+}
