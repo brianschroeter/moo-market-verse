@@ -46,16 +46,10 @@ const ProductDetail: React.FC = () => {
     isLoading,
     error
   } = useQuery({
-    queryKey: ["product-detail-db", handle],
+    queryKey: ["product-detail", handle],
     queryFn: async () => {
-      // Try database first
-      const dbResult = await getProductDetailFromDB(handle!);
-      if (dbResult.product) {
-        return { product: dbResult.product };
-      }
-      
-      // Fallback to API if not in database
-      console.log('Product not in database, falling back to API');
+      // Always use Shopify API for product details to get real variant IDs,
+      // multiple images, and full product information
       return getProductDetail(handle!);
     },
     enabled: !!handle,
@@ -66,16 +60,9 @@ const ProductDetail: React.FC = () => {
 
   // Fetch related products (featured products for now)
   const { data: relatedProducts = [] } = useQuery({
-    queryKey: ["related-products-db", handle],
+    queryKey: ["related-products", handle],
     queryFn: async () => {
-      // Try database first
-      const dbResult = await getFeaturedProductsFromDB(4);
-      if (dbResult.data.length > 0) {
-        return dbResult.data;
-      }
-      
-      // Fallback to API if database is empty
-      console.log('No featured products in database, falling back to API');
+      // Use Shopify API for consistent product data
       return getFeaturedProducts(4);
     },
     enabled: !!handle,
