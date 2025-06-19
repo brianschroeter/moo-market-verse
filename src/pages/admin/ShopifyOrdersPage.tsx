@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { ShopifyPrintfulLinker } from '@/components/admin/linking/ShopifyPrintfulLinker'; // Added for order linking
 import { syncShopifyOrders, SyncShopifyOrdersResponse } from '@/services/printfulService'; // Import sync functionality
+import { syncShopifyProducts } from '@/services/shopify/productSync'; // Import product sync functionality
 
 // --- Interfaces based on shopify-orders Edge Function ---
 interface TransformedShopifyOrder {
@@ -117,6 +118,7 @@ const ShopifyOrdersPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isSyncingProducts, setIsSyncingProducts] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Detail Modal State
@@ -365,6 +367,30 @@ const ShopifyOrdersPage: React.FC = () => {
       });
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleSyncProducts = async () => {
+    setIsSyncingProducts(true);
+    try {
+      const response = await syncShopifyProducts();
+
+      if (response.success) {
+        toast.success("Product sync completed successfully!", {
+          description: `${response.products_synced || 0} products and ${response.collections_synced || 0} collections synced from Shopify`
+        });
+      } else {
+        toast.error("Product sync failed", {
+          description: response.error || "An unexpected error occurred"
+        });
+      }
+    } catch (error: any) {
+      console.error('Product sync error:', error);
+      toast.error("Product sync failed", {
+        description: error.message || "An unexpected error occurred"
+      });
+    } finally {
+      setIsSyncingProducts(false);
     }
   };
 
@@ -733,6 +759,20 @@ const ShopifyOrdersPage: React.FC = () => {
                       <Download className="mr-2 h-4 w-4" />
                     )}
                     Full Sync
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleSyncProducts} 
+                    disabled={loading || isRefreshing || isSyncing || isSyncingProducts}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    title="Sync all products and collections from Shopify"
+                  >
+                    {isSyncingProducts ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Package className="mr-2 h-4 w-4" />
+                    )}
+                    Sync Products
                   </Button>
                 </div>
               </div>

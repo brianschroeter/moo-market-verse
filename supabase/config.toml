@@ -117,3 +117,6 @@ verify_jwt = false
 
 [functions.manage-youtube-api-keys]
 verify_jwt = true
+
+[functions.sync-shopify-products]
+verify_jwt = false

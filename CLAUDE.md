@@ -38,6 +38,8 @@ Located in `scripts/` directory:
 - `./scripts/sync-all-shopify-orders.cjs` - Node.js script for Shopify order sync via edge function
 - `./scripts/sync-all-printful-orders.cjs` - Node.js script for Printful order sync
 - `./scripts/continuous-shopify-sync.cjs` - Continuous sync for fetching all orders
+- `./scripts/sync-shopify-products.sh` - Syncs all Shopify products and collections
+- `./scripts/sync-shopify-products.cjs` - Node.js script for Shopify product sync
 
 #### Testing & Diagnostics
 - `./scripts/check-admin-access.js` - Verify admin access permissions
@@ -239,10 +241,13 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - Order linking and customer management
 
 ##### Shopify Sync Architecture
-- **Edge Function**: `shopify-orders` handles pagination up to 200 pages (50,000 orders)
-- **Authentication**: Function deployed with `--no-verify-jwt` for production sync
-- **Sync Methods**: Available via curl script, Node.js script, or direct API call
+- **Order Sync**: `shopify-orders` handles pagination up to 200 pages (50,000 orders)
+- **Product Sync**: `sync-shopify-products` syncs all products, collections, and relationships
+- **Authentication**: Functions deployed with `--no-verify-jwt` for production sync
+- **Sync Methods**: Available via curl script, Node.js script, or admin UI button
 - **Required Env Variables**: `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_ADMIN_API_ACCESS_TOKEN`, `SHOPIFY_API_VERSION`
+- **Product Display**: Products page uses database first, falls back to API if empty
+- **Admin UI**: Product sync button available on Shopify Orders admin page
 
 ##### Printful Sync Architecture
 - **Admin UI**: Two sync buttons - "Sync Latest Orders" (incremental) and "Full Sync" (complete)

@@ -9,6 +9,7 @@ import ComingSoonCard from "@/components/shop/ComingSoonCard";
 import RecentlyViewed from "@/components/shop/RecentlyViewed";
 import ProductRecommendations from "@/components/shop/ProductRecommendations";
 import { getCollections, getCollectionProducts } from "@/services/shopify/shopifyStorefrontService";
+import { getCollectionsFromDB, getCollectionProductsFromDB, getAllProductsFromDB } from "@/services/shopify/databaseProductService";
 import { Product, Collection } from "@/services/types/shopify-types";
 import { Loader2, ChevronLeft, ChevronRight, Filter, X, Search, Package, Star, ShoppingCart, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -65,10 +66,19 @@ const Products: React.FC = () => {
   const [isFilterLoading, setIsFilterLoading] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(true);
 
-  // Fetch all collections
+  // Fetch all collections from database first, fallback to API if needed
   const { data: collectionsResponse, isLoading: collectionsLoading } = useQuery({
-    queryKey: ["collections"],
-    queryFn: () => getCollections({ limit: 50 }),
+    queryKey: ["collections-db"],
+    queryFn: async () => {
+      // Try database first
+      const dbResult = await getCollectionsFromDB();
+      if (dbResult.data.length > 0) {
+        return dbResult;
+      }
+      // Fallback to API if database is empty
+      console.log('No collections in database, falling back to API');
+      return getCollections({ limit: 50 });
+    },
     staleTime: 5 * 60 * 1000,
   });
 
@@ -77,27 +87,102 @@ const Products: React.FC = () => {
   // Fetch products from all collections
   useEffect(() => {
     const fetchAllProducts = async () => {
-      if (!collections.length) return;
-      
       setIsLoadingAllProducts(true);
       try {
-        const productMap = new Map<string, ProductWithCollections>();
+        // Try to get all products from database first
+        const dbResult = await getAllProductsFromDB();
         
-        // Fetch products from each collection
-        await Promise.all(
-          collections.map(async (collection) => {
-            try {
-              const response = await getCollectionProducts({
-                handle: collection.handle,
-                limit: 50, // Reduced initial load per collection
-              });
-              
-              response.products.forEach(product => {
-                // Check if product already exists in map
-                const existingProduct = productMap.get(product.id);
+        if (dbResult.data.length > 0) {
+          // Convert database products to ProductWithCollections format
+          const productMap = new Map<string, ProductWithCollections>();
+          
+          dbResult.data.forEach(dbProduct => {
+            const collections = dbProduct.collection_products?.map(cp => ({
+              handle: cp.shopify_collections?.handle || '',
+              title: cp.shopify_collections?.title || ''
+            })) || [];
+            
+            const product: ProductWithCollections = {
+              id: dbProduct.id,
+              handle: dbProduct.handle,
+              title: dbProduct.title,
+              description: dbProduct.description || '',
+              vendor: dbProduct.vendor,
+              productType: dbProduct.product_type,
+              tags: dbProduct.tags,
+              images: dbProduct.image_url ? [{
+                id: '1',
+                src: dbProduct.image_url,
+                altText: dbProduct.title
+              }] : [],
+              variants: [{
+                id: '1',
+                title: 'Default Title',
+                price: {
+                  amount: dbProduct.price.toString(),
+                  currencyCode: 'USD'
+                },
+                availableForSale: dbProduct.status === 'active',
+                selectedOptions: []
+              }],
+              priceRange: {
+                minVariantPrice: {
+                  amount: dbProduct.price.toString(),
+                  currencyCode: 'USD'
+                },
+                maxVariantPrice: {
+                  amount: dbProduct.price.toString(),
+                  currencyCode: 'USD'
+                }
+              },
+              availableForSale: dbProduct.status === 'active',
+              options: [],
+              metafields: [],
+              compareAtPriceRange: {
+                minVariantPrice: {
+                  amount: dbProduct.price.toString(),
+                  currencyCode: 'USD'
+                },
+                maxVariantPrice: {
+                  amount: dbProduct.price.toString(),
+                  currencyCode: 'USD'
+                }
+              },
+              collectionHandles: collections.map(c => c.handle),
+              collectionTitles: collections.map(c => c.title)
+            };
+            
+            productMap.set(product.id, product);
+          });
+          
+          const products = Array.from(productMap.values());
+          setAllProducts(products);
+          
+          // Calculate max price from products
+          const prices = products.map(p => parseFloat(p.variants[0]?.price.amount || '0'));
+          const calculatedMaxPrice = Math.ceil(Math.max(...prices, 100));
+          setMaxPrice(calculatedMaxPrice);
+          setFilters(prev => ({ ...prev, priceRange: [0, calculatedMaxPrice] }));
+        } else if (collections.length) {
+          // Fallback to API if database is empty
+          console.log('No products in database, falling back to API');
+          const productMap = new Map<string, ProductWithCollections>();
+          
+          // Fetch products from each collection
+          await Promise.all(
+            collections.map(async (collection) => {
+              try {
+                const response = await getCollectionProducts({
+                  handle: collection.handle,
+                  limit: 50, // Reduced initial load per collection
+                });
                 
-                if (existingProduct) {
-                  // Add collection to existing product
+                response.products.forEach(product => {
+                  // Check if product already exists in map
+                  const existingProduct = productMap.get(product.id);
+                  
+                  if (existingProduct) {
+                    // Add collection to existing product
                   existingProduct.collectionHandles.push(collection.handle);
                   existingProduct.collectionTitles.push(collection.title);
                 } else {
@@ -115,14 +200,15 @@ const Products: React.FC = () => {
           })
         );
         
-        const uniqueProducts = Array.from(productMap.values());
-        setAllProducts(uniqueProducts);
-        
-        // Calculate max price from all products
-        const prices = uniqueProducts.map(p => p.priceRange.max);
-        const calculatedMaxPrice = Math.ceil(Math.max(...prices, 100));
-        setMaxPrice(calculatedMaxPrice);
-        setFilters(prev => ({ ...prev, priceRange: [0, calculatedMaxPrice] }));
+          const uniqueProducts = Array.from(productMap.values());
+          setAllProducts(uniqueProducts);
+          
+          // Calculate max price from all products
+          const prices = uniqueProducts.map(p => parseFloat(p.variants[0]?.price.amount || '0'));
+          const calculatedMaxPrice = Math.ceil(Math.max(...prices, 100));
+          setMaxPrice(calculatedMaxPrice);
+          setFilters(prev => ({ ...prev, priceRange: [0, calculatedMaxPrice] }));
+        }
       } catch (error) {
         console.error("Error fetching all products:", error);
         toast.error("Failed to load products");
