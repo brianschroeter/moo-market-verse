@@ -23,12 +23,8 @@ const GET_COLLECTIONS_QUERY = `
           image {
             url
           }
-          products(first: 250) {
-            edges {
-              node {
-                id
-              }
-            }
+          products(first: 1) {
+            totalCount
           }
         }
       }
@@ -557,7 +553,7 @@ function transformCollection(shopifyCollection: any): Collection {
     title: shopifyCollection.title,
     description: shopifyCollection.description || undefined,
     imageUrl: shopifyCollection.image?.url || undefined,
-    productCount: shopifyCollection.products?.edges?.length || 0,
+    productCount: shopifyCollection.products?.totalCount || 0,
   };
 }
 
@@ -933,10 +929,15 @@ serve(async (req: Request) => {
           value: prop.value,
         }));
 
+        // Ensure variantId has the correct format - check if it already has the prefix
+        const merchandiseId = variantId.startsWith('gid://shopify/ProductVariant/') 
+          ? variantId 
+          : `gid://shopify/ProductVariant/${variantId}`;
+
         const response = await makeShopifyRequest(ADD_TO_CART_MUTATION, {
           cartId,
           lines: [{
-            merchandiseId: `gid://shopify/ProductVariant/${variantId}`,
+            merchandiseId,
             quantity,
             attributes,
           }],

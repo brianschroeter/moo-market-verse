@@ -32,20 +32,38 @@ vercel --prod
 ### Database Sync & Utility Scripts
 Located in `scripts/` directory:
 
+#### Fresh Development Setup
+```bash
+npx supabase start
+./scripts/sync-all-production.sh
+# Edit and run production-secrets-template.sh
+npm run dev
+```
+
 #### Production Database Sync
 - `./scripts/sync-production-db.sh` - Syncs production database to local (requires password)
-- `./scripts/sync-shopify-orders.sh` - Syncs ALL Shopify orders from production
-- `./scripts/sync-all-shopify-orders.cjs` - Node.js script for Shopify order sync via edge function
-- `./scripts/sync-all-printful-orders.cjs` - Node.js script for Printful order sync
+- `./scripts/sync-all-production.sh` - Complete sync of database, edge functions, and storage
+- `./scripts/check-sync-status.sh` - Comprehensive status check of local sync state
+
+#### E-commerce Sync
+- `./scripts/sync-all-shopify-orders.cjs` - Syncs ALL Shopify orders via edge function
+- `./scripts/sync-shopify-orders.sh` - Shell script version for Shopify sync
 - `./scripts/continuous-shopify-sync.cjs` - Continuous sync for fetching all orders
 - `./scripts/sync-shopify-products.sh` - Syncs all Shopify products and collections
 - `./scripts/sync-shopify-products.cjs` - Node.js script for Shopify product sync
+- `./scripts/sync-all-printful-orders.cjs` - Syncs all Printful orders
+- `./scripts/test-printful-sync.sh` - Test Printful sync functionality
+- `./scripts/diagnose-shopify-sync.cjs` - Diagnose Shopify sync issues
+
+#### YouTube Sync
+- `./scripts/sync-youtube-schedule.sh` - Manual YouTube schedule sync (runs all 3 sync functions)
+- `./scripts/check-youtube-sync.js` - Checks YouTube sync status, channels, API keys, and streams
+- `./scripts/refresh-youtube-avatars.cjs` - Refreshes YouTube channel avatars
 
 #### Testing & Diagnostics
 - `./scripts/check-admin-access.js` - Verify admin access permissions
 - `./scripts/check-production-orders.cjs` - Check production order data
 - `./scripts/diagnose-shopify-sync.cjs` - Diagnose Shopify sync issues
-- `./scripts/test-printful-sync.sh` - Test Printful sync functionality
 
 ### YouTube Sync Manual Endpoints
 - Full sync: `curl -X POST "https://discord.lolcow.co/api/manual-youtube-sync" -H "Content-Type: application/json"`
@@ -67,6 +85,7 @@ Located in `scripts/` directory:
 - **Backend**: Supabase (PostgreSQL + Auth + Edge Functions)
 - **State**: React Context + TanStack React Query
 - **Routing**: React Router DOM v6
+- **Deployment**: Vercel with SPA rewrite rules
 
 ### Key Architectural Patterns
 
@@ -130,13 +149,16 @@ Located in `scripts/` directory:
 - **Social Integration**: `discord_connections`, `discord_guilds`, `youtube_connections`, `youtube_memberships`
 - **Content**: `featured_products`, `announcements`, `support_tickets`
 - **E-commerce**: `shopify_orders`, printful integration tables
+- **YouTube Content**: `youtube_channels`, `youtube_streams`, `schedule_slots`
 
-#### Edge Functions (20+ serverless functions)
+#### Edge Functions (40+ serverless functions)
 Located in `supabase/functions/` with TypeScript + Deno runtime:
 - Authentication & user management
 - Discord/YouTube API integrations
 - Order processing & linking
 - Newsletter subscriptions
+- YouTube stream synchronization
+- Admin management functions
 
 #### YouTube Sync Architecture
 - **sync-youtube-streams**: Main sync function with encryption salt handling (YOUTUBE_API_KEY_SALT)
@@ -145,6 +167,8 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - **Stream Status**: Uses YouTube's `liveBroadcastContent` field for accurate status
 - **Overnight Streams**: Streams starting after 8PM show on both days with day indicators
 - **Cache Strategy**: 2-minute TTL for live content, aggressive bypass for real-time updates
+- **Channel Sorting**: Ordered by earliest weekday stream time (Mon-Fri)
+- **Cron Jobs**: Vercel cron (daily on free tier) + manual sync endpoints
 
 #### Edge Function Patterns
 - **Shared Utilities**: `/supabase/functions/_shared/auth.ts` and `cors.ts`
@@ -152,6 +176,7 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - **Client Types**: Dual client pattern (user-context vs admin service-role)
 - **Error Handling**: Consistent CORS headers and JSON error responses
 - **Configuration**: Individual function settings in `supabase/config.toml`
+- **JWT Verification**: Many functions configured with `verify_jwt = false` for production sync
 
 #### Row Level Security (RLS) Patterns
 - **All tables use RLS**: Every table has policies for read/write access
@@ -160,85 +185,23 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - **Cascading Deletes**: Relationships configured for proper cleanup
 - **Edge Function Access**: Service role key bypasses RLS for admin operations
 
-### Configuration Files
-
-#### Build & Development
-- `vite.config.ts` - Vercel deployment, path aliases (`@/` → `src/`), development tools
-- `tailwind.config.ts` - Custom LolCow theme colors, animations, typography
-- `components.json` - shadcn/ui configuration
-- `eslint.config.js` - TypeScript ESLint with React rules
-
-#### Database & Deployment
-- `supabase/config.toml` - Supabase project settings, edge function configs, Discord OAuth
-- `supabase/migrations/` - 50+ migration files with comprehensive schema evolution
-- `.env` - Supabase environment variables (project ref, URLs, keys)
-
-### Development Patterns
-
-#### Component Development
-- Use existing shadcn/ui components from `src/components/ui/`
-- Follow established patterns in business components
-- TypeScript interfaces for all props
-- Functional components with hooks
-
-#### Database Interactions
-- Use TanStack Query for all data fetching
-- Auto-generated types from `npx supabase gen types typescript --local`
-- Service layer functions for complex operations
-- RLS policies for data security
-
-#### Admin Features
-- Comprehensive admin panel with role-based access
-- Admin routes protected via `ProtectedRoute` with `requireAdmin`
-- Database functions for admin operations
-
-### Environment Setup
-1. Configure Supabase environment variables in `.env`
-2. Run `npx supabase start` for local development
-3. Use development mode in AuthContext for testing without Discord auth
-4. Generate types after schema changes: `npx supabase gen types typescript --local`
-5. For production data sync: Use scripts in `scripts/` directory (requires database credentials)
-
-#### Environment Variables
-- **Required**: `VITE_PUBLIC_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` for client
-- **Edge Functions**: `SUPABASE_SERVICE_ROLE_KEY` for admin operations (server-side only)
-- **Development**: `VITE_DEVMODE=true` enables development mode
-- **Discord**: OAuth credentials in `supabase/config.toml`
-- **Security**: Service role key intentionally removed from client `.env` file
-
-#### Testing Strategy
-- **Current Approach**: Manual testing with development mode
-- **No Test Framework**: No automated tests currently implemented
-- **Development Testing**: Use `VITE_DEVMODE=true` for isolated testing
-- **Edge Function Testing**: Use `npx supabase functions serve` for local testing
-- **Database Testing**: Use `npx supabase db reset` for clean state
-
-#### Deployment Architecture
-- **Frontend**: Vercel SPA with simple rewrite rule (`vercel.json`)
-- **Backend**: Supabase hosted (PostgreSQL + Auth + Edge Functions)
-- **Build**: `npm run build` creates optimized production bundle
-- **Types**: Auto-generated from Supabase schema, committed to repo
-
-### Key Integration Points
+### Integration Architecture
 
 #### Discord Integration
 - OAuth with extended scopes: identify, email, connections, guilds
 - Automatic profile creation and synchronization
 - Guild membership tracking and role management
+- `discord_connections` table stores user connections
 
 #### YouTube Integration
 - Membership verification and tracking
 - Connection status monitoring
 - Integration with content delivery
 - Hybrid thumbnail approach: real thumbnails with colored placeholder fallback
-- **Cron Jobs**: Vercel Cron Jobs (daily on free tier) + manual sync endpoints
 - **Schedule Page**: Auto-refresh every 30s when live, 2min otherwise
-- **Channel Sorting**: Ordered by earliest weekday stream time (Mon-Fri)
+- **Stream Table**: `youtube_streams` with live status tracking
 
-#### E-commerce
-- Shopify order tracking
-- Printful integration for product fulfillment
-- Order linking and customer management
+#### E-commerce Integration
 
 ##### Shopify Sync Architecture
 - **Order Sync**: `shopify-orders` handles pagination up to 200 pages (50,000 orders)
@@ -248,6 +211,7 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - **Required Env Variables**: `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_ADMIN_API_ACCESS_TOKEN`, `SHOPIFY_API_VERSION`
 - **Product Display**: Products page uses database first, falls back to API if empty
 - **Admin UI**: Product sync button available on Shopify Orders admin page
+- **Order Linking**: `order_linking` edge function matches orders to users
 
 ##### Printful Sync Architecture
 - **Admin UI**: Two sync buttons - "Sync Latest Orders" (incremental) and "Full Sync" (complete)
@@ -255,39 +219,46 @@ Located in `supabase/functions/` with TypeScript + Deno runtime:
 - **Performance**: Incremental sync: 30-60 seconds, Full sync: 5-10 minutes for ~800 orders
 - **Required Secret**: `PRINTFUL_API_KEY` must be set in Supabase secrets
 
-#### Integration Error Handling
-- **Discord API**: OAuth with extended scopes, automatic connection sync
-- **YouTube API**: Membership verification with connection status tracking
-- **E-commerce**: Shopify/Printful order linking with edge function processing
-- **Error Recovery**: Graceful degradation when external APIs fail
-- **Rate Limiting**: Built-in handling for API rate limits
+### Environment Configuration
 
-### Development Notes
-- The application includes a development mode with mocked user data for testing
-- All database tables use RLS - ensure proper policies when adding new tables
-- Edge functions require JWT verification (configurable in `supabase/config.toml`)
-- Use the existing service patterns when adding new integrations
-- Follow established component patterns and TypeScript conventions
+#### Required Environment Variables
+- **Frontend**: `VITE_PUBLIC_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+- **Development**: `VITE_DEVMODE=true` enables development mode
+- **Edge Functions**: Require multiple secrets (see `production-secrets-template.sh`)
+
+#### Local Development Setup
+1. Clone repository and install dependencies: `npm install`
+2. Start Supabase: `npx supabase start`
+3. Sync production data: `./scripts/sync-all-production.sh`
+4. Configure secrets: Edit and run `production-secrets-template.sh`
+5. Generate types: `npx supabase gen types typescript --local`
+6. Start development server: `npm run dev`
 
 ### Common Issues and Solutions
 
 #### YouTube Sync Not Working
 - **Symptom**: Videos show as live when they're not, or scheduled videos show as "Streamed"
 - **Cause**: Encryption salt mismatch or cache issues
-- **Solution**: Check YOUTUBE_API_KEY_SALT environment variable, ensure forceRefresh/skipCache in sync functions
+- **Solution**: Check YOUTUBE_API_KEY_SALT environment variable, use manual sync endpoints
 
 #### Navigation Items Not Persisting
 - **Symptom**: Admin toggle changes revert after page refresh
 - **Cause**: Navbar defaulting to show missing database items
 - **Solution**: NavigationManager uses insert-or-update pattern, Navbar checks database state properly
 
-#### Overnight Streams Display Issues
-- **Symptom**: Streams showing at midnight next day instead of current day
-- **Cause**: Date boundary logic not accounting for overnight streams
-- **Solution**: Only streams starting after 8PM are considered overnight, show day indicators
+#### Auth State Corruption
+- **Symptom**: Authentication errors or infinite loops
+- **Solution**: App automatically detects and clears corrupted auth state on initialization
+- **Prevention**: Graceful signout handling for missing sessions
 
-#### Auth State Management
-- **Auto-cleanup**: The app automatically detects and clears corrupted auth state on initialization
-- **localStorage keys**: Supabase auth keys (`supabase.auth.*`, `sb-*`) are cleared when corruption is detected
-- **Session validation**: Invalid sessions trigger automatic cleanup to prevent user errors
-- **Graceful signout**: Missing sessions during signout are handled gracefully instead of showing errors
+#### Edge Function Authentication
+- **Issue**: Functions failing with authentication errors during production sync
+- **Solution**: Many functions configured with `verify_jwt = false` in `supabase/config.toml`
+
+### Development Notes
+- The application includes development mode with mocked user data
+- All database tables use RLS - ensure proper policies when adding new tables
+- Edge functions can be configured to bypass JWT verification
+- Use the existing service patterns when adding new integrations
+- Follow established component patterns and TypeScript conventions
+- Vercel deployment uses simple SPA rewrite rule in `vercel.json`
