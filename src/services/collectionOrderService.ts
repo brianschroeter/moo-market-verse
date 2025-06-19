@@ -5,6 +5,7 @@ export interface CollectionOrder {
   collection_handle: string;
   display_order: number;
   is_visible: boolean;
+  featured: boolean;
   created_at: string;
   updated_at: string;
   created_by?: string;
@@ -14,11 +15,13 @@ export interface CreateCollectionOrderParams {
   collection_handle: string;
   display_order: number;
   is_visible?: boolean;
+  featured?: boolean;
 }
 
 export interface UpdateCollectionOrderParams {
   display_order?: number;
   is_visible?: boolean;
+  featured?: boolean;
 }
 
 /**
@@ -143,6 +146,24 @@ export async function initializeCollectionOrders(collections: { handle: string; 
   // Get current user ID
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Define featured collections (from previous hardcoded order)
+  const featuredHandles = new Set([
+    'lolcow-live',
+    'lolcow-queen', 
+    'lolcow-queens',
+    'lolcow-rewind',
+    'lolcow-nerd',
+    'lolcow-test',
+    'mafia-milkers',
+    'lolcow-techtalk',
+    'lolcow-tech-talk',
+    'lolcow-cafe',
+    'lolcow-aussy',
+    'lolcow-aussie',
+    'lolcow-ausi',
+    'angry-grandpa'
+  ]);
+
   // Create orders for collections that don't have them yet
   const newOrders = collections
     .filter(collection => !existingHandles.has(collection.handle))
@@ -150,6 +171,7 @@ export async function initializeCollectionOrders(collections: { handle: string; 
       collection_handle: collection.handle,
       display_order: existingOrders.length + index,
       is_visible: true,
+      featured: featuredHandles.has(collection.handle),
       created_by: user?.id
     }));
 

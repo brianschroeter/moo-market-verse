@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { 
   getAllCollectionOrders, 
   bulkUpdateCollectionOrder,
@@ -13,7 +19,7 @@ import {
   CollectionOrder 
 } from "@/services/collectionOrderService";
 import { getCollections } from "@/services/shopify/shopifyStorefrontService";
-import { GripVertical, Eye, EyeOff, RefreshCw, Package, ArrowUp, ArrowDown } from "lucide-react";
+import { GripVertical, Eye, EyeOff, RefreshCw, Package, ArrowUp, ArrowDown, Star, StarOff } from "lucide-react";
 import { toast } from "sonner";
 
 const AdminCollectionOrder: React.FC = () => {
@@ -74,10 +80,25 @@ const AdminCollectionOrder: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-collection-orders"] });
       queryClient.invalidateQueries({ queryKey: ["collections"] });
+      queryClient.invalidateQueries({ queryKey: ["visible-collection-orders"] });
       toast.success("Collection visibility updated!");
     },
     onError: (error) => {
       toast.error(`Error updating visibility: ${error.message}`);
+    },
+  });
+
+  // Toggle featured mutation
+  const toggleFeaturedMutation = useMutation({
+    mutationFn: ({ id, featured }: { id: number; featured: boolean }) =>
+      updateCollectionOrder(id, { featured }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-collection-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["visible-collection-orders"] });
+      toast.success("Collection featured status updated!");
+    },
+    onError: (error) => {
+      toast.error(`Error updating featured status: ${error.message}`);
     },
   });
 
@@ -139,6 +160,10 @@ const AdminCollectionOrder: React.FC = () => {
     toggleVisibilityMutation.mutate({ id, isVisible: !currentVisibility });
   };
 
+  const handleToggleFeatured = (id: number, currentFeatured: boolean) => {
+    toggleFeaturedMutation.mutate({ id, featured: !currentFeatured });
+  };
+
   const collections = collectionsResponse?.data || [];
   const hasUninitializedCollections = collections.length > collectionOrders.length;
 
@@ -152,7 +177,7 @@ const AdminCollectionOrder: React.FC = () => {
               Collection Order Management
             </h1>
             <p className="text-gray-300 mt-2">
-              Drag and drop to reorder collections, or use the arrow buttons. Toggle visibility to show/hide collections.
+              Drag and drop to reorder collections, or use the arrow buttons. Toggle visibility to show/hide collections. Mark collections as featured for priority display.
             </p>
           </div>
 
@@ -249,17 +274,52 @@ const AdminCollectionOrder: React.FC = () => {
                           </Button>
                         </div>
                         
-                        <div className="flex items-center gap-2">
-                          {order.is_visible ? (
-                            <Eye className="h-4 w-4 text-green-400" />
-                          ) : (
-                            <EyeOff className="h-4 w-4 text-red-400" />
-                          )}
-                          <Switch
-                            checked={order.is_visible}
-                            onCheckedChange={() => handleToggleVisibility(order.id, order.is_visible)}
-                            disabled={toggleVisibilityMutation.isPending}
-                          />
+                        <div className="flex items-center gap-4">
+                          {/* Featured toggle */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-2">
+                                  {order.featured ? (
+                                    <Star className="h-4 w-4 text-yellow-400" />
+                                  ) : (
+                                    <StarOff className="h-4 w-4 text-gray-400" />
+                                  )}
+                                  <Switch
+                                    checked={order.featured || false}
+                                    onCheckedChange={() => handleToggleFeatured(order.id, order.featured || false)}
+                                    disabled={toggleFeaturedMutation.isPending}
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Featured collections appear at the top of the shop</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          
+                          {/* Visibility toggle */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-2">
+                                  {order.is_visible ? (
+                                    <Eye className="h-4 w-4 text-green-400" />
+                                  ) : (
+                                    <EyeOff className="h-4 w-4 text-red-400" />
+                                  )}
+                                  <Switch
+                                    checked={order.is_visible}
+                                    onCheckedChange={() => handleToggleVisibility(order.id, order.is_visible)}
+                                    disabled={toggleVisibilityMutation.isPending}
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{order.is_visible ? "Click to hide collection" : "Click to show collection"}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       </div>
                     </div>

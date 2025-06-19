@@ -23,9 +23,7 @@ const GET_COLLECTIONS_QUERY = `
           image {
             url
           }
-          products(first: 1) {
-            totalCount
-          }
+          productsCount
         }
       }
       pageInfo {
@@ -553,7 +551,7 @@ function transformCollection(shopifyCollection: any): Collection {
     title: shopifyCollection.title,
     description: shopifyCollection.description || undefined,
     imageUrl: shopifyCollection.image?.url || undefined,
-    productCount: shopifyCollection.products?.totalCount || 0,
+    productCount: shopifyCollection.productsCount || 0,
   };
 }
 
@@ -665,7 +663,11 @@ serve(async (req: Request) => {
         }
 
         const collections = response.data?.collections?.edges
-          ?.map((edge: any) => transformCollection(edge.node))
+          ?.map((edge: any) => {
+            console.log('Collection node:', edge.node);
+            console.log('Products count:', edge.node.productsCount);
+            return transformCollection(edge.node);
+          })
           ?.filter((collection: Collection) => !EXCLUDED_COLLECTIONS.has(collection.handle)) || [];
 
         return new Response(JSON.stringify({

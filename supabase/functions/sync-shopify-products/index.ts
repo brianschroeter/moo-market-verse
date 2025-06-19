@@ -348,6 +348,20 @@ serve(async (req) => {
       syncLog.errors.push(`Delete collections error: ${deleteCollectionsError.message}`);
     }
 
+    // Also clear collection_products since we're resyncing everything
+    const { error: deleteRelationsError } = await adminClient
+      .from('collection_products')
+      .delete()
+      .neq('collection_id', '0'); // Delete all relationships
+
+    if (deleteRelationsError && !deleteRelationsError.message.includes('does not exist')) {
+      console.error('Error deleting existing collection_products:', deleteRelationsError);
+      syncLog.errors.push(`Delete collection_products error: ${deleteRelationsError.message}`);
+    }
+
+    // Track successfully inserted product IDs
+    const insertedProductIds = new Set<string>();
+
     // Insert products
     for (const product of products) {
       syncLog.products_processed++;
@@ -397,7 +411,7 @@ serve(async (req) => {
       const { error: insertError } = await adminClient
         .from('shopify_products')
         .insert({
-          id: product.id,
+          id: product.id.toString(), // Keep as string since production schema uses string IDs
           handle: product.handle,
           title: product.title,
           description: product.description,
@@ -418,6 +432,7 @@ serve(async (req) => {
         syncLog.errors.push(`Product ${product.id} (${product.title}): ${insertError.message}`);
       } else {
         syncLog.products_inserted++;
+        insertedProductIds.add(product.id.toString());
         console.log(`  Successfully inserted product ${product.id}`);
       }
     }
@@ -429,7 +444,7 @@ serve(async (req) => {
       const { error: insertError } = await adminClient
         .from('shopify_collections')
         .insert({
-          id: collection.id,
+          id: collection.id.toString(), // Keep as string since production schema uses string IDs
           handle: collection.handle,
           title: collection.title,
           description: collection.description,
@@ -446,32 +461,58 @@ serve(async (req) => {
       }
     }
 
-    // Insert collection-product relationships
+    // Insert collection-product relationships (only for products that were successfully inserted)
     const collectionProducts: Array<{ collection_id: string; product_id: string; position: number }> = [];
     
+    console.log('Building collection-product relationships...');
+    console.log(`Sample collection IDs: ${Object.keys(collectionProductMap).slice(0, 3).join(', ')}`);
+    console.log(`Total inserted products: ${insertedProductIds.size}`);
+    
     for (const [collectionId, productIds] of Object.entries(collectionProductMap)) {
-      productIds.forEach((productId, index) => {
-        collectionProducts.push({
-          collection_id: collectionId,
-          product_id: productId,
-          position: index,
-        });
-      });
+      let position = 0;
+      for (const productId of productIds) {
+        // Only include relationships for products that were actually inserted
+        if (insertedProductIds.has(productId.toString())) {
+          collectionProducts.push({
+            collection_id: collectionId.toString(),
+            product_id: productId.toString(),
+            position: position++,
+          });
+        }
+      }
+      
+      if (position > 0) {
+        console.log(`Collection ${collectionId} has ${position} active products (filtered from ${productIds.length} total)`);
+      }
     }
 
     if (collectionProducts.length > 0) {
+      console.log(`Inserting ${collectionProducts.length} collection-product relationships...`);
+      
       // Insert in batches of 1000
       const batchSize = 1000;
+      let totalInserted = 0;
+      
       for (let i = 0; i < collectionProducts.length; i += batchSize) {
         const batch = collectionProducts.slice(i, i + batchSize);
-        const { error: insertError } = await adminClient
+        console.log(`Inserting batch ${Math.floor(i/batchSize) + 1} with ${batch.length} items...`);
+        console.log(`First item in batch: ${JSON.stringify(batch[0])}`);
+        
+        const { data: insertData, error: insertError } = await adminClient
           .from('collection_products')
-          .insert(batch);
+          .insert(batch)
+          .select();
 
         if (insertError) {
           console.error(`Error inserting collection products batch:`, insertError);
+          syncLog.errors.push(`Collection products batch ${Math.floor(i/batchSize) + 1}: ${insertError.message} - ${insertError.hint || 'No hint'} - ${insertError.details || 'No details'}`);
+        } else {
+          totalInserted += batch.length;
+          console.log(`Successfully inserted batch ${Math.floor(i/batchSize) + 1}, returned ${insertData?.length || 0} rows`);
         }
       }
+      
+      console.log(`Total collection-product relationships inserted: ${totalInserted}`);
     }
 
     syncLog.completed_at = new Date().toISOString();

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SmoothScroll from "@/components/SmoothScroll";
@@ -9,9 +9,11 @@ import FlashSalesBanner from "@/components/shop/FlashSalesBanner";
 import { getCollections, getFeaturedProducts, getNewProducts } from "@/services/shopify/shopifyStorefrontService";
 import { getNewProductsFromDB, getFeaturedProductsFromDB, getCollectionsFromDB } from "@/services/shopify/databaseProductService";
 import { getActiveFlashSales } from "@/services/flashSalesService";
-import { getVisibleCollectionOrders } from "@/services/collectionOrderService";
+import { getVisibleCollectionOrders, initializeCollectionOrders } from "@/services/collectionOrderService";
 import { Collection } from "@/services/types/shopify-types";
-import { Search, ShoppingBag, Sparkles, TrendingUp, Star, Crown, Loader2, Users, Package, MessageCircle, Zap, ChevronRight, XCircle } from "lucide-react";
+import { Search, ShoppingBag, Sparkles, TrendingUp, Star, Crown, Loader2, Users, Package, MessageCircle, Zap, ChevronRight, XCircle, Settings } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +31,8 @@ const Shop: React.FC = () => {
   const [memberCount, setMemberCount] = useState(1610);
   const [activeCount, setActiveCount] = useState(465);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { isAdmin } = useAuth();
+  const queryClient = useQueryClient();
   
   const {
     data: collectionsResponse,
@@ -145,12 +149,31 @@ const Shop: React.FC = () => {
 
   const collections = React.useMemo(() => collectionsResponse?.data || [], [collectionsResponse?.data]);
 
+  // Check if there are uninitialized collections
+  const hasUninitializedCollections = React.useMemo(() => {
+    if (!isAdmin || collectionOrders.length === 0 || collections.length === 0) return false;
+    const orderedHandles = new Set(collectionOrders.map(order => order.collection_handle));
+    return collections.some(collection => !orderedHandles.has(collection.handle));
+  }, [isAdmin, collectionOrders, collections]);
+
+  const handleInitializeCollections = async () => {
+    try {
+      await initializeCollectionOrders(
+        collections.map(c => ({ handle: c.handle, title: c.title }))
+      );
+      toast.success("Collections initialized successfully!");
+      // Refetch collection orders
+      queryClient.invalidateQueries({ queryKey: ["visible-collection-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["collections-db"] });
+    } catch (error) {
+      console.error("Error initializing collections:", error);
+      toast.error("Failed to initialize collections");
+    }
+  };
+
   // Update filtered collections when collections, collection orders, or search query changes
   React.useEffect(() => {
-    console.log('=== Collection Ordering Debug ===');
-    console.log('Total collections:', collections.length);
-    console.log('Collection titles from database:', collections.map(c => c.title));
-    
+    // Start with all collections
     let filtered = collections;
     
     // Apply search filter
@@ -161,87 +184,36 @@ const Shop: React.FC = () => {
       );
     }
     
-    // Define the desired collection order with priority
-    // Lower number = higher priority
-    const orderPriority: { [key: string]: number } = {
-      'lolcow live': 1,
-      'lolcow queen': 2,
-      'lolcow queens': 2,  // Alternative spelling
-      'lolcow rewind': 3,
-      'lolcow nerd': 4,
-      'lolcow test': 5,
-      'mafia milkers': 6,
-      'lolcow techtalk': 7,
-      'lolcow tech talk': 7, // Alternative with space
-      'lolcow cafe': 8,
-      'lolcow aussy': 9,
-      'lolcow aussie': 9,  // Alternative spelling
-      'lolcow ausi': 9,    // Another alternative
-      'angry grandpa': 10
-    };
-    
-    console.log('Order priority map:', orderPriority);
-    
-    // Sort collections according to the desired order
-    filtered = [...filtered].sort((a, b) => {
-      // Normalize titles for comparison (trim whitespace, lowercase, remove extra spaces)
-      const normalizeTitle = (title: string) => title.trim().toLowerCase().replace(/\s+/g, ' ');
+    // Filter by visible collections from database
+    if (collectionOrders.length > 0) {
+      const visibleHandles = new Set(collectionOrders.map(order => order.collection_handle));
+      filtered = filtered.filter(collection => visibleHandles.has(collection.handle));
       
-      const normalizedA = normalizeTitle(a.title);
-      const normalizedB = normalizeTitle(b.title);
+      // Create maps for ordering and featured status
+      const orderMap = new Map(collectionOrders.map(order => [order.collection_handle, order.display_order]));
+      const featuredMap = new Map(collectionOrders.map(order => [order.collection_handle, order.featured || false]));
       
-      // Get priority for each collection
-      const priorityA = orderPriority[normalizedA] ?? Number.MAX_SAFE_INTEGER;
-      const priorityB = orderPriority[normalizedB] ?? Number.MAX_SAFE_INTEGER;
-      
-      console.log(`Comparing "${a.title}" (priority: ${priorityA}) vs "${b.title}" (priority: ${priorityB})`);
-      console.log(`  - normalized A: "${normalizedA}"`);
-      console.log(`  - normalized B: "${normalizedB}"`);
-      
-      // If both collections have priority, sort by priority
-      if (priorityA !== Number.MAX_SAFE_INTEGER && priorityB !== Number.MAX_SAFE_INTEGER) {
-        console.log(`  Both have priority. Result: ${priorityA - priorityB}`);
-        return priorityA - priorityB;
-      }
-      
-      // If only one has priority, prioritize it
-      if (priorityA !== Number.MAX_SAFE_INTEGER) {
-        console.log(`  Only "${a.title}" has priority. Prioritizing it.`);
-        return -1;
-      }
-      if (priorityB !== Number.MAX_SAFE_INTEGER) {
-        console.log(`  Only "${b.title}" has priority. Prioritizing it.`);
-        return 1;
-      }
-      
-      // If neither are in the desired order, use database order if available
-      if (collectionOrders.length > 0) {
-        const orderMap = new Map(collectionOrders.map(order => [order.collection_handle, order.display_order]));
+      // Sort by featured status first, then by database order
+      filtered = [...filtered].sort((a, b) => {
+        const aFeatured = featuredMap.get(a.handle) || false;
+        const bFeatured = featuredMap.get(b.handle) || false;
+        
+        // Featured collections come first
+        if (aFeatured && !bFeatured) return -1;
+        if (!aFeatured && bFeatured) return 1;
+        
+        // Then sort by display order
         const orderA = orderMap.get(a.handle) ?? Number.MAX_SAFE_INTEGER;
         const orderB = orderMap.get(b.handle) ?? Number.MAX_SAFE_INTEGER;
         
-        console.log(`  Neither in desired order. Using database order:`, {
-          handleA: a.handle,
-          orderA,
-          handleB: b.handle,
-          orderB
-        });
-        
-        if (orderA !== Number.MAX_SAFE_INTEGER && orderB !== Number.MAX_SAFE_INTEGER) {
+        if (orderA !== orderB) {
           return orderA - orderB;
         }
         
-        if (orderA !== Number.MAX_SAFE_INTEGER) return -1;
-        if (orderB !== Number.MAX_SAFE_INTEGER) return 1;
-      }
-      
-      // Otherwise sort alphabetically
-      console.log(`  Falling back to alphabetical sort`);
-      return a.title.localeCompare(b.title);
-    });
-    
-    console.log('Final sorted order:', filtered.map(c => c.title));
-    console.log('=== End Debug ===\n');
+        // Fallback to alphabetical if same order (shouldn't happen with unique display_order)
+        return a.title.localeCompare(b.title);
+      });
+    }
     
     setFilteredCollections(filtered);
   }, [collections, collectionOrders, searchQuery]);
@@ -1141,6 +1113,32 @@ const Shop: React.FC = () => {
           </div>
         </SmoothScroll>
       </div>
+
+      {/* Floating admin button for uninitialized collections */}
+      {isAdmin && hasUninitializedCollections && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <div className="bg-yellow-500/10 backdrop-blur-md border border-yellow-500/20 rounded-lg p-4 mb-4 max-w-sm">
+            <p className="text-sm text-yellow-200 mb-2">
+              Some collections are not initialized. Initialize them to control visibility and order.
+            </p>
+            <Button 
+              onClick={handleInitializeCollections}
+              className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold w-full"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Initialize Collections
+            </Button>
+          </div>
+          <Button
+            asChild
+            className="bg-lolcow-blue hover:bg-lolcow-blue/80 text-white font-semibold w-full"
+          >
+            <a href="/admin/collection-order">
+              Go to Collection Manager
+            </a>
+          </Button>
+        </div>
+      )}
     </>
   );
 };

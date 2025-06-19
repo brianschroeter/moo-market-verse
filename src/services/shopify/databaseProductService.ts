@@ -162,7 +162,7 @@ export async function getCollectionProductsFromDB(handle: string) {
 
     const products = productRelations
       ?.map(rel => rel.shopify_products)
-      .filter(Boolean)
+      .filter(product => product && product.status === 'active')
       .map(convertToProduct) || [];
 
     return {
