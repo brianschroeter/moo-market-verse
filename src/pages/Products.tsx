@@ -249,20 +249,23 @@ const Products: React.FC = () => {
 
     // Apply price filter
     filtered = filtered.filter(product => {
-      const price = product.priceRange.min;
+      const price = parseFloat(product.variants[0]?.price.amount || '0');
       return price >= filters.priceRange[0] && price <= filters.priceRange[1];
     });
 
-    // Always show in-stock products first
-    filtered = filtered.filter(product => product.availableForSale);
-
-    // Apply sorting
+    // Apply sorting with availability preference
     filtered.sort((a, b) => {
+      // Always show available products first
+      if (a.availableForSale !== b.availableForSale) {
+        return a.availableForSale ? -1 : 1;
+      }
+
+      // Then apply the selected sort option
       switch (sortOption) {
         case SortOption.NEWEST:
           // For newest, we'll reverse the array order (assuming products are fetched in order)
           // In a real implementation, you'd sort by created_at or similar timestamp
-          return filtered.indexOf(b) - filtered.indexOf(a);
+          return allProducts.indexOf(b) - allProducts.indexOf(a);
         case SortOption.NAME_AZ:
           return a.title.localeCompare(b.title);
         case SortOption.NAME_ZA:
