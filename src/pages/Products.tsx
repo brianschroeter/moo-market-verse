@@ -31,6 +31,7 @@ interface ProductWithCollections extends Product {
 }
 
 enum SortOption {
+  NEWEST = "newest",
   NAME_AZ = "name-asc",
   NAME_ZA = "name-desc",
   PRICE_LOW_HIGH = "price-asc",
@@ -51,7 +52,12 @@ const COMING_SOON_POSITION = 12; // Position where Coming Soon card appears
 const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortOption, setSortOption] = useState<SortOption>(SortOption.NAME_AZ);
+  const [sortOption, setSortOption] = useState<SortOption>(() => {
+    // Get sort from URL parameter, default to NAME_AZ
+    const sortParam = searchParams.get('sort');
+    if (sortParam === 'newest') return SortOption.NEWEST;
+    return SortOption.NAME_AZ;
+  });
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     collections: [],
@@ -248,19 +254,27 @@ const Products: React.FC = () => {
     });
 
     // Always show in-stock products first
-    filtered = filtered.filter(product => product.available);
+    filtered = filtered.filter(product => product.availableForSale);
 
     // Apply sorting
     filtered.sort((a, b) => {
       switch (sortOption) {
+        case SortOption.NEWEST:
+          // For newest, we'll reverse the array order (assuming products are fetched in order)
+          // In a real implementation, you'd sort by created_at or similar timestamp
+          return filtered.indexOf(b) - filtered.indexOf(a);
         case SortOption.NAME_AZ:
           return a.title.localeCompare(b.title);
         case SortOption.NAME_ZA:
           return b.title.localeCompare(a.title);
         case SortOption.PRICE_LOW_HIGH:
-          return parseFloat(a.price.replace(/[^0-9.]/g, "")) - parseFloat(b.price.replace(/[^0-9.]/g, ""));
+          const priceA = parseFloat(a.variants[0]?.price.amount || '0');
+          const priceB = parseFloat(b.variants[0]?.price.amount || '0');
+          return priceA - priceB;
         case SortOption.PRICE_HIGH_LOW:
-          return parseFloat(b.price.replace(/[^0-9.]/g, "")) - parseFloat(a.price.replace(/[^0-9.]/g, ""));
+          const priceHighA = parseFloat(a.variants[0]?.price.amount || '0');
+          const priceHighB = parseFloat(b.variants[0]?.price.amount || '0');
+          return priceHighB - priceHighA;
         default:
           return 0;
       }
@@ -412,6 +426,7 @@ const Products: React.FC = () => {
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={SortOption.NEWEST}>Newest First</SelectItem>
                   <SelectItem value={SortOption.NAME_AZ}>Name: A to Z</SelectItem>
                   <SelectItem value={SortOption.NAME_ZA}>Name: Z to A</SelectItem>
                   <SelectItem value={SortOption.PRICE_LOW_HIGH}>Price: Low to High</SelectItem>
