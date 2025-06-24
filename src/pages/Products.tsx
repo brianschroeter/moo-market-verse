@@ -109,51 +109,20 @@ const Products: React.FC = () => {
             })) || [];
             
             const product: ProductWithCollections = {
-              id: dbProduct.id,
+              id: String(dbProduct.id),
               handle: dbProduct.handle,
               title: dbProduct.title,
               description: dbProduct.description || '',
               vendor: dbProduct.vendor,
               productType: dbProduct.product_type,
-              tags: dbProduct.tags,
-              images: dbProduct.image_url ? [{
-                id: '1',
-                src: dbProduct.image_url,
-                altText: dbProduct.title
-              }] : [],
-              variants: [{
-                id: '1',
-                title: 'Default Title',
-                price: {
-                  amount: dbProduct.price.toString(),
-                  currencyCode: 'USD'
-                },
-                availableForSale: dbProduct.status === 'active',
-                selectedOptions: []
-              }],
+              tags: dbProduct.tags || [],
+              featuredImageUrl: dbProduct.featured_image_url,
               priceRange: {
-                minVariantPrice: {
-                  amount: dbProduct.price.toString(),
-                  currencyCode: 'USD'
-                },
-                maxVariantPrice: {
-                  amount: dbProduct.price.toString(),
-                  currencyCode: 'USD'
-                }
+                min: dbProduct.price_min || 0,
+                max: dbProduct.price_max || dbProduct.price_min || 0,
+                currencyCode: 'USD'
               },
-              availableForSale: dbProduct.status === 'active',
-              options: [],
-              metafields: [],
-              compareAtPriceRange: {
-                minVariantPrice: {
-                  amount: dbProduct.price.toString(),
-                  currencyCode: 'USD'
-                },
-                maxVariantPrice: {
-                  amount: dbProduct.price.toString(),
-                  currencyCode: 'USD'
-                }
-              },
+              available: dbProduct.available && dbProduct.status === 'active',
               collectionHandles: collections.map(c => c.handle),
               collectionTitles: collections.map(c => c.title)
             };
@@ -165,7 +134,7 @@ const Products: React.FC = () => {
           setAllProducts(products);
           
           // Calculate max price from products
-          const prices = products.map(p => parseFloat(p.variants[0]?.price.amount || '0'));
+          const prices = products.map(p => p.priceRange.min);
           const calculatedMaxPrice = Math.ceil(Math.max(...prices, 100));
           setMaxPrice(calculatedMaxPrice);
           setFilters(prev => ({ ...prev, priceRange: [0, calculatedMaxPrice] }));
@@ -210,7 +179,7 @@ const Products: React.FC = () => {
           setAllProducts(uniqueProducts);
           
           // Calculate max price from all products
-          const prices = uniqueProducts.map(p => parseFloat(p.variants[0]?.price.amount || '0'));
+          const prices = uniqueProducts.map(p => p.priceRange?.min || 0);
           const calculatedMaxPrice = Math.ceil(Math.max(...prices, 100));
           setMaxPrice(calculatedMaxPrice);
           setFilters(prev => ({ ...prev, priceRange: [0, calculatedMaxPrice] }));
@@ -249,15 +218,15 @@ const Products: React.FC = () => {
 
     // Apply price filter
     filtered = filtered.filter(product => {
-      const price = parseFloat(product.variants[0]?.price.amount || '0');
+      const price = product.priceRange.min;
       return price >= filters.priceRange[0] && price <= filters.priceRange[1];
     });
 
     // Apply sorting with availability preference
     filtered.sort((a, b) => {
       // Always show available products first
-      if (a.availableForSale !== b.availableForSale) {
-        return a.availableForSale ? -1 : 1;
+      if (a.available !== b.available) {
+        return a.available ? -1 : 1;
       }
 
       // Then apply the selected sort option
@@ -271,12 +240,12 @@ const Products: React.FC = () => {
         case SortOption.NAME_ZA:
           return b.title.localeCompare(a.title);
         case SortOption.PRICE_LOW_HIGH:
-          const priceA = parseFloat(a.variants[0]?.price.amount || '0');
-          const priceB = parseFloat(b.variants[0]?.price.amount || '0');
+          const priceA = a.priceRange.min;
+          const priceB = b.priceRange.min;
           return priceA - priceB;
         case SortOption.PRICE_HIGH_LOW:
-          const priceHighA = parseFloat(a.variants[0]?.price.amount || '0');
-          const priceHighB = parseFloat(b.variants[0]?.price.amount || '0');
+          const priceHighA = a.priceRange.min;
+          const priceHighB = b.priceRange.min;
           return priceHighB - priceHighA;
         default:
           return 0;
