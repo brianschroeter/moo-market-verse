@@ -9,7 +9,7 @@ import ComingSoonCard from "@/components/shop/ComingSoonCard";
 import RecentlyViewed from "@/components/shop/RecentlyViewed";
 import ProductRecommendations from "@/components/shop/ProductRecommendations";
 import { getCollections, getCollectionProducts } from "@/services/shopify/shopifyStorefrontService";
-import { getCollectionsFromDB, getCollectionProductsFromDB, getAllProductsFromDB } from "@/services/shopify/databaseProductService";
+import { getCollectionsFromDB, getCollectionProductsFromDB, getAllProductsFromDB, DatabaseProduct } from "@/services/shopify/databaseProductService";
 import { Product, Collection } from "@/services/types/shopify-types";
 import { Loader2, ChevronLeft, ChevronRight, Filter, X, Search, Package, Star, ShoppingCart, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -102,8 +102,8 @@ const Products: React.FC = () => {
           // Convert database products to ProductWithCollections format
           const productMap = new Map<string, ProductWithCollections>();
           
-          dbResult.data.forEach(dbProduct => {
-            const collections = dbProduct.collection_products?.map(cp => ({
+          dbResult.data.forEach((dbProduct: any) => {
+            const collections = dbProduct.collection_products?.map((cp: any) => ({
               handle: cp.shopify_collections?.handle || '',
               title: cp.shopify_collections?.title || ''
             })) || [];
@@ -116,13 +116,13 @@ const Products: React.FC = () => {
               vendor: dbProduct.vendor,
               productType: dbProduct.product_type,
               tags: dbProduct.tags || [],
-              featuredImageUrl: dbProduct.featured_image_url,
+              featuredImageUrl: dbProduct.image_url || undefined,
               priceRange: {
-                min: dbProduct.price_min || 0,
-                max: dbProduct.price_max || dbProduct.price_min || 0,
+                min: dbProduct.price || 0,
+                max: dbProduct.price || 0,
                 currencyCode: 'USD'
               },
-              available: dbProduct.available && dbProduct.status === 'active',
+              available: dbProduct.status === 'active',
               collectionHandles: collections.map(c => c.handle),
               collectionTitles: collections.map(c => c.title)
             };
