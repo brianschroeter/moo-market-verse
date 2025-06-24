@@ -287,6 +287,67 @@ export async function getFeaturedProductsFromDB(limit: number = 6) {
   }
 }
 
+export async function getBestSellingProductsFromDB(limit: number = 6) {
+  try {
+    console.log('Fetching best selling products from database...');
+    
+    const { data, error } = await supabase
+      .rpc('get_best_selling_products', { limit_count: limit });
+
+    if (error) {
+      console.error('Error fetching best selling products:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      console.log('No best selling products found');
+      return {
+        data: [],
+        error: null
+      };
+    }
+
+    // Convert the RPC response to Product format
+    // The RPC function returns data with JSON fields that need to be handled
+    const products = data.map((item: any) => {
+      // Extract first image URL from the images JSON array
+      const imageUrl = item.images && Array.isArray(item.images) && item.images.length > 0
+        ? item.images[0].url || item.images[0].src
+        : undefined;
+
+      return {
+        id: item.id,
+        handle: item.handle,
+        title: item.title,
+        description: item.description || '',
+        vendor: item.vendor,
+        productType: item.product_type,
+        tags: item.tags || [],
+        featuredImageUrl: imageUrl,
+        priceRange: item.price_range || {
+          min: 0,
+          max: 0,
+          currencyCode: 'USD'
+        },
+        available: true, // Best sellers are assumed to be available
+        totalSold: item.total_sold // Include sales count for potential display
+      };
+    });
+
+    console.log(`Fetched ${products.length} best selling products`);
+    return {
+      data: products,
+      error: null
+    };
+  } catch (error) {
+    console.error('Error in getBestSellingProductsFromDB:', error);
+    return {
+      data: [],
+      error: error instanceof Error ? error.message : 'Failed to fetch best selling products'
+    };
+  }
+}
+
 export async function getProductDetailFromDB(handle: string) {
   try {
     const { data, error } = await supabase

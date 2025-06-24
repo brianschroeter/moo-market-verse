@@ -7,7 +7,7 @@ import CollectionCard from "@/components/shop/CollectionCard";
 import ProductCard from "@/components/shop/ProductCard";
 import FlashSalesBanner from "@/components/shop/FlashSalesBanner";
 import { getCollections, getFeaturedProducts, getNewProducts } from "@/services/shopify/shopifyStorefrontService";
-import { getNewProductsFromDB, getFeaturedProductsFromDB, getCollectionsFromDB } from "@/services/shopify/databaseProductService";
+import { getNewProductsFromDB, getFeaturedProductsFromDB, getCollectionsFromDB, getBestSellingProductsFromDB } from "@/services/shopify/databaseProductService";
 import { getActiveFlashSales } from "@/services/flashSalesService";
 import { getVisibleCollectionOrders, initializeCollectionOrders } from "@/services/collectionOrderService";
 import { Collection } from "@/services/types/shopify-types";
@@ -60,10 +60,10 @@ const Shop: React.FC = () => {
     isLoading: featuredProductsLoading,
     error: featuredProductsError
   } = useQuery({
-    queryKey: ["featured-products-db"],
+    queryKey: ["best-selling-products-db"],
     queryFn: async () => {
-      // Try database first
-      const dbResult = await getFeaturedProductsFromDB(6);
+      // Try database best sellers first
+      const dbResult = await getBestSellingProductsFromDB(6);
       if (dbResult.data.length > 0) {
         return {
           products: dbResult.data,
@@ -73,7 +73,7 @@ const Shop: React.FC = () => {
       }
       
       // Fallback to API if database is empty
-      console.log('No featured products in database, falling back to API');
+      console.log('No best-selling products in database, falling back to API');
       const products = await getFeaturedProducts(6);
       
       return {
@@ -644,7 +644,7 @@ const Shop: React.FC = () => {
                   <Crown className="h-10 w-10 text-lolcow-red animate-bounce hover-rotate" style={{ animationDelay: '0.5s' }} />
                 </div>
                 <p className="text-gray-300 text-xl max-w-3xl mx-auto">
-                  Discover our top-selling products loved by the LolCow community
+                  Our most popular products based on actual sales - see what the LolCow community is buying!
                 </p>
               </div>
 
