@@ -95,13 +95,13 @@ const Shop: React.FC = () => {
     queryKey: ["new-products-db"],
     queryFn: async () => {
       // Try database first
-      const dbResult = await getNewProductsFromDB(4);
+      const dbResult = await getNewProductsFromDB(8);
       if (dbResult.data.length > 0) {
         return dbResult.data;
       }
       // Fallback to API if database is empty
       console.log('No new products in database, falling back to API');
-      const products = await getNewProducts(4);
+      const products = await getNewProducts(8);
       return products;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -139,7 +139,7 @@ const Shop: React.FC = () => {
   const ctaSectionRef = useScrollAnimation({ threshold: 0.2 });
   const discordSectionRef = useScrollAnimation({ threshold: 0.2 });
   const productsGridRef = useStaggeredAnimation(6, { threshold: 0.1 });
-  const newProductsGridRef = useStaggeredAnimation(4, { threshold: 0.1 });
+  const newProductsGridRef = useStaggeredAnimation(8, { threshold: 0.1 });
   const collectionsGridRef = useStaggeredAnimation(20, { threshold: 0.1 }); // Use a fixed reasonable max
   const statsRef = useStaggeredAnimation(3, { threshold: 0.2 });
   const discordStatsRef = useStaggeredAnimation(2, { threshold: 0.3 });
@@ -720,7 +720,7 @@ const Shop: React.FC = () => {
                 </p>
               </div>
 
-              <div 
+              <div
                 ref={newProductsGridRef.ref}
                 className={`grid grid-cols-1 md:grid-cols-2 gap-6 stagger-container ${newProductsGridRef.isInView ? 'in-view' : ''}`}
               >
